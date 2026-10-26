@@ -21,6 +21,35 @@ next: CS220-L03
 
 ---
 
+### How to read this lecture
+
+Nineteen rooms. Theme: **reachable ≠ useful.**
+
+```text
+  ROOM MAP
+  ─────────────────────────────────────────────────────────────
+  ① OOM at 03:42      ② Memory's questions   ③ Call stack
+  ④ Stack overflow     ⑤ Heap & references    ⑥ GC vs intent
+  ⑦ Unbounded cache    ⑧ Closure retention    ⑨ Listeners & timers
+  ⑩ Generational GC    ⑪ Growth ≠ leak        ⑫ Outside the JS heap
+  ⑬ Diagnose properly  ⑭ WeakMap              ⑮ Memory as performance
+  ⑯ Lab               ⑰ Challenges           ⑱ Solutions
+  ⑲ Responsibility
+  ─────────────────────────────────────────────────────────────
+```
+
+| Rooms | Theme | Feel |
+|---|---|---|
+| 1–2 | Mystery → what memory must answer | detective setup |
+| 3–6 | Stack, heap, reachability | mental models |
+| 7–9 | Real leak patterns | production scars |
+| 10–14 | GC, metrics, diagnosis, WeakMap | ops toolkit |
+| 15–19 | Performance, lab, practice, takeaway | hands-on |
+
+> **Reading tip:** Sticky notes mark where *the GC is doing its job* and *you still have a problem*. Diagrams show who still holds a reference.
+
+---
+
 # 1. The Server That Was Slowly Eating Itself
 
 It's 3:42 AM.
@@ -103,7 +132,24 @@ And the service may still be leaking memory.
 
 How can both things be true?
 
+```text
+  THE 03:42 PARADOX
+  ─────────────────────────────────────────
+  Garbage collector: "I'm reclaiming everything unreachable."
+  Monitoring graph:  "Memory still climbs to 980 MB."
+  Both can be right.
+  ─────────────────────────────────────────
+```
+
+> **Sticky note #1**
+>
+> A working garbage collector does not mean "nothing can leak." It means unreachable objects get collected — reachable junk stays forever.
+
 To answer that, we need to understand what memory actually represents to a running program.
+
+```text
+  ✓ Room 1 complete — OOM mystery: GC may be fine; retention may not be
+```
 
 ---
 
@@ -147,6 +193,17 @@ That leads us to three important questions about memory:
 
 **Who, or what, is responsible for releasing it?**
 
+```text
+  LIFETIME SPECTRUM (same process)
+  ─────────────────────────────────────────────────────
+  nanoseconds     request        session/job      process
+       |              |               |              |
+       v              v               v              v
+   stack temps   response body   user session   config, caches
+                                              (until you release)
+  ─────────────────────────────────────────────────────
+```
+
 These questions appear in almost every programming language, although different languages answer them differently.
 
 In C or C++, programmers may manage some memory explicitly.
@@ -161,7 +218,15 @@ It changes the nature of your responsibility.
 
 Instead of deciding exactly when to free every object, you must understand which objects remain reachable, which resources require explicit cleanup, and what prevents information from being discarded.
 
+> **Sticky note #2**
+>
+> Automatic memory management changes *what you decide* — not *whether you decide*. You still own reachability and cleanup.
+
 Let's start with the two memory concepts developers encounter most often: the stack and the heap.
+
+```text
+  ✓ Room 2 complete — three questions: where / how long / who releases
+```
 
 ---
 
@@ -272,6 +337,14 @@ Modern JavaScript engines can store values in registers, stack frames, heap-allo
 
 That popular explanation is too simplistic. In fact, closures provide an excellent example of why it fails. We'll return to them shortly.
 
+> **Sticky note #3**
+>
+> Treat stack vs heap as a useful *model* of lifetimes — not a hard rule about where every JS value physically lives.
+
+```text
+  ✓ Room 3 complete — call stack = how execution remembers the path back
+```
+
 ---
 
 # 4. Why Recursive Functions Can Destroy the Stack
@@ -344,6 +417,22 @@ A useful distinction emerges:
 **Time complexity and memory requirements are different dimensions of algorithmic cost.**
 
 A recursive algorithm and an iterative algorithm can perform similar work while consuming memory differently.
+
+```text
+  SAME WORK, DIFFERENT STACK COST
+  ─────────────────────────────────────────
+  countdown(1_000_000) recursive
+    frames: ████████████████████  → boom
+
+  countdown(1_000_000) iterative
+    frames: █                     → fine
+  ─────────────────────────────────────────
+  Time: both O(n).  Call-stack depth: not the same.
+```
+
+```text
+  ✓ Room 4 complete — stack overflow ≠ out of RAM; depth has a budget
+```
 
 ---
 
@@ -456,6 +545,11 @@ The distinction is:
 
 **Reassignment changes what a binding refers to.**
 
+| Action | What changes | Shared object? |
+|---|---|---|
+| `customerB.name = "Maria"` | the object | still shared |
+| `customerB = { name: "Maria" }` | the binding | no longer shared |
+
 This may sound elementary, but it lies beneath many important behaviors:
 
 - Shared mutable state.
@@ -467,6 +561,14 @@ This may sound elementary, but it lies beneath many important behaviors:
 - Garbage collection.
 
 And it helps explain why objects sometimes remain alive unexpectedly.
+
+> **Sticky note #4**
+>
+> Bindings are not objects. Lifetime follows *reachability of the object*, not the name of the variable that first created it.
+
+```text
+  ✓ Room 5 complete — heap objects outlive creators while reachable
+```
 
 ---
 
@@ -555,6 +657,24 @@ It's:
 **"Is there a chain of relevant references from a root to this object?"**
 
 That distinction explains an enormous amount of JavaScript memory behavior.
+
+```text
+  USEFUL?          REACHABLE?
+  ──────────────────────────────────
+  yes + yes   → keep (healthy)
+  no  + yes   → "leak" from your POV; alive to GC
+  yes + no    → bug (you lost it; GC may free it)
+  no  + no    → garbage (GC's job)
+  ──────────────────────────────────
+```
+
+> **Sticky note #5**
+>
+> GC answers reachability, not usefulness. Your business intent is invisible to the collector.
+
+```text
+  ✓ Room 6 complete — useful junk can stay alive forever
+```
 
 ---
 
@@ -645,6 +765,21 @@ Each approach has trade-offs. A time-to-live policy expires entries after some d
 And even after solving memory retention, we still need to consider consistency. A cached subscription plan may become stale. A cached authorization decision may become dangerous. A cached customer profile might contain sensitive data that shouldn't remain in memory unnecessarily.
 
 Caching is therefore more than a performance optimization. It's a decision about retaining copies of information, how long those copies may live, and when they can be trusted. This connects back to our earlier lessons on representations, data structures, and system state.
+
+| Cache control | Helps with | Alone may miss |
+|---|---|---|
+| TTL / expiration | stale data | burst of unique keys |
+| Max entry count | unbounded growth | huge variable-sized values |
+| LRU eviction | hot-set focus | consistency / invalidation |
+| Explicit invalidate | correctness | forgotten code paths |
+
+> **Sticky note #6**
+>
+> An unbounded cache is a polite way to ask the GC to keep everything forever.
+
+```text
+  ✓ Room 7 complete — classic leak: Map grows; nothing ever leaves
+```
 
 ---
 
@@ -738,6 +873,21 @@ The general lesson is:
 
 **Closures make it easy to preserve state without explicitly constructing objects to hold that state. But preserved state still has a lifetime and a memory cost.**
 
+```text
+  BEFORE (captures whole report)     AFTER (captures what you need)
+  ─────────────────────────────      ──────────────────────────────
+  callback → report → huge dataset   callback → reportId, owner
+                                     (dataset free to die)
+```
+
+> **Sticky note #7**
+>
+> Closures are invisible boxes of retained state. Capture only what the callback actually needs — and delete the callback when its job ends.
+
+```text
+  ✓ Room 8 complete — closures keep bindings; bindings keep graphs
+```
+
 ---
 
 # 9. Event Listeners: The Memory Leak That Visits Both Frontend and Backend
@@ -781,11 +931,11 @@ Over time:
 ```text
 EventEmitter
      |
-     +── Listener 1 ── CS110-L01
+     +── Listener 1 ── Session 1
      |
-     +── Listener 2 ── CS110-L02
+     +── Listener 2 ── Session 2
      |
-     +── Listener 3 ── CS110-L03
+     +── Listener 3 ── Session 3
      |
      +── ...
      |
@@ -876,6 +1026,19 @@ A long-lived timer can keep its callback and associated state alive, even when t
 
 And there's another important detail. Garbage collection manages memory. It doesn't automatically understand when a network connection, file descriptor, timer, or external subscription should be logically terminated. Releasing JavaScript objects and closing external resources are related but distinct responsibilities, which is why explicit cleanup remains essential.
 
+```text
+  REGISTER  →  must have a matching  →  UNREGISTER / clearInterval
+  (on / addEventListener / setInterval)
+```
+
+> **Sticky note #8**
+>
+> GC frees memory. It does not cancel timers, close sockets, or unsubscribe. Ownership of cleanup is still yours.
+
+```text
+  ✓ Room 9 complete — listeners & timers need explicit teardown
+```
+
 ---
 
 # 10. How Modern Garbage Collection Avoids Freezing Your Application
@@ -923,6 +1086,17 @@ Most newly allocated objects become unreachable relatively quickly.
 
 V8 organizes much of its managed heap into generations. New objects commonly begin in a young generation, and objects that survive enough collection cycles may be promoted into an older generation.
 
+```text
+  GENERATIONAL HEAP (simplified)
+  ─────────────────────────────────────────────
+  Young (nursery)     collect often; most die here
+       │ survivors promoted
+       v
+  Old generation      collect less often; long-lived
+  ─────────────────────────────────────────────
+  Request temps → young.  Caches / modules → often old.
+```
+
 The young generation can be collected frequently because most of its objects are expected to be short-lived. The older generation is larger and generally requires more elaborate collection work. This is useful because the runtime doesn't need to treat every temporary object as though it will remain alive forever.
 
 ## Why garbage collection has a cost
@@ -950,6 +1124,14 @@ You don't need to memorize their implementation details. The important principle
 **Use available memory intelligently.**
 
 Those goals can conflict. A runtime that collects very aggressively may reduce memory usage while spending more CPU time on collection. A runtime that allows the heap to grow may reduce collection frequency while consuming more memory. That's an engineering trade-off, and it explains why observing memory usage requires more nuance than simply checking whether the number is increasing.
+
+> **Sticky note #9**
+>
+> GC trades memory, CPU, and pause time against each other. "Memory went up" is not yet a diagnosis.
+
+```text
+  ✓ Room 10 complete — young objects die fast; GC still costs
+```
 
 ---
 
@@ -1078,6 +1260,17 @@ This is why **process memory and JavaScript heap memory are not interchangeable 
 
 And why a diagnosis based on one monitoring number can be misleading.
 
+| Metric | Roughly means | Rising alone suggests… |
+|---|---|---|
+| `heapUsed` | live-ish V8 managed heap | JS object retention |
+| `heapTotal` | V8 heap capacity reserved | heap growth / fragmentation |
+| `external` / `arrayBuffers` | native-backed / Buffer memory | files, networking, Buffers |
+| `rss` | process RAM footprint | whole process — dig deeper |
+
+```text
+  ✓ Room 11 complete — sawtooth is normal; rising floor needs evidence
+```
+
 ---
 
 # 12. The Memory Leak That Doesn't Live in the JavaScript Heap
@@ -1132,7 +1325,26 @@ The useful distinction is:
 
 **A process has a total memory footprint. The JavaScript heap is only one part of it.**
 
+```text
+  PROCESS MEMORY (container limit cares about this)
+  ┌──────────────────────────────────────────────┐
+  │  V8 heap (heapUsed / heapTotal)              │
+  │  Buffers / ArrayBuffers / external           │
+  │  stacks, code, native libs, allocator slack  │
+  └──────────────────────────────────────────────┘
+         ↑ raising only the V8 heap limit
+           doesn't enlarge the whole box
+```
+
 This is especially important for services involving uploads, downloads, file processing, compression, networking, and native libraries.
+
+> **Sticky note #10**
+>
+> Watching only `heapUsed` can miss the leak that lives in Buffers and native memory.
+
+```text
+  ✓ Room 12 complete — JS heap ≠ process footprint
+```
 
 ---
 
@@ -1267,6 +1479,20 @@ And remember that heap snapshots may contain sensitive application data, so they
 
 **What is retaining the memory that should no longer be needed?**
 
+```text
+  DIAGNOSIS LOOP
+  1 pattern over time  →  2 which metric  →  3 reproduce
+       →  4 heap snapshot paths  →  ask: who owns this?
+```
+
+> **Sticky note #11**
+>
+> Snapshots answer *who retains*, not *why the business still wants it*. You supply the second half.
+
+```text
+  ✓ Room 13 complete — evidence over guesswork
+```
+
 ---
 
 # 14. WeakMap: When a Collection Shouldn't Own Its Keys
@@ -1318,6 +1544,21 @@ For a cache indexed by customer IDs, which are strings, WeakMap isn't a direct r
 There are also APIs such as `WeakRef` and `FinalizationRegistry`, but their timing and behavior are intentionally not reliable enough for ordinary resource-lifecycle management.
 
 Garbage collection is a memory-reclamation mechanism, not a scheduling API. A finalizer is not a substitute for explicitly closing a resource. That's the important practical distinction.
+
+| | `Map` | `WeakMap` |
+|---|---|---|
+| Keeps object keys alive? | yes (strong) | no (weak keys) |
+| Enumerate all entries? | yes | no |
+| Primitive keys (e.g. string IDs)? | yes | no |
+| Deterministic eviction / TTL? | you implement | not a cache API |
+
+> **Sticky note #12**
+>
+> WeakMap is for metadata whose lifetime should follow the key — not a drop-in bounded cache for string IDs.
+
+```text
+  ✓ Room 14 complete — WeakMap doesn't own its keys
+```
 
 ---
 
@@ -1378,6 +1619,22 @@ This is when memory problems become availability problems.
 A service that leaks memory isn't merely wasting RAM.
 
 It's accumulating a future outage.
+
+```text
+  PEAK MEMORY (same million records)
+  Approach A — load all:     ████████████████  high peak
+  Approach B — batches:      ████              lower peak
+```
+
+| Concern | Leak focus | Performance focus |
+|---|---|---|
+| Retained forever | yes | sometimes |
+| Allocation rate / GC churn | secondary | often primary |
+| Peak under load | yes | yes |
+
+```text
+  ✓ Room 15 complete — memory shape is also a latency story
+```
 
 ---
 
@@ -1520,6 +1777,10 @@ After running it, explain the behavior in terms of reachability rather than simp
 
 That's the level of understanding we're aiming for.
 
+```text
+  ✓ Room 16 complete — lab: retain, measure, clear, interpret
+```
+
 ---
 
 # 17. Four Engineering Challenges
@@ -1618,6 +1879,10 @@ Consider:
 
 What additional guarantees or measurements would you want?
 
+```text
+  ✓ Room 17 complete — challenges attempted
+```
+
 ---
 
 # 18. Solutions and Discussion
@@ -1668,6 +1933,10 @@ The system needs an appropriate retention policy and observability. Depending on
 
 A bounded entry count is one useful control—not proof that memory usage cannot become excessive.
 
+```text
+  ✓ Room 18 complete — answers checked
+```
+
 ---
 
 # 19. The Bigger Picture: Memory Is About Responsibility
@@ -1686,8 +1955,23 @@ Long-running Node services, SPAs, and agent workflows cannot rely on frequent pr
 
 A growing memory graph becomes investigable. What is retained? Why reachable? Should it still be alive? Who owns its lifetime?
 
----
+```text
+  ✓ Room 19 complete — you own reachability; the runtime owns freeing
+```
 
+```text
+  POCKET CARD — CS220-L02
+  ─────────────────────────────────────────────────────────────
+  • GC collects unreachable objects — not "useless" ones
+  • Stack: execution path & depth budget; heap: longer-lived graphs
+  • Mutation ≠ reassignment; aliases share one object
+  • Classic leaks: unbounded caches, closures, listeners, timers, queues
+  • Metrics: heapUsed ≠ rss ≠ external — diagnose the rising one
+  • WeakMap: metadata lifetime follows keys; not a string-ID cache
+  • Cleanup is ownership: register ⇒ unregister; allocate peak wisely
+  Ask: who still holds a reference — and should they?
+  ─────────────────────────────────────────────────────────────
+```
 
 ---
 
