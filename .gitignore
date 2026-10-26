@@ -1,0 +1,25 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*~
+.idea/
+.vscode/
+*.code-workspace
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+
+# Local secrets / machine-only
+*.pem
+*.key
+
+# Optional: uncomment to keep personal study notes off GitHub
+# book/students/*/ledger.yaml
+# book/students/*/progress.md

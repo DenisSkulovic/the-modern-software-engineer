@@ -1,0 +1,808 @@
+# The Modern Software Engineer — curriculum source of truth
+# Edit this file, then run tools/curriculum_migrate.py / sync_manuscript_meta.py
+# See STATUS.md for manuscript vs learning status model.
+
+version: '2.0'
+title: The Modern Software Engineer
+updated: '2026-10-26'
+manuscript_statuses:
+  planned: Catalogue only — no file yet
+  stub: File exists; outline / placeholder
+  draft: Substantial but incomplete prose
+  manuscript: Full lecture to programme standard
+  revised: Materially rewritten after first manuscript
+  polished: Stable for current major edition
+default_edition: 2.0.0
+disciplines:
+  CS:
+    name: Computer Science
+    scope: Computation, languages, operating systems, networks, databases, distributed systems
+  SE:
+    name: Software Engineering
+    scope: Web applications, backend services, architecture, infrastructure, production operations
+  AI:
+    name: Artificial Intelligence
+    scope: Language models, retrieval, agents, evaluation, production AI
+study_order:
+- label: Foundations
+  courses:
+  - CS110
+  - CS220
+  - CS230
+  - CS320
+- label: Application and data engineering
+  courses:
+  - SE240
+  - SE310
+  - SE320
+  - CS330
+- label: Advanced systems and production
+  courses:
+  - CS430
+  - SE330
+  - SE340
+  - SE440
+- label: Modern AI engineering
+  courses:
+  - AI310
+  - AI410
+- label: Architecture studio
+  courses:
+  - SE490
+courses:
+- code: CS110
+  title: Foundations of Computation and Algorithms
+  discipline: CS
+  level: 100
+  type: core
+  status: complete
+  slug: foundations-of-computation
+  dir: CS/CS110-foundations-of-computation
+  lectures:
+  - id: CS110-L01
+    title: What Is Computation, Really?
+    slug: what-is-computation-really
+    legacy_ids:
+    - CS101-S01
+    source: CS/CS110-foundations-of-computation/CS110-L01-what-is-computation-really.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS110-L02
+    title: Everything Is Numbers — Until It Isn't
+    slug: everything-is-numbers-until-it-isnt
+    legacy_ids:
+    - CS101-S02
+    source: CS/CS110-foundations-of-computation/CS110-L02-everything-is-numbers-until-it-isnt.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS110-L03
+    title: Algorithms and the Cost of Computation
+    slug: algorithms-and-the-cost-of-computation
+    legacy_ids:
+    - CS101-S03
+    source: CS/CS110-foundations-of-computation/CS110-L03-algorithms-and-the-cost-of-computation.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS110-L04
+    title: 'Data Structures: Choosing How to Remember Things'
+    slug: data-structures-choosing-how-to-remember-things
+    legacy_ids:
+    - CS101-S04
+    source: CS/CS110-foundations-of-computation/CS110-L04-data-structures-choosing-how-to-remember-things.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS110-L05
+    title: Searching, Sorting, and Finding Shortcuts
+    slug: searching-sorting-and-finding-shortcuts
+    legacy_ids:
+    - CS101-S05
+    source: CS/CS110-foundations-of-computation/CS110-L05-searching-sorting-and-finding-shortcuts.md
+    manuscript: manuscript
+    edition: 2.0.0
+- code: CS220
+  title: Programming Languages, Memory, and Execution
+  discipline: CS
+  level: 200
+  type: core
+  status: complete
+  slug: programming-languages
+  dir: CS/CS220-programming-languages
+  lectures:
+  - id: CS220-L01
+    title: Programming Languages and Abstraction
+    slug: programming-languages-and-abstraction
+    legacy_ids:
+    - CS101-S06
+    source: CS/CS220-programming-languages/CS220-L01-programming-languages-and-abstraction.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS220-L02
+    title: 'Memory: The Invisible Battlefield'
+    slug: memory-the-invisible-battlefield
+    legacy_ids:
+    - CS101-S07
+    source: CS/CS220-programming-languages/CS220-L02-memory-the-invisible-battlefield.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS220-L03
+    title: How Programs Actually Execute
+    slug: how-programs-actually-execute
+    legacy_ids:
+    - CS101-S08
+    source: CS/CS220-programming-languages/CS220-L03-how-programs-actually-execute.md
+    manuscript: manuscript
+    edition: 2.0.0
+- code: CS230
+  title: Computer Networks and Web Protocols
+  discipline: CS
+  level: 200
+  type: core
+  status: complete
+  slug: computer-networks
+  dir: CS/CS230-computer-networks
+  lectures:
+  - id: CS230-L01
+    title: The Journey of a Web Request
+    slug: the-journey-of-a-web-request
+    legacy_ids:
+    - WEB201-S01
+    source: CS/CS230-computer-networks/CS230-L01-the-journey-of-a-web-request.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS230-L02
+    title: Networking for Software Engineers
+    slug: networking-for-software-engineers
+    legacy_ids:
+    - WEB201-S02
+    source: CS/CS230-computer-networks/CS230-L02-networking-for-software-engineers.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS230-L03
+    title: 'HTTP: The Protocol That Runs the Web'
+    slug: http-the-protocol-that-runs-the-web
+    legacy_ids:
+    - WEB201-S03
+    source: CS/CS230-computer-networks/CS230-L03-http-the-protocol-that-runs-the-web.md
+    manuscript: manuscript
+    edition: 2.0.0
+- code: CS320
+  title: Operating Systems, Concurrency, and Runtimes
+  discipline: CS
+  level: 300
+  type: core
+  status: complete
+  slug: operating-systems-and-concurrency
+  dir: CS/CS320-operating-systems-and-concurrency
+  lectures:
+  - id: CS320-L01
+    title: Concurrency, Parallelism, and Asynchrony
+    slug: concurrency-parallelism-and-asynchrony
+    legacy_ids:
+    - CS101-S09
+    source: CS/CS320-operating-systems-and-concurrency/CS320-L01-concurrency-parallelism-and-asynchrony.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS320-L02
+    title: 'Operating Systems: The Manager Behind the Curtain'
+    slug: operating-systems-the-manager-behind-the-curtain
+    legacy_ids:
+    - CS101-S10
+    source: CS/CS320-operating-systems-and-concurrency/CS320-L02-operating-systems-the-manager-behind-the-curtain.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS320-L03
+    title: JavaScript and TypeScript Under the Microscope
+    slug: javascript-and-typescript-under-the-microscope
+    legacy_ids:
+    - CS101-S11
+    source: CS/CS320-operating-systems-and-concurrency/CS320-L03-javascript-and-typescript-under-the-microscope.md
+    manuscript: manuscript
+    edition: 2.0.0
+- code: CS330
+  title: Relational Databases and Transactions
+  discipline: CS
+  level: 300
+  type: core
+  status: complete
+  slug: relational-databases
+  dir: CS/CS330-relational-databases
+  lectures:
+  - id: CS330-L01
+    title: Relational Database Design
+    slug: relational-database-design
+    legacy_ids:
+    - BACK301-S02
+    source: CS/CS330-relational-databases/CS330-L01-relational-database-design.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS330-L02
+    title: SQL and Query Performance
+    slug: sql-and-query-performance
+    legacy_ids:
+    - BACK301-S03
+    source: CS/CS330-relational-databases/CS330-L02-sql-and-query-performance.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS330-L03
+    title: 'Transactions: When Correct Operations Produce Incorrect Results'
+    slug: transactions-and-isolation
+    legacy_ids:
+    - BACK301-S04
+    source: CS/CS330-relational-databases/CS330-L03-transactions-and-isolation.md
+    manuscript: manuscript
+    edition: 2.0.0
+- code: CS430
+  title: Distributed Systems and Reliable Workflows
+  discipline: CS
+  level: 400
+  type: core
+  status: complete
+  slug: distributed-systems
+  dir: CS/CS430-distributed-systems
+  lectures:
+  - id: CS430-L01
+    title: Distributed Systems and Partial Failure
+    slug: distributed-systems-and-partial-failure
+    legacy_ids:
+    - BACK301-S07
+    source: CS/CS430-distributed-systems/CS430-L01-distributed-systems-and-partial-failure.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS430-L02
+    title: Consistency, Replication, and Availability
+    slug: consistency-replication-and-availability
+    legacy_ids:
+    - BACK301-S08
+    source: CS/CS430-distributed-systems/CS430-L02-consistency-replication-and-availability.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS430-L03
+    title: Scaling and Load Management
+    slug: scaling-and-load-management
+    legacy_ids:
+    - BACK301-S09
+    source: CS/CS430-distributed-systems/CS430-L03-scaling-and-load-management.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS430-L04
+    title: Microservices, Events, and Service Boundaries
+    slug: microservices-events-and-service-boundaries
+    legacy_ids:
+    - BACK301-S10
+    source: CS/CS430-distributed-systems/CS430-L04-microservices-events-and-service-boundaries.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS430-L05
+    title: Designing Reliable Business Workflows
+    slug: designing-reliable-business-workflows
+    legacy_ids:
+    - BACK301-S11
+    source: CS/CS430-distributed-systems/CS430-L05-designing-reliable-business-workflows.md
+    manuscript: manuscript
+    edition: 2.0.0
+- code: SE240
+  title: Browser and Frontend Engineering
+  discipline: SE
+  level: 200
+  type: core
+  status: complete
+  slug: frontend-engineering
+  dir: SE/SE240-frontend-engineering
+  lectures:
+  - id: SE240-L01
+    title: Inside the Browser
+    slug: inside-the-browser
+    legacy_ids:
+    - WEB201-S04
+    source: SE/SE240-frontend-engineering/SE240-L01-inside-the-browser.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE240-L02
+    title: Frontend Architecture Beyond Components
+    slug: frontend-architecture-beyond-components
+    legacy_ids:
+    - WEB201-S05
+    source: SE/SE240-frontend-engineering/SE240-L02-frontend-architecture-beyond-components.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE240-L03
+    title: State Management and Reactive Applications
+    slug: state-management-and-reactive-applications
+    legacy_ids:
+    - WEB201-S06
+    source: SE/SE240-frontend-engineering/SE240-L03-state-management-and-reactive-applications.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE240-L04
+    title: Delivering Modern Web Applications
+    slug: delivering-modern-web-applications
+    legacy_ids:
+    - WEB201-S09
+    source: SE/SE240-frontend-engineering/SE240-L04-delivering-modern-web-applications.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE240-L05
+    title: 'Performance: Why Fast Code Can Feel Slow'
+    slug: performance-why-fast-code-can-feel-slow
+    legacy_ids:
+    - WEB201-S10
+    source: SE/SE240-frontend-engineering/SE240-L05-performance-why-fast-code-can-feel-slow.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE240-L06
+    title: Testing and Reliability in the Frontend
+    slug: testing-and-reliability-in-the-frontend
+    legacy_ids:
+    - WEB201-S11
+    source: SE/SE240-frontend-engineering/SE240-L06-testing-and-reliability-in-the-frontend.md
+    manuscript: manuscript
+    edition: 2.0.0
+- code: SE310
+  title: Web APIs, Identity, and Security
+  discipline: SE
+  level: 300
+  type: core
+  status: complete
+  slug: web-apis-and-security
+  dir: SE/SE310-web-apis-and-security
+  lectures:
+  - id: SE310-L01
+    title: The Frontend–Backend Contract
+    slug: the-frontend-backend-contract
+    legacy_ids:
+    - WEB201-S07
+    source: SE/SE310-web-apis-and-security/SE310-L01-the-frontend-backend-contract.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE310-L02
+    title: Authentication and Browser Security
+    slug: authentication-and-browser-security
+    legacy_ids:
+    - WEB201-S08
+    source: SE/SE310-web-apis-and-security/SE310-L02-authentication-and-browser-security.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE310-L03
+    title: Application and Infrastructure Security
+    slug: application-and-infrastructure-security
+    legacy_ids:
+    - ENG401-S09
+    source: SE/SE310-web-apis-and-security/SE310-L03-application-and-infrastructure-security.md
+    manuscript: manuscript
+    edition: 2.0.0
+- code: SE320
+  title: Backend Services and Asynchronous Processing
+  discipline: SE
+  level: 300
+  type: core
+  status: complete
+  slug: backend-services
+  dir: SE/SE320-backend-services
+  lectures:
+  - id: SE320-L01
+    title: The Anatomy of a Backend Service
+    slug: the-anatomy-of-a-backend-service
+    legacy_ids:
+    - BACK301-S01
+    source: SE/SE320-backend-services/SE320-L01-the-anatomy-of-a-backend-service.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE320-L02
+    title: 'Caching: Trading Freshness for Speed'
+    slug: caching-trading-freshness-for-speed
+    legacy_ids:
+    - BACK301-S05
+    source: SE/SE320-backend-services/SE320-L02-caching-trading-freshness-for-speed.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE320-L03
+    title: Queues, Workers, and Asynchronous Workflows
+    slug: queues-workers-and-asynchronous-workflows
+    legacy_ids:
+    - BACK301-S06
+    source: SE/SE320-backend-services/SE320-L03-queues-workers-and-asynchronous-workflows.md
+    manuscript: manuscript
+    edition: 2.0.0
+- code: SE330
+  title: Software Architecture and Evolution
+  discipline: SE
+  level: 300
+  type: core
+  status: complete
+  slug: software-architecture
+  dir: SE/SE330-software-architecture
+  lectures:
+  - id: SE330-L01
+    title: The Art of Software Architecture
+    slug: the-art-of-software-architecture
+    legacy_ids:
+    - ENG401-S01
+    source: SE/SE330-software-architecture/SE330-L01-the-art-of-software-architecture.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE330-L02
+    title: Architecture Patterns and Their Consequences
+    slug: architecture-patterns-and-their-consequences
+    legacy_ids:
+    - ENG401-S02
+    source: SE/SE330-software-architecture/SE330-L02-architecture-patterns-and-their-consequences.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE330-L03
+    title: Maintaining and Evolving Real Software
+    slug: maintaining-and-evolving-real-software
+    legacy_ids:
+    - ENG401-S11
+    source: SE/SE330-software-architecture/SE330-L03-maintaining-and-evolving-real-software.md
+    manuscript: manuscript
+    edition: 2.0.0
+- code: SE340
+  title: Linux, Cloud Infrastructure, and Delivery
+  discipline: SE
+  level: 300
+  type: core
+  status: complete
+  slug: cloud-and-delivery
+  dir: SE/SE340-cloud-and-delivery
+  lectures:
+  - id: SE340-L01
+    title: Linux and the Server Environment
+    slug: linux-and-the-server-environment
+    legacy_ids:
+    - ENG401-S03
+    source: SE/SE340-cloud-and-delivery/SE340-L01-linux-and-the-server-environment.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE340-L02
+    title: Containers and Modern Deployment
+    slug: containers-and-modern-deployment
+    legacy_ids:
+    - ENG401-S04
+    source: SE/SE340-cloud-and-delivery/SE340-L02-containers-and-modern-deployment.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE340-L03
+    title: Cloud Infrastructure and AWS Architecture
+    slug: cloud-infrastructure-and-aws-architecture
+    legacy_ids:
+    - ENG401-S05
+    source: SE/SE340-cloud-and-delivery/SE340-L03-cloud-infrastructure-and-aws-architecture.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE340-L04
+    title: CI/CD and Infrastructure as Code
+    slug: cicd-and-infrastructure-as-code
+    legacy_ids:
+    - ENG401-S06
+    source: SE/SE340-cloud-and-delivery/SE340-L04-cicd-and-infrastructure-as-code.md
+    manuscript: manuscript
+    edition: 2.0.0
+- code: SE440
+  title: Production Reliability and Quality Engineering
+  discipline: SE
+  level: 400
+  type: core
+  status: complete
+  slug: production-reliability
+  dir: SE/SE440-production-reliability
+  lectures:
+  - id: SE440-L01
+    title: 'Observability: Understanding Production Systems'
+    slug: observability-understanding-production-systems
+    legacy_ids:
+    - ENG401-S07
+    source: SE/SE440-production-reliability/SE440-L01-observability-understanding-production-systems.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE440-L02
+    title: Reliability Engineering and Incident Response
+    slug: reliability-engineering-and-incident-response
+    legacy_ids:
+    - ENG401-S08
+    source: SE/SE440-production-reliability/SE440-L02-reliability-engineering-and-incident-response.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE440-L03
+    title: Testing Strategies for Complex Systems
+    slug: testing-strategies-for-complex-systems
+    legacy_ids:
+    - ENG401-S10
+    source: SE/SE440-production-reliability/SE440-L03-testing-strategies-for-complex-systems.md
+    manuscript: manuscript
+    edition: 2.0.0
+- code: SE490
+  title: Architecture and Systems Design Studio
+  discipline: SE
+  level: 400
+  type: core
+  status: complete
+  slug: architecture-studio
+  dir: SE/SE490-architecture-studio
+  lectures:
+  - id: SE490-L01
+    title: 'Putting It Together: Understanding a Running Application'
+    slug: putting-it-together-understanding-a-running-application
+    legacy_ids:
+    - CS101-S12
+    source: SE/SE490-architecture-studio/SE490-L01-putting-it-together-understanding-a-running-application.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE490-L02
+    title: 'Architecture Workshop: Design a Modern Web Product'
+    slug: architecture-workshop-design-a-modern-web-product
+    legacy_ids:
+    - WEB201-S12
+    source: SE/SE490-architecture-studio/SE490-L02-architecture-workshop-design-a-modern-web-product.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE490-L03
+    title: 'System Design Workshop: Build for 100× Traffic'
+    slug: system-design-workshop-build-for-100x-traffic
+    legacy_ids:
+    - BACK301-S12
+    source: SE/SE490-architecture-studio/SE490-L03-system-design-workshop-build-for-100x-traffic.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE490-L04
+    title: 'Senior Engineer Workshop: Architecture Review'
+    slug: senior-engineer-workshop-architecture-review
+    legacy_ids:
+    - ENG401-S12
+    source: SE/SE490-architecture-studio/SE490-L04-senior-engineer-workshop-architecture-review.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE490-L05
+    title: 'Architecture Workshop: Design a Production Agentic SaaS'
+    slug: architecture-workshop-design-a-production-agentic-saas
+    legacy_ids:
+    - AI501-S12
+    source: SE/SE490-architecture-studio/SE490-L05-architecture-workshop-design-a-production-agentic-saas.md
+    manuscript: manuscript
+    edition: 2.0.0
+- code: AI310
+  title: Language Models and Retrieval Engineering
+  discipline: AI
+  level: 300
+  type: core
+  status: complete
+  slug: language-models-and-retrieval
+  dir: AI/AI310-language-models-and-retrieval
+  lectures:
+  - id: AI310-L01
+    title: How Modern Language Models Actually Work
+    slug: how-modern-language-models-actually-work
+    legacy_ids:
+    - AI501-S01
+    source: AI/AI310-language-models-and-retrieval/AI310-L01-how-modern-language-models-actually-work.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: AI310-L02
+    title: Engineering Applications Around LLMs
+    slug: engineering-applications-around-llms
+    legacy_ids:
+    - AI501-S02
+    source: AI/AI310-language-models-and-retrieval/AI310-L02-engineering-applications-around-llms.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: AI310-L03
+    title: Embeddings, Semantic Search, and Retrieval
+    slug: embeddings-semantic-search-and-retrieval
+    legacy_ids:
+    - AI501-S03
+    source: AI/AI310-language-models-and-retrieval/AI310-L03-embeddings-semantic-search-and-retrieval.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: AI310-L04
+    title: Retrieval-Augmented Generation
+    slug: retrieval-augmented-generation
+    legacy_ids:
+    - AI501-S04
+    source: AI/AI310-language-models-and-retrieval/AI310-L04-retrieval-augmented-generation.md
+    manuscript: manuscript
+    edition: 2.0.0
+- code: AI410
+  title: Agentic AI Systems and Production Engineering
+  discipline: AI
+  level: 400
+  type: core
+  status: complete
+  slug: agentic-ai-systems
+  dir: AI/AI410-agentic-ai-systems
+  lectures:
+  - id: AI410-L01
+    title: Tool Calling and Connecting AI to Software
+    slug: tool-calling-and-connecting-ai-to-software
+    legacy_ids:
+    - AI501-S05
+    source: AI/AI410-agentic-ai-systems/AI410-L01-tool-calling-and-connecting-ai-to-software.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: AI410-L02
+    title: 'Agents: From Model Calls to Autonomous Workflows'
+    slug: agents-from-model-calls-to-autonomous-workflows
+    legacy_ids:
+    - AI501-S06
+    source: AI/AI410-agentic-ai-systems/AI410-L02-agents-from-model-calls-to-autonomous-workflows.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: AI410-L03
+    title: Agent Memory, Context, and State
+    slug: agent-memory-context-and-state
+    legacy_ids:
+    - AI501-S07
+    source: AI/AI410-agentic-ai-systems/AI410-L03-agent-memory-context-and-state.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: AI410-L04
+    title: MCP and the Agent Integration Ecosystem
+    slug: mcp-and-the-agent-integration-ecosystem
+    legacy_ids:
+    - AI501-S08
+    source: AI/AI410-agentic-ai-systems/AI410-L04-mcp-and-the-agent-integration-ecosystem.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: AI410-L05
+    title: Multi-Agent Systems and Orchestration
+    slug: multi-agent-systems-and-orchestration
+    legacy_ids:
+    - AI501-S09
+    source: AI/AI410-agentic-ai-systems/AI410-L05-multi-agent-systems-and-orchestration.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: AI410-L06
+    title: Evaluating Nondeterministic Software
+    slug: evaluating-nondeterministic-software
+    legacy_ids:
+    - AI501-S10
+    source: AI/AI410-agentic-ai-systems/AI410-L06-evaluating-nondeterministic-software.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: AI410-L07
+    title: Security, Reliability, and Economics of AI Systems
+    slug: security-reliability-and-economics-of-ai-systems
+    legacy_ids:
+    - AI501-S11
+    source: AI/AI410-agentic-ai-systems/AI410-L07-security-reliability-and-economics-of-ai-systems.md
+    manuscript: manuscript
+    edition: 2.0.0
+- code: CS350
+  title: Advanced PostgreSQL Engineering
+  discipline: CS
+  level: 300
+  type: planned
+  status: planned
+  slug: advanced-postgresql
+  dir: CS/CS350-advanced-postgresql
+  builds_on:
+  - CS330
+  lectures: []
+  notes: 'First lecture candidate: PostgreSQL Internals — MVCC, Vacuum, and Bloat'
+- code: CS360
+  title: Algorithms and Coding Interview Lab
+  discipline: CS
+  level: 300
+  type: planned
+  status: planned
+  slug: algorithms-interview-lab
+  dir: CS/CS360-algorithms-interview-lab
+  builds_on:
+  - CS110
+  lectures: []
+  notes: Algorithmic patterns for senior engineering interviews
+- code: CS370
+  title: Game Engines and Simulation Systems
+  discipline: CS
+  level: 300
+  type: planned
+  status: planned
+  slug: game-engines-and-simulation
+  dir: CS/CS370-game-engines-and-simulation
+  builds_on:
+  - CS220
+  - CS320
+  lectures: []
+  notes: Independent exploration — game loops, entities, simulation time
+- code: SE250
+  title: Modern Frontend Frameworks
+  discipline: SE
+  level: 200
+  type: planned
+  status: planned
+  slug: modern-frontend-frameworks
+  dir: SE/SE250-modern-frontend-frameworks
+  builds_on:
+  - SE240
+  lectures: []
+  notes: React for Vue Developers as first lecture candidate
+- code: SE350
+  title: Advanced Software Design Patterns
+  discipline: SE
+  level: 300
+  type: planned
+  status: planned
+  slug: software-design-patterns
+  dir: SE/SE350-software-design-patterns
+  builds_on:
+  - SE330
+  lectures: []
+- code: SE450
+  title: Kubernetes and Platform Engineering
+  discipline: SE
+  level: 400
+  type: planned
+  status: planned
+  slug: kubernetes-and-platform
+  dir: SE/SE450-kubernetes-and-platform
+  builds_on:
+  - SE340
+  - SE440
+  lectures: []
+- code: SE460
+  title: Performance Engineering
+  discipline: SE
+  level: 400
+  type: planned
+  status: planned
+  slug: performance-engineering
+  dir: SE/SE460-performance-engineering
+  builds_on:
+  - CS320
+  - SE440
+  lectures: []
+- code: AI450
+  title: Advanced Agentic Systems
+  discipline: AI
+  level: 400
+  type: planned
+  status: planned
+  slug: advanced-agentic-systems
+  dir: AI/AI450-advanced-agentic-systems
+  builds_on:
+  - AI410
+  lectures: []
+  notes: Durable agents, workflow engines, advanced evaluations
+- code: SE360
+  title: Practical Terraform and Cloud Delivery
+  discipline: SE
+  level: 300
+  type: planned
+  status: planned
+  slug: practical-terraform
+  dir: SE/SE360-practical-terraform
+  builds_on:
+  - SE340
+  lectures: []
+- code: CS240
+  title: Linux Internals for Application Engineers
+  discipline: CS
+  level: 200
+  type: planned
+  status: planned
+  slug: linux-internals
+  dir: CS/CS240-linux-internals
+  builds_on:
+  - CS320
+  - SE340
+  lectures: []
+- code: SE370
+  title: Application Security Deep Dive
+  discipline: SE
+  level: 300
+  type: planned
+  status: planned
+  slug: application-security
+  dir: SE/SE370-application-security
+  builds_on:
+  - SE310
+  lectures: []
+- code: OPEN110
+  title: Mobile Application Architecture
+  discipline: SE
+  level: 100
+  type: planned
+  status: planned
+  slug: mobile-application-architecture
+  dir: SE/OPEN110-mobile-application-architecture
+  builds_on: []
+  lectures: []
+  notes: Independent elective — not forced under a core course

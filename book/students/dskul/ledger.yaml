@@ -1,0 +1,745 @@
+student: dskul
+display_name: dskul
+created: '2026-10-26'
+updated: '2026-10-26'
+curriculum_version: '2.0'
+learning_statuses:
+  unopened: Never started
+  wandering: Skimmed / light pass
+  studying: Serious first read in progress
+  labbing: Working labs and challenges
+  settled: Finished once; mental model held
+  fluent: Can explain cold / teach / interview
+  fading: Confidence dropping
+  encore: Scheduled revisit due or in progress
+defaults:
+  encore_intervals_days:
+    unopened: null
+    wandering: 14
+    studying: 14
+    labbing: 21
+    settled: 30
+    fluent: 75
+    fading: 7
+    encore: 14
+lectures:
+  CS110-L01:
+    course: CS110
+    title: What Is Computation, Really?
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS110-L02:
+    course: CS110
+    title: Everything Is Numbers — Until It Isn't
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS110-L03:
+    course: CS110
+    title: Algorithms and the Cost of Computation
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS110-L04:
+    course: CS110
+    title: 'Data Structures: Choosing How to Remember Things'
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS110-L05:
+    course: CS110
+    title: Searching, Sorting, and Finding Shortcuts
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS220-L01:
+    course: CS220
+    title: Programming Languages and Abstraction
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS220-L02:
+    course: CS220
+    title: 'Memory: The Invisible Battlefield'
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS220-L03:
+    course: CS220
+    title: How Programs Actually Execute
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS230-L01:
+    course: CS230
+    title: The Journey of a Web Request
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS230-L02:
+    course: CS230
+    title: Networking for Software Engineers
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS230-L03:
+    course: CS230
+    title: 'HTTP: The Protocol That Runs the Web'
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS320-L01:
+    course: CS320
+    title: Concurrency, Parallelism, and Asynchrony
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS320-L02:
+    course: CS320
+    title: 'Operating Systems: The Manager Behind the Curtain'
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS320-L03:
+    course: CS320
+    title: JavaScript and TypeScript Under the Microscope
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS330-L01:
+    course: CS330
+    title: Relational Database Design
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS330-L02:
+    course: CS330
+    title: SQL and Query Performance
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS330-L03:
+    course: CS330
+    title: 'Transactions: When Correct Operations Produce Incorrect Results'
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS430-L01:
+    course: CS430
+    title: Distributed Systems and Partial Failure
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS430-L02:
+    course: CS430
+    title: Consistency, Replication, and Availability
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS430-L03:
+    course: CS430
+    title: Scaling and Load Management
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS430-L04:
+    course: CS430
+    title: Microservices, Events, and Service Boundaries
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS430-L05:
+    course: CS430
+    title: Designing Reliable Business Workflows
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE240-L01:
+    course: SE240
+    title: Inside the Browser
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE240-L02:
+    course: SE240
+    title: Frontend Architecture Beyond Components
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE240-L03:
+    course: SE240
+    title: State Management and Reactive Applications
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE240-L04:
+    course: SE240
+    title: Delivering Modern Web Applications
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE240-L05:
+    course: SE240
+    title: 'Performance: Why Fast Code Can Feel Slow'
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE240-L06:
+    course: SE240
+    title: Testing and Reliability in the Frontend
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE310-L01:
+    course: SE310
+    title: The Frontend–Backend Contract
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE310-L02:
+    course: SE310
+    title: Authentication and Browser Security
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE310-L03:
+    course: SE310
+    title: Application and Infrastructure Security
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE320-L01:
+    course: SE320
+    title: The Anatomy of a Backend Service
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE320-L02:
+    course: SE320
+    title: 'Caching: Trading Freshness for Speed'
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE320-L03:
+    course: SE320
+    title: Queues, Workers, and Asynchronous Workflows
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE330-L01:
+    course: SE330
+    title: The Art of Software Architecture
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE330-L02:
+    course: SE330
+    title: Architecture Patterns and Their Consequences
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE330-L03:
+    course: SE330
+    title: Maintaining and Evolving Real Software
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE340-L01:
+    course: SE340
+    title: Linux and the Server Environment
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE340-L02:
+    course: SE340
+    title: Containers and Modern Deployment
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE340-L03:
+    course: SE340
+    title: Cloud Infrastructure and AWS Architecture
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE340-L04:
+    course: SE340
+    title: CI/CD and Infrastructure as Code
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE440-L01:
+    course: SE440
+    title: 'Observability: Understanding Production Systems'
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE440-L02:
+    course: SE440
+    title: Reliability Engineering and Incident Response
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE440-L03:
+    course: SE440
+    title: Testing Strategies for Complex Systems
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE490-L01:
+    course: SE490
+    title: 'Putting It Together: Understanding a Running Application'
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE490-L02:
+    course: SE490
+    title: 'Architecture Workshop: Design a Modern Web Product'
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE490-L03:
+    course: SE490
+    title: 'System Design Workshop: Build for 100× Traffic'
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE490-L04:
+    course: SE490
+    title: 'Senior Engineer Workshop: Architecture Review'
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  SE490-L05:
+    course: SE490
+    title: 'Architecture Workshop: Design a Production Agentic SaaS'
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  AI310-L01:
+    course: AI310
+    title: How Modern Language Models Actually Work
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  AI310-L02:
+    course: AI310
+    title: Engineering Applications Around LLMs
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  AI310-L03:
+    course: AI310
+    title: Embeddings, Semantic Search, and Retrieval
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  AI310-L04:
+    course: AI310
+    title: Retrieval-Augmented Generation
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  AI410-L01:
+    course: AI410
+    title: Tool Calling and Connecting AI to Software
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  AI410-L02:
+    course: AI410
+    title: 'Agents: From Model Calls to Autonomous Workflows'
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  AI410-L03:
+    course: AI410
+    title: Agent Memory, Context, and State
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  AI410-L04:
+    course: AI410
+    title: MCP and the Agent Integration Ecosystem
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  AI410-L05:
+    course: AI410
+    title: Multi-Agent Systems and Orchestration
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  AI410-L06:
+    course: AI410
+    title: Evaluating Nondeterministic Software
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  AI410-L07:
+    course: AI410
+    title: Security, Reliability, and Economics of AI Systems
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
