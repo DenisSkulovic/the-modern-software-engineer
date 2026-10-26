@@ -21,7 +21,36 @@ next: CS220-L02
 
 ---
 
+### How to read this lecture
+
+Seventeen rooms. Theme: **what the compiler believes ≠ what the runtime does.**
+
+```text
+  ROOM MAP
+  ─────────────────────────────────────────────────────────────
+  ① Crash at 02:17     ② Language as agreement  ③ TS → CPU pipeline
+  ④ Compiled vs interpreted ⑤ Static vs dynamic  ⑥ Trust boundaries
+  ⑦ Domain types       ⑧ Structural typing      ⑨ Generics
+  ⑩ Closures           ⑪ Paradigms              ⑫ Leaky abstractions
+  ⑬ Design habit       ⑭ Lab                    ⑮ Challenges
+  ⑯ Solutions          ⑰ Takeaways
+  ─────────────────────────────────────────────────────────────
+```
+
+| Rooms | Theme | Feel |
+|---|---|---|
+| 1–4 | Crash → language → pipeline → JIT | mystery + machinery |
+| 5–10 | Types, trust, unions, brands, generics, closures | TypeScript depth |
+| 11–13 | Paradigms + abstraction budget + design habit | judgment |
+| 14–17 | Lab, challenges, answers, takeaways | practice |
+
+> **Reading tip:** Sticky notes mark where *static claims* stop protecting you. Diagrams show the layers.
+
+---
+
 # 1. The Code That Passed Every Check and Still Crashed
+
+> **Case file #006** — *02:17 AM. TypeScript green. Production on fire.*
 
 It's 02:17 in the morning.
 
@@ -99,6 +128,16 @@ You inspect the actual HTTP response.
 }
 ```
 
+```text
+  COMPILER'S STORY              RUNTIME'S STORY
+  ────────────────              ───────────────
+  availableRooms: number        availableRooms: "3"  (string)
+  .toFixed() is fine            .toFixed is not a function
+         │                              │
+         └──── as PartnerAvailability ──┘
+                    (no runtime check)
+```
+
 There it is.
 
 The partner has sent `"3"` as a string rather than `3` as a number.
@@ -127,7 +166,13 @@ To understand the answer, we need to examine what programming languages actually
 
 Because here's the central mystery:
 
-**Your source code contains information that the running program may not contain at all.**
+> **Sticky note #1**
+>
+> Your source code contains information that the running program may not contain at all.
+
+```text
+  ✓ Room 1 complete — types erased, partner lied, boom
+```
 
 ---
 
@@ -148,6 +193,14 @@ At the lowest level, a conventional CPU executes instructions according to its a
 So how does your TypeScript statement become something a processor can execute?
 
 There must be a translation or interpretation process, and before that can happen, the language's rules need to define what the statement means. This brings us to three fundamental components of a programming language.
+
+```text
+  THREE PARTS OF A LANGUAGE
+  ─────────────────────────
+  1. Syntax        what programs may look like
+  2. Semantics     what valid programs mean
+  3. Implementation how meanings become executable behavior
+```
 
 ## Syntax: What programs are allowed to look like
 
@@ -197,6 +250,11 @@ This produces:
 
 `3`
 
+| Expression | Result | Why (semantics) |
+|---|---|---|
+| `"5" + 2` | `"52"` | `+` with a string → concatenate |
+| `"5" - 2` | `3` | `-` coerces to numbers |
+
 The subtraction operator follows different conversion rules. That's not a random inconsistency introduced by a broken computer; it's a consequence of the language's specified semantics.
 
 **Semantics determine the meaning and behavior of valid programs.**
@@ -220,6 +278,10 @@ Those engines use different implementation techniques and optimization strategie
 And that leads us to an important idea. Two implementations can execute the same language in radically different ways while producing equivalent observable results.
 
 The implementation is allowed to be clever. It isn't allowed to casually change what your program means.
+
+```text
+  ✓ Room 2 complete — syntax / semantics / implementation
+```
 
 ---
 
@@ -350,9 +412,24 @@ In a real full-stack project, several tools may participate: a TypeScript compil
 
 These are separate responsibilities, even if a build system combines them behind one command. That's why `npm run build` can conceal a surprisingly elaborate pipeline.
 
+| Stage | Representation |
+|---|---|
+| Source | what you wrote |
+| Checked | what the type checker believed |
+| Emitted | JavaScript without most types |
+| Executed | what the engine actually runs |
+
 The practical lesson is that **source code, checked code, emitted code, and executed code are different representations of a program**.
 
 When something goes wrong, knowing which stage is responsible can save a great deal of debugging time.
+
+> **Sticky note #2**
+>
+> Type erasure: most TypeScript types don't ride along into the running program.
+
+```text
+  ✓ Room 3 complete — parse → check → emit → execute
+```
 
 ---
 
@@ -383,6 +460,14 @@ An interpreter executes a program representation by examining instructions and p
 
 A system can compile source into bytecode and then interpret that bytecode; later, it can compile frequently executed portions into machine code. That's a common pattern in modern managed runtimes.
 
+```text
+  Often both, not either/or
+  ─────────────────────────
+  source ──compile──► bytecode ──interpret──► results
+                           │
+                           └── JIT compile hot paths ──► machine code
+```
+
 ## JIT compilation
 
 JIT means **just-in-time compilation**: instead of compiling every possible operation into optimized machine code ahead of time, a runtime can optimize during execution, because it can observe how the program actually behaves. Consider:
@@ -394,6 +479,10 @@ function add(a, b) {
 ```
 
 JavaScript allows several behaviors here: numbers can be added, strings concatenated, and other values participate through coercion rules. The engine must preserve those semantics. But if an application calls `add()` millions of times with small numbers, an optimizing engine can specialize for that observed behavior, emitting efficient machine code guarded by checks on its assumptions, and fall back to general execution if they stop holding. CS220-L03 examines V8 tiers in hardware terms.
+
+```text
+  ✓ Room 4 complete — compiled vs interpreted is a spectrum
+```
 
 ---
 
@@ -446,6 +535,12 @@ typeof true     // "boolean"
 
 Objects, functions, symbols, big integers, and other values also have defined runtime characteristics.
 
+| | Static (TypeScript) | Dynamic (JavaScript values) |
+|---|---|---|
+| When checked | mostly before run | at runtime |
+| What it knows | declared / inferred types | actual values |
+| Survives into JS? | mostly erased | yes — values are real |
+
 JavaScript is dynamically typed because type-related behavior is largely determined and checked at runtime rather than requiring every variable's type to be statically established before execution.
 
 TypeScript adds a static type system on top of JavaScript, which provides useful compile-time guarantees under the assumptions of that type system.
@@ -465,6 +560,14 @@ With TypeScript, a substantial class of mismatches can be detected earlier.
 Changing the shape of an interface can reveal affected callers, renaming a property can expose broken references, discriminated unions can reveal unhandled states, and generics can preserve relationships between inputs and outputs. These are major advantages.
 
 The trick is understanding what guarantees you're actually receiving. Static types reduce uncertainty. They don't eliminate reality.
+
+> **Sticky note #3**
+>
+> `as SomeType` is a compiler hint, not a runtime check.
+
+```text
+  ✓ Room 5 complete — static claims ≠ dynamic values
+```
 
 ---
 
@@ -588,13 +691,22 @@ TypeScript permits this, because `any` effectively opts out of meaningful type c
 
 It's useful in certain integration or migration scenarios, but it can silently undermine large sections of otherwise carefully typed code. A helpful distinction is:
 
-**`any` says: don't check this.**
-
-**`unknown` says: we don't know this yet.**
+| | Attitude |
+|---|---|
+| **`any`** | don't check this |
+| **`unknown`** | we don't know this yet |
 
 Those are very different attitudes toward uncertainty.
 
 For external APIs, file contents, messages, and other untrusted inputs, `unknown` is often the more appropriate starting point.
+
+> **Sticky note #4**
+>
+> At the trust boundary: `unknown` → validate → then trust.
+
+```text
+  ✓ Room 6 complete — validate before you believe
+```
 
 ---
 
@@ -653,6 +765,17 @@ type BookingResult =
     };
 ```
 
+```text
+  One blob of optionals          Three valid shapes
+  ─────────────────────          ──────────────────
+  success?                       confirmed → reservationId
+  reservationId?                 sold_out  → alternatives
+  error?                         payment_failed → retryable
+  retryable?
+       │
+       └── many invalid combos allowed
+```
+
 This representation describes three distinct valid shapes: a confirmed booking contains a reservation ID, a sold-out result contains alternatives, and a payment failure contains information about retryability.
 
 Now write:
@@ -684,7 +807,9 @@ This is called a **discriminated union**, and it provides more than autocomplete
 
 There's a useful design philosophy:
 
-**Represent the domain so that invalid states cannot be expressed using the intended types.**
+> **Sticky note #5**
+>
+> Represent the domain so that invalid states cannot be expressed using the intended types.
 
 Of course, JavaScript runtime behavior and unsafe TypeScript assertions can still bypass the model.
 
@@ -703,6 +828,10 @@ Each state might have different required properties.
 A discriminated union lets the compiler help enforce those distinctions inside the application.
 
 That's a much more useful application of static typing than merely annotating every variable with `string` or `number`.
+
+```text
+  ✓ Room 7 complete — make invalid states hard to type
+```
 
 ---
 
@@ -814,7 +943,13 @@ A random internal string used once in a small helper function probably isn't.
 
 This leads to an important principle:
 
-**A type system is most useful when it expresses important domain relationships—not when it maximizes the number of type declarations.**
+> **Sticky note #6**
+>
+> A type system is most useful when it expresses important domain relationships—not when it maximizes the number of type declarations.
+
+```text
+  ✓ Room 8 complete — same shape ≠ same meaning (brand when it matters)
+```
 
 ---
 
@@ -848,6 +983,11 @@ function first(items: any[]): any {
 }
 ```
 
+```text
+  first<T>(T[]): T | undefined     keeps the relationship
+  first(any[]): any                same runtime; discards the story
+```
+
 This version can execute the same runtime operation.
 
 But it discards useful information about the relationship between input and output types.
@@ -869,6 +1009,10 @@ But they can also be abused.
 If understanding a function requires mentally evaluating a gigantic recursive conditional type, the abstraction may have become more expensive than the problem it was intended to solve.
 
 Type-level sophistication is not automatically engineering quality.
+
+```text
+  ✓ Room 9 complete — generics preserve relationships
+```
 
 ---
 
@@ -918,6 +1062,18 @@ The function `createRetryPolicy()` finished executing. Its local variable `maxAt
 
 So why can `shouldRetry()` and `updateLimit()` still access `maxAttempts` after the outer function has returned? Because JavaScript functions form **closures**.
 
+```text
+  createRetryPolicy() returns
+         │
+         ▼
+  ┌─────────────────────┐
+  │ lexical environment │  ← still alive
+  │   maxAttempts = …   │
+  └──────────┬──────────┘
+             │ retained by
+       shouldRetry / updateLimit
+```
+
 A closure combines a function with access to its surrounding lexical environment. The returned functions retain access to the relevant variable bindings created during the invocation of `createRetryPolicy()`.
 
 Those bindings can remain alive for as long as they're reachable through the closures — an important part of JavaScript's execution model.
@@ -961,6 +1117,11 @@ console.log(getCaptured());
 console.log(getLive());
 // 5000
 ```
+
+| Closure | Sees… |
+|---|---|
+| `getCaptured` | snapshot of the primitive (1000) |
+| `getLive` | live property on the object (5000) |
 
 These two closures behave differently: one uses a previously extracted primitive value, the other reads a property from the same object each time.
 
@@ -1018,11 +1179,17 @@ This doesn't mean closures inherently cause memory leaks; they're a normal langu
 
 We'll investigate that properly in CS220-L02, when we explore memory management and garbage collection. For now, remember:
 
-**A function's behavior depends not only on its code and explicit arguments, but sometimes on the environment it retains access to.**
+> **Sticky note #7**
+>
+> A function's behavior depends not only on its code and explicit arguments, but sometimes on the environment it retains access to.
 
 That's a powerful capability.
 
 And another reason that seemingly simple functions can behave differently depending on their surrounding state.
+
+```text
+  ✓ Room 10 complete — closures keep bindings, not always snapshots
+```
 
 ---
 
@@ -1063,7 +1230,18 @@ Contrast `chargeCustomer`, which hits a payment provider — calling it twice ma
 
 **Object-oriented** — combine state and behavior. A `RetryPolicy` class encapsulating `maxAttempts` resembles our earlier closure-based retry policy. Class versus functions-and-closures is not automatically superior; choose whichever makes intended behavior easier to understand, extend, and maintain.
 
+| Paradigm | Emphasizes |
+|---|---|
+| Imperative | explicit steps and mutation |
+| Declarative | *what*, not *how* |
+| Functional | pure calculation, controlled effects |
+| OOP | state + behavior together |
+
 Paradigm wars are usually unproductive. A Vue app mixes reactive and declarative patterns; a Node service may combine functional utilities, OOP domain models, and imperative orchestration; SQL is declarative; workers perform side effects. Choose tools; don't force every problem into one ideology.
+
+```text
+  ✓ Room 11 complete — paradigms are tools, not religions
+```
 
 ---
 
@@ -1105,17 +1283,14 @@ This is a **leaky abstraction**: an abstraction is leaky when details of its und
 
 ## All abstractions have boundaries
 
-A database abstraction doesn't make network latency disappear.
-
-A cloud abstraction doesn't make server failures disappear.
-
-An HTTP client doesn't make remote requests reliable.
-
-A JavaScript Promise doesn't automatically make operations parallel.
-
-An AI agent framework doesn't guarantee that tools are authorized or idempotent.
-
-A type annotation doesn't validate external JSON.
+| Abstraction | Doesn't erase… |
+|---|---|
+| Database ORM | network latency, query cost |
+| Cloud platform | server failures |
+| HTTP client | unreliable remotes |
+| Promise | need for real parallelism |
+| AI agent framework | auth / idempotency of tools |
+| Type annotation | need to validate external JSON |
 
 An abstraction simplifies how we interact with a system.
 
@@ -1135,7 +1310,9 @@ You don't have to construct your own TLS implementation.
 
 But understanding network boundaries and protocols helps you design reliable services.
 
-**The purpose of deeper computer science knowledge isn't to abandon abstractions. It's to recognize when you need to look beneath them.**
+> **Sticky note #8**
+>
+> The purpose of deeper CS knowledge isn't to abandon abstractions. It's to recognize when you need to look beneath them.
 
 ## The abstraction budget
 
@@ -1158,6 +1335,10 @@ Abstraction is valuable when it removes more complexity than it introduces. That
 An AI assistant can construct elaborate architectures remarkably quickly. It can also introduce unnecessary layers with equal enthusiasm.
 
 The ability to generate abstractions cheaply doesn't make those abstractions cheap to understand or maintain.
+
+```text
+  ✓ Room 12 complete — abstractions hide cost until they leak
+```
 
 ---
 
@@ -1240,27 +1421,28 @@ Those are examples of abstraction concealing important semantics.
 
 At a high level, a senior engineer should be able to answer:
 
-Which values are trusted?
-
-Which values require validation?
-
-Which functions are deterministic?
-
-Which operations modify external state?
-
-Which errors can occur?
-
-Which guarantees are enforced statically?
-
-Which guarantees require runtime checks?
-
-Which guarantees require database transactions or distributed coordination?
+```text
+  CHECKLIST AT THE BOUNDARY
+  ─────────────────────────
+  □ Which values are trusted?
+  □ Which values require validation?
+  □ Which functions are deterministic?
+  □ Which operations modify external state?
+  □ Which errors can occur?
+  □ Which guarantees are static?
+  □ Which need runtime checks?
+  □ Which need transactions / coordination?
+```
 
 These are not merely TypeScript questions.
 
 They are software architecture questions.
 
 And they're much more important than whether a function was written using a class or an arrow expression.
+
+```text
+  ✓ Room 13 complete — separate pure logic from side effects
+```
 
 ---
 
@@ -1271,6 +1453,8 @@ Let's experiment with the difference between static claims and runtime behavior.
 You can use the TypeScript Playground or a small local TypeScript project.
 
 **Suggested time: 15–20 minutes.**
+
+> **Gym rules:** predict before you run. Spoilers for challenges are in Room 16.
 
 ## Experiment A — The assertion that proves nothing
 
@@ -1396,6 +1580,10 @@ It prevents certain mutations to the frozen object itself, but doesn't recursive
 
 This experiment illustrates the difference between a compile-time restriction and runtime enforcement.
 
+```text
+  ✓ Room 14 complete — lab done (or at least attempted)
+```
+
 ---
 
 # 15. Interview-Style Engineering Challenges
@@ -1510,6 +1698,10 @@ How would you decide which abstractions to keep?
 
 What are the costs of introducing abstractions before the underlying variation and requirements are understood?
 
+```text
+  ✓ Room 15 complete — challenges attempted
+```
+
 ---
 
 # 16. Solutions and Discussion
@@ -1539,7 +1731,7 @@ The output is:
 1
 ```
 
-Each call to `createCounter()` creates a new lexical environment with its own `value` binding, and the returned functions retain access to the corresponding binding.
+Each call to `createRetryPolicy()` creates a new lexical environment with its own `value` binding, and the returned functions retain access to the corresponding binding.
 
 When the functions and their retained environments are no longer reachable, the garbage collector may reclaim their associated memory, though the exact timing of reclamation is not generally guaranteed.
 
@@ -1599,6 +1791,10 @@ A strong review would ask:
 
 The best architecture isn't the one with the most patterns. It's the one that makes the system's important behavior understandable and its likely changes manageable.
 
+```text
+  ✓ Room 16 complete — answers checked
+```
+
 ---
 
 # 17. The Bigger Picture
@@ -1619,14 +1815,30 @@ You can use an ORM until the database is slow. TypeScript until a runtime value 
 
 Distinguish what the source says, what the static analyzer can establish, what the runtime executes, and what the real-world system does. Related — not identical.
 
-**A strong engineer doesn't need to work at the lowest level all the time. They need to know when the higher-level model is no longer telling the whole story.**
+```text
+  POCKET CARD — CS220-L01
+  ═══════════════════════════════════════════════════════════
+  1. Source ≠ checked ≠ emitted ≠ executed
+  2. Types mostly erase; assertions aren't validation
+  3. Trust boundaries: unknown → parse → domain type
+  4. Discriminated unions make invalid states harder
+  5. Structural typing ≠ domain identity (brand carefully)
+  6. Closures keep bindings (snapshot vs live)
+  7. Abstractions leak; budget complexity
+  8. Separate pure logic from side effects
+  ═══════════════════════════════════════════════════════════
+```
 
----
+> **The master sticky note**
+>
+> A strong engineer doesn't need to work at the lowest level all the time. They need to know when the higher-level model is no longer telling the whole story.
 
+```text
+  ✓ All rooms visited. Types told a story. Runtime told another. See you in CS220-L02.
+```
 
 ---
 
 ## Next Lecture — CS220-L02: Memory: The Invisible Battlefield
 
 Continue in **CS220 — Programming Languages, Memory, and Execution**.
-
