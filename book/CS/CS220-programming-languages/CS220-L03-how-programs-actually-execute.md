@@ -31,6 +31,118 @@ By the end, you should be able to explain why a fast CPU can still wait on memor
 
 ---
 
+# Part I — Intuition
+
+*A perfectly reasonable pricing function becomes slower after someone "simplifies" it. To understand why, follow one calculation from readable TypeScript to the instructions, memory accesses, and guesses performed by a real processor.*
+
+### The picture to carry in your head
+
+Our hotel platform calculates prices thousands of times per second. The formula looks simple: find the nightly rate, apply a discount when eligible, add applicable taxes, and return a total.
+
+But the CPU doesn't read TypeScript like a human. Between the source file and the processor, several systems translate and organize work. And even when the arithmetic is trivial, retrieving the required data can be more expensive than the arithmetic itself.
+
+Think of a kitchen receiving a written recipe. Before a meal appears, the recipe must be understood, ingredients fetched, work organized, and the cooking completed. A chef who spends most of the shift walking to a distant pantry won't necessarily benefit from learning to stir faster.
+
+This diagram gives us the route from the programmer's idea to processor activity. The spoken lesson is that source code is a description; execution involves additional machinery.
+
+```mermaid
+flowchart LR
+  A["TypeScript source<br/>Human-readable intent"] --> B["JavaScript produced<br/>Type checks do not execute"]
+  B --> C["V8 runtime<br/>Interpret and optimize"]
+  C --> D["CPU instructions"]
+  D <--> E["Memory hierarchy<br/>Data must be fetched"]
+```
+
+## 1. The CPU only understands its own instructions
+
+Imagine sending a human chef the instruction, "Prepare the standard room price." If the chef doesn't know what the standard room price calculation involves, those words are not directly actionable. Someone needs to translate them into concrete steps.
+
+The same is true of processors. A CPU executes machine instructions from its instruction set: load some data, perform arithmetic, compare values, branch, and so on. It has no built-in concept of a TypeScript interface, `async` function, or hotel reservation.
+
+When you run a Node.js program, the JavaScript engine participates in turning language behavior into executable work. V8 uses several execution and optimization stages, including interpretation and machine-code compilation. We don't need their names yet. What matters is that **the source code you wrote is not the exact sequence of operations the processor eventually performs**.
+
+This distinction explains why a change that seems insignificant in source code can affect performance. It may alter the work the runtime produces, the data layout it expects, or the amount of memory the machine must access.
+
+## 2. Arithmetic is cheap; fetching ingredients can be expensive
+
+Our pricing algorithm needs the room's nightly rate. The value might already be immediately accessible to the processor, or it might require fetching data from farther away in the memory hierarchy.
+
+Modern processors have extremely fast registers and several levels of cache, while main memory generally takes longer to access. The exact timings depend on architecture and conditions, but the relative difference is what matters.
+
+Return to the kitchen. If the flour is next to the mixing bowl, preparing the dough is quick. If the chef must repeatedly cross the building to retrieve tiny amounts from a distant pantry, the walking dominates.
+
+A computer does not literally walk. But data locality can dramatically influence performance. When nearby required values are arranged so the processor can access them efficiently, a loop may be fast. When accesses jump through scattered objects or wait on memory, the same amount of apparent arithmetic can take much longer.
+
+This is one reason a simple array scan can outperform a theoretically elegant data structure for some small or medium workloads. Big O describes how work grows with input size; it doesn't capture every constant cost of the physical machine.
+
+**Checkpoint:** If a loop spends most of its time waiting for memory, will replacing an addition with a marginally faster arithmetic operation solve the main problem? Probably not. We need to identify the costly resource first.
+
+## 3. The processor tries to guess what happens next
+
+Now imagine that our pricing function contains a condition: if the booking qualifies for a discount, apply it; otherwise continue with the standard rate.
+
+The processor wants to keep its execution pipeline busy. Rather than always wait until every decision is fully resolved, modern CPUs can predict a branch and speculatively begin work along the predicted path.
+
+If the guess is correct, execution may proceed efficiently. If the guess is wrong, some speculative work must be discarded and the correct path followed.
+
+This is not the processor changing the intended program result. It's an optimization of how the defined behavior is executed.
+
+Our kitchen analogy works again. A chef who knows that ninety-nine out of a hundred orders include the same garnish might prepare for that pattern. But a sudden unpredictable mix can make that preparation less efficient.
+
+The technical lecture will examine branch prediction and out-of-order execution in more detail. The first-pass idea is simply this: **the processor organizes work around predictions and dependencies, not only the order in which you wrote lines of code**.
+
+## 4. The JavaScript engine can learn patterns too
+
+Now the optimization becomes even more interesting.
+
+Suppose the price calculation repeatedly receives objects with the same layout. The JavaScript runtime may observe common patterns and optimize operations based on assumptions about how those objects behave.
+
+But then a new supplier integration starts passing objects with very different shapes. The code is still legal JavaScript. The logic may still return correct prices. Yet some previously effective optimizations may no longer apply, and the engine may need to execute a more general path.
+
+This is the intuitive foundation of JIT optimization, inline caches, hidden classes or object shapes, and deoptimization. The runtime optimizes based on evidence about real execution, while preserving the language's required behavior.
+
+An optimized path can be fast precisely because it assumes something common. When the assumption no longer holds, a fallback may be necessary.
+
+The next picture shows one route through the engine. A frequently used path may become optimized; a change in observed behavior can cause the engine to take or rebuild a more general path.
+
+```mermaid
+flowchart TB
+  A["JavaScript function runs"] --> B["Engine observes common patterns"]
+  B --> C["Optimized execution path"]
+  C --> D{"Assumptions still hold?"}
+  D -->|Yes| C
+  D -->|No| E["Fallback / deoptimization"]
+  E --> B
+```
+
+## 5. Why benchmarks can fool us
+
+A developer benchmarks the price calculation by running it one hundred times. The result looks slow. They rewrite a line, run it once more, and declare the new version twice as fast.
+
+But perhaps the engine hadn't warmed up during the first measurement. Perhaps the input shapes differed. Perhaps garbage collection occurred. Perhaps the operating system scheduled other work, or the measurement interval was too short.
+
+A benchmark is an experiment, not an oracle. To compare implementations fairly, we need comparable inputs, appropriate warmup, repeated measurements, and evidence about where execution time went.
+
+A profiler can show whether the function actually dominates CPU time. A wall-clock timer can show total elapsed time, but that elapsed time might contain waiting rather than computation. They answer different questions.
+
+## 6. The mental replay
+
+You write a readable pricing function. The compiler checks the TypeScript and produces JavaScript. The runtime executes it, sometimes adapting to observed patterns. The processor carries out lower-level instructions while fetching data, making predictions, and waiting for dependencies. Performance emerges from that entire journey—not solely the complexity of the source expression.
+
+The Deep Dive will investigate registers, caches, branch prediction, execution pipelines, V8 tiers, hidden classes, profiling, and why microbenchmarks lie. Every detail belongs somewhere in this one picture: **from the recipe to the kitchen to the actual movement of ingredients**.
+
+### Three questions before the Deep Dive
+
+1. **Why doesn't the CPU execute TypeScript directly?** It executes machine instructions; compilers and runtimes bridge the gap from language behavior to machine work.
+2. **Why can a simple loop be slow without much arithmetic?** Data access, memory waits, dependencies, and runtime behavior may dominate.
+3. **Why can a code change alter speed without changing the result?** It may change which assumptions and optimization paths are effective.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. The Mysterious Case of the Slower Code
 
 It's Monday morning, and your team has deployed a modest update to a hotel reservation service.

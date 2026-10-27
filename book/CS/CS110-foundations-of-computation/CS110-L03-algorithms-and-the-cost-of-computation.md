@@ -27,6 +27,121 @@ By the end, you should be able to explain why costs grow differently as data gro
 
 ---
 
+# Part I — Intuition
+
+*The city that stopped moving: why giving a computer a bigger job can be much worse than simply doubling the work.*
+
+### Begin with one tiny city
+
+Imagine building a little city simulation. At first it has ten residents. They go to work, cross streets, visit shops, and sometimes look for other people nearby. Everything runs instantly.
+
+Now the city has a thousand residents. Still manageable. Then ten thousand. Then one hundred and twenty thousand. Your computer suddenly struggles, even though the city doesn't look one hundred and twenty times more complicated than before.
+
+Let's focus on just one innocent instruction in the simulation: **every resident checks whether anybody else is nearby**.
+
+Your first implementation is beautifully simple. Take Anna, look at every other resident, compare positions, and collect those within fifty meters. Then do the same for Boris. Then for Clara. Then for everyone.
+
+For ten residents, that means roughly ten people each checking ten people: about one hundred comparisons. Nothing.
+
+For a thousand residents, it becomes about one million candidate comparisons. For ten thousand, about one hundred million. For one hundred and twenty thousand, roughly fourteen billion.
+
+The first visual shows the problem: adding people makes both the number of searchers and the length of every search grow.
+
+```mermaid
+flowchart LR
+    A["10 residents<br/>~100 checks"] --> B["100 residents<br/>~10,000 checks"]
+    B --> C["1,000 residents<br/>~1,000,000 checks"]
+    C --> D["10,000 residents<br/>~100,000,000 checks"]
+```
+
+This is the moment to understand a central idea: **the cost of an algorithm is not merely how much data you have; it is how the amount of required work grows with that data**.
+
+### 1. The multiplication hiding in the innocent loop
+
+The city has *n* residents. Each resident searches through *n* residents. So the total work grows roughly like *n times n*.
+
+That's the intuition behind **quadratic growth**, often written as O(n²). The notation isn't important yet. The consequence is.
+
+Doubling the population can quadruple the work. Increasing the population tenfold can increase the work a hundredfold.
+
+Compare that with another task: reading the name of every resident once. If the population doubles, that job roughly doubles. That's **linear growth**, written O(n).
+
+Neither notation gives the exact execution time. It tells us how the quantity of work scales when the input grows.
+
+And that tells us why a tiny successful benchmark may say almost nothing about a huge simulation.
+
+### 2. The shortcut is to stop asking irrelevant questions
+
+Now look at the city as a real place. Anna is standing outside a bakery in the northern neighborhood. Does she need to check the position of every person on the opposite side of the city?
+
+No. Her question is about people within fifty meters.
+
+Suppose we divide the map into small squares. Each resident belongs to a square according to location. When Anna checks for neighbors, we examine her square and the relevant nearby squares instead of searching the entire city.
+
+Suddenly, we can often ignore the overwhelming majority of residents. We still check exact distances for nearby candidates, including cases close to square boundaries, but we avoid comparing Anna with people who cannot possibly be near her.
+
+Here's the second visual: the same people and the same question, but a different way of choosing which comparisons deserve to happen.
+
+```mermaid
+flowchart TB
+    Q["Who is within 50 meters of Anna?"] --> S["Naive method<br/>Check every resident"]
+    Q --> G["Spatial grouping<br/>Inspect relevant nearby squares"]
+    S --> W["Work grows with whole city"]
+    G --> N["Work often grows with local candidates"]
+```
+
+We haven't upgraded the computer. We haven't switched programming languages. We changed the **algorithm**: the method for answering the question.
+
+In a very crowded square, there may still be lots of work. Maintaining the groups also costs memory and update time. And we must choose enough neighboring squares so we don't miss a valid nearby person.
+
+Those trade-offs belong in the technical lecture. The first mental step is simply recognizing that *avoiding work* can be much more powerful than performing the same unnecessary work faster.
+
+### 3. Faster for large inputs isn't always faster right now
+
+Imagine the city contains only twenty residents. Is building an elaborate spatial index worthwhile?
+
+Maybe not. Checking twenty positions directly is simple and cheap. Constructing and maintaining a clever index could cost more than it saves.
+
+This is why **Big O describes how work grows, not which implementation wins every stopwatch race**.
+
+An algorithm that scales beautifully may carry a fixed setup cost. A straightforward method may be faster for small inputs. Memory layout and cache behavior can also make an apparently less sophisticated approach surprisingly efficient.
+
+A senior engineer therefore asks about both the *shape of growth* and the *actual workload*.
+
+### 4. Why the CPU meter can look half asleep
+
+Here's one more mystery from our city simulation.
+
+The game runs at ten frames per second, but overall CPU usage reads 35%. Does that mean the processor is refusing to work?
+
+Not necessarily. Perhaps one critical simulation thread must finish a long chain of work before the next frame can advance. That thread may be saturated while other cores have free capacity.
+
+Or the simulation may spend time waiting for memory, locks, or other resources. A CPU usage percentage averaged across many cores cannot prove that the particular bottleneck has spare capacity.
+
+Likewise, in web services, a request can spend most of its time waiting for a database or network response while its own CPU usage is tiny. The user experiences latency, not merely active computation time.
+
+So we need two separate questions. **How much work does the algorithm require?** And **where does the program actually spend time performing or waiting for that work?**
+
+The first often predicts how pain grows with larger inputs. The second is investigated using measurements and profiling.
+
+### Your mental checkpoint
+
+**Question A:** Every one of 1,000 residents checks all 1,000 residents. Roughly how many comparisons is that? **About one million.**
+
+**Question B:** If the population doubles, does this naive all-pairs workload merely double? **No. It grows roughly fourfold.**
+
+**Question C:** How can a city update faster without buying a faster CPU? **Avoid irrelevant candidate checks, for example by grouping people spatially.**
+
+**Question D:** Does overall CPU usage of 35% prove that no part of the simulation is saturated? **No. One critical thread or another resource can be the limit.**
+
+Carry the city into Part II. Whenever you encounter O(n), O(log n), O(n²), locality, or an indexing strategy, ask which unnecessary work it avoids—and what extra preparation or memory it requires.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. The City That Had Plenty of CPU and Still Crawled
 
 > **Case file #003** — *Virtual city. Max speed. Ten FPS. Hardware "idle."*

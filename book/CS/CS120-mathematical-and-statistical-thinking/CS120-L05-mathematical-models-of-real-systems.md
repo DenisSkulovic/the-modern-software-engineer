@@ -28,6 +28,127 @@ You don't need to memorize every equation on the first listen. Focus on what eac
 
 ---
 
+# Part I — Intuition
+
+*The hotel lobby is crowded, customers are waiting, and the computers seem nearly idle. Where did all the time go?*
+
+### Picture one clerk who can process a hundred guests a minute
+
+Imagine a hotel lobby with one check-in desk. The clerk can check in one guest every thirty-six seconds, so the desk can process up to one hundred guests per hour if it stays continuously busy.
+
+Now imagine guests arriving at irregular intervals. Sometimes nobody is waiting. Sometimes several families arrive together. If the clerk is busy, newcomers stand in line.
+
+Let's say ninety-five guests arrive each hour on average. The desk can process a hundred. Technically, the capacity still exceeds demand.
+
+But there's almost no breathing room. A small arrival burst builds a queue, and the clerk may take a long time to clear it. Even though the actual check-in procedure still takes about thirty-six seconds, the guest's *total wait plus service* can become much longer.
+
+Now translate the lobby into software. The clerk is a constrained dependency—perhaps a supplier integration. Guests are requests. The line is a queue. The rest of the hotel, with its largely idle staff, represents your application servers whose CPUs are mostly free while they wait.
+
+The first picture makes the bottleneck obvious. An idle restaurant kitchen can't process customers who are stuck waiting at the one check-in desk.
+
+```mermaid
+flowchart LR
+    A["Guests arrive\n95 per hour on average"] --> B["Waiting line\nCan grow during bursts"]
+    B --> C["One clerk\nMaximum 100 per hour"]
+    C --> D["Completed check-ins"]
+    E["Other staff mostly idle"] -. "Cannot remove this bottleneck" .-> C
+```
+
+This is why system-wide CPU utilization can remain low while response times collapse. A small part of the process determines the speed of the whole journey.
+
+### 1. Three quantities explain most of the mystery
+
+Start with the guests entering the lobby. Their average arrival rate is **ninety-five per hour**.
+
+The clerk's maximum processing rate is **one hundred per hour** under our simplifying assumption.
+
+The desk's average demand relative to its capacity is **95 percent**. We call that *utilization*.
+
+At low utilization, the clerk regularly has quiet moments and can handle bursts quickly. Near full utilization, bursts can accumulate into waiting lines. A small reduction in clerk speed—or a small increase in arrivals—can make the line grow dramatically.
+
+The key distinction: **service time** is how long the clerk actively processes one guest. **Response time** is how long a guest spends waiting plus being served. The second can be far larger than the first.
+
+In the full lecture, we'll use a simplified mathematical queue model to illustrate why waiting time rises steeply near saturation. That formula depends on specific assumptions about how guests arrive and how long each check-in takes; it isn't a universal law of every queue.
+
+### 2. Little's Law counts people in the lobby
+
+Imagine our hotel processes sixty guests per hour during a stable afternoon. Every guest spends an average of half an hour inside the check-in area, including waiting and service.
+
+How many guests are in that area on average?
+
+Sixty guests per hour, multiplied by half an hour, gives **thirty guests**.
+
+No advanced probability required. If guests flow through at that average rate and remain for that average time, the area contains about thirty guests on average under suitable stable conditions.
+
+This relationship is called **Little's Law**. In engineering language it connects the average number of jobs in a system, its flow rate, and the average time each job spends there.
+
+Now suppose the service keeps completing sixty requests per minute while the average time inside the API rises from one second to five seconds. The number of requests in progress grows fivefold. Those requests may be waiting on an external dependency, holding memory or connections even while doing little CPU work.
+
+Little's Law doesn't tell us *why* the time increased. It connects the quantities once we measure them for the same system boundary.
+
+### 3. Adding clerks only helps when the job can be shared
+
+Our hotel manager hires five more lobby employees. Will check-in become six times faster?
+
+Not if only one employee is authorized to use the legacy check-in terminal and every reservation must pass through that terminal. More people standing around it won't create more processing capacity.
+
+Now imagine another task: cleaning one hundred independent rooms. Multiple cleaners can genuinely divide the work. But perhaps one supervisor must inspect every room at the end. That sequential inspection limits the total speedup.
+
+This is the intuition behind **Amdahl's Law**: when part of a fixed job cannot be divided among workers, that serial part limits the improvement from adding more workers.
+
+For a whole backend, there may be several stages with different capacities. Making the fast stage faster doesn't increase throughput if a slower mandatory stage still controls the rate. We call that stage the **bottleneck**.
+
+The second picture compares those ideas without calculations.
+
+```mermaid
+flowchart LR
+    A["API stage\n500 per second"] --> B["Supplier stage\n100 per second"]
+    B --> C["Database stage\n300 per second"]
+    C --> D["Completed workflow\nAt most 100 per second\nin this simplified path"]
+```
+
+The entire pipeline cannot sustainably complete more than the bottleneck stage if every operation must pass through it and the stages behave as assumed.
+
+### 4. Estimates need a map of the actual work
+
+Suppose our website receives a million searches per day. Divide by the seconds in a day: about twelve searches per second on average. That sounds easy.
+
+But perhaps evening peaks reach thirty times the daily average. Now we're around 350 searches per second. Suppose every search triggers two supplier calls. That is around 700 supplier operations per second before caching, retries, or filtering.
+
+Now our earlier single processing lane obviously cannot handle the demand. We need either less work per request, more genuinely independent supplier capacity, or a controlled way to shed, defer, or prioritize work.
+
+This calculation is called a **back-of-the-envelope estimate**. It won't predict tomorrow perfectly. It reveals the order of magnitude and the assumptions worth checking.
+
+If caching avoids half the calls, the result changes substantially. If the supplier enforces one global rate limit regardless of worker count, hiring more workers changes little. Changing each assumption and seeing how the answer moves is called **sensitivity analysis**.
+
+This is why a model is useful even when it is incomplete. Its job is to make our assumptions inspectable, not to manufacture certainty.
+
+### 5. A queue can't solve an impossible workload
+
+Imagine two hundred guests arriving each hour while the one clerk can serve only one hundred. Unless arrivals stop or something changes, the line grows by roughly one hundred guests each hour.
+
+An infinite waiting room would merely hide the failure for a while. In software, unbounded queues consume memory, retain stale requests, and eventually produce timeouts. Retrying every timed-out operation can add even more work.
+
+Sometimes the responsible design is to limit incoming work, reject excess requests clearly, or preserve capacity for critical operations. This is **backpressure and admission control**: don't promise to complete work that your system cannot reasonably finish.
+
+Of course, a rejected customer is not a success. But a prompt refusal can be safer than an endless queue that eventually makes every customer fail.
+
+### Your mental checkpoint
+
+**Question A:** The servers show 20% CPU usage, but requests are slow. Must there be spare capacity where it matters? **No.** A particular shared dependency may be saturated.
+
+**Question B:** If throughput stays stable but requests spend longer inside the system, what usually happens to in-flight work? **It increases**, by Little's Law under stable comparable conditions.
+
+**Question C:** What happens if incoming demand sustainably exceeds a resource's completion capacity? **Backlog grows** unless work is rejected, abandoned, or moved elsewhere.
+
+Carry one picture into Part II: **the crowded lobby, one limiting clerk, and a line of guests waiting**. The equations explain that picture. They do not replace it.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. The Server That Had Plenty of CPU and Still Collapsed
 
 It's Monday, 11:17 in the morning.

@@ -30,6 +30,127 @@ Theme: **reachable ≠ useful.** By the end, you should be able to say what the 
 
 ---
 
+# Part I — Intuition
+
+*A hotel has a perfectly functioning cleaning crew. Yet its storage rooms keep filling with belongings nobody wants. That's how a program can leak memory while its garbage collector is doing exactly what it was told.*
+
+### The picture to carry in your head
+
+Imagine a large hotel with thousands of guests. Some arrive for one night, others for weeks. The hotel has limited storage, so it must reclaim rooms and objects when nobody needs them anymore.
+
+Now imagine that the hotel keeps a list of who is still entitled to retrieve each stored object. If someone's name remains on that list, the cleaning staff won't throw away the object—even if its owner left months ago.
+
+That is the mental model for memory retention in a garbage-collected program: **can the program still reach this object through a live reference?**
+
+The diagram shows objects retained through references. The object marked unused is still reachable, so the collector correctly keeps it.
+
+```mermaid
+flowchart LR
+  R["Live application root"] --> C["Global cache"]
+  C --> A["Active guest data"]
+  C --> B["Old guest data<br/>No longer useful"]
+  X["Unreachable object"]
+  style B fill:#fee2e2,stroke:#f87171,color:#7f1d1d
+  style X fill:#dcfce7,stroke:#86efac,color:#14532d
+```
+
+## 1. Where do objects go while a function is running?
+
+Consider a backend handling one reservation request. It creates a few temporary values, fetches guest details, builds a response, and finishes. The next request arrives and does something similar.
+
+The computer needs memory for that changing information. Some memory supports the active execution of functions: where a function should return, which calls are currently active, and certain local working values. We often explain this using a **call stack**. Think of a neat pile of work cards: as you enter a function, a new card is added; when it returns, the card is removed.
+
+Other information must live beyond a single function call. An object created during one request might be stored in a cache, captured by a callback, or shared with a background worker. We usually explain dynamically allocated objects through the **heap**, where their lifetime is not simply the duration of one function call.
+
+Don't memorize the incorrect rule that every primitive lives on the stack and every object lives on the heap. Real runtimes optimize representations, and the details vary. The useful distinction is about **execution lifetime** versus **object lifetime**, not about where a particular JavaScript value must physically sit.
+
+**Checkpoint:** If a function returns, must every object it created disappear? No. Some may remain reachable through references held elsewhere.
+
+## 2. Why the cleaning crew refuses to throw anything away
+
+Now imagine our Node.js process has a cache of hotel information. Each time a customer visits a property, the service stores the property details in a map. This is helpful: repeated requests can avoid expensive lookups.
+
+But nobody implemented expiration, eviction, or a capacity limit. The map gains new entries every hour. Its keys remain accessible from a global variable. Its values refer to increasingly large objects.
+
+Eventually the process consumes too much memory.
+
+The developer blames the garbage collector.
+
+But the collector is obeying the program's instructions. The global map is reachable. Every entry in the map is reachable. The objects it references are therefore considered live under the collector's reachability rules.
+
+The collector can't determine whether that information is still valuable to the business. It can only determine whether the program could still reach it.
+
+**Memory leak** doesn't necessarily mean an unreachable object that the runtime forgot to free. In a garbage-collected language, it often means an object that remains reachable much longer than it is useful.
+
+Our hotel analogy makes that painfully simple. The cleaning staff never discards anything whose storage claim ticket still exists. The problem is the hotel's policy for issuing and retiring tickets, not the staff's failure to clean.
+
+## 3. The surprising invisible reference
+
+Now our team fixes the cache, but memory still rises whenever customers visit a certain dashboard.
+
+The dashboard installs an event listener. That listener refers to a large data structure containing the current customer session and several report objects. When the user navigates away, the interface removes the visible components but fails to unregister the listener.
+
+The listener remains attached to a long-lived event source. The callback remains reachable. The objects captured by the callback may remain reachable as well.
+
+The page is gone from the screen. The memory is not necessarily released.
+
+This is another type of storage claim ticket. It isn't obvious in the UI, but the reference chain still exists.
+
+The next diagram follows that chain. The dashboard has visually disappeared, yet a long-lived event source still references the callback and the associated data.
+
+```mermaid
+flowchart TB
+  A["Long-lived event source"] --> B["Registered callback"]
+  B --> C["Captured dashboard state"]
+  C --> D["Large report objects"]
+  E["Dashboard removed from screen"]
+  E -. "Does not necessarily remove" .-> B
+```
+
+The fix may be straightforward: remove the listener during cleanup, stop the timer, release the reference, or use a bounded ownership strategy. But you must first discover which reference is retaining the data.
+
+## 4. Not every rising memory graph is a leak
+
+Imagine watching the process memory graph. It climbs from 200 megabytes to 500, then remains near 500 for hours. Is that proof of a leak?
+
+No. A runtime may grow its heap to handle current demand and keep committed memory available for future allocations. Garbage collection may reclaim objects without immediately returning all memory to the operating system.
+
+Also, the JavaScript heap isn't the complete process. Buffers, native libraries, runtime structures, and other allocations can contribute to resident memory. A perfectly healthy JavaScript heap graph can coexist with growth elsewhere in the process.
+
+The right investigation separates questions.
+
+Is live object count increasing after comparable workloads and garbage-collection cycles? Which objects are retaining memory? Is RSS increasing because of native buffers? Did the workload change? Is the growth bounded or persistent?
+
+Those are questions about evidence, not guesses based on one alarming graph.
+
+## 5. Memory is a budget shared over time
+
+Suppose you process a large CSV file. One implementation loads everything into memory and constructs a huge array. Another processes a small batch at a time, writes results, and releases references before reading the next batch.
+
+Both may produce identical outputs. The second can have a much smaller peak memory requirement because it keeps less information alive at once.
+
+This is why memory management isn't only a garbage-collection problem. It's also about workload design: how much data do we hold simultaneously, and for how long?
+
+Caching trades memory for fewer repeated calculations or network requests. Buffering trades memory for smoother processing. Holding more information can be useful. The problem begins when retention has no budget, expiration policy, or justification.
+
+## 6. The mental replay
+
+A request begins and creates temporary working state. Objects may be created, referenced, and passed between components. When one function ends, some references disappear, but objects with other live references can remain. The garbage collector finds what is unreachable under its rules; it doesn't judge business usefulness. Unbounded caches, event listeners, retained closures, and queues can keep old information alive.
+
+The technical lecture will explain reachability, stack and heap behavior, generations, heap snapshots, `WeakMap`, native memory, and diagnosing memory growth. You now have one picture to attach those terms to: **which storage claim tickets still exist?**
+
+### Three questions before the Deep Dive
+
+1. **Why can a program leak memory despite garbage collection?** Objects remain reachable even though the application no longer needs them.
+2. **Why doesn't the end of a function guarantee object deletion?** References to its objects may escape and remain live elsewhere.
+3. **Why isn't a rising RSS graph conclusive proof of a JavaScript leak?** Process memory includes more than currently live JavaScript objects, and memory can be retained for reuse.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. The Server That Was Slowly Eating Itself
 
 It's 3:42 AM.

@@ -27,6 +27,109 @@ By the end, you should be able to separate problems, algorithms, and programs; e
 
 ---
 
+# Part I — Intuition
+
+*The mystery of the missing names: why a computer can follow instructions perfectly and still be unable to answer a simple question.*
+
+### Before anything else, picture two guest lists
+
+Imagine you're helping organize a school fair. Every day, the person at the entrance writes down the names of the people who visit. On Monday, three people come in: Anna, Boris, and Clara. On Tuesday, Anna, Clara, and David visit.
+
+At the end of each day, the organizer asks you to report how many different people came. Monday: three. Tuesday: three. You write the numbers on a small board and throw the paper lists away to save space.
+
+On Wednesday, the organizer asks, “How many **different people** visited across both days?” You know that three came on Monday and three on Tuesday. Can you give the exact answer?
+
+No. Some people might have visited twice. In our original lists there were four distinct people, but those lists are gone. The two numbers alone don't tell you which visitors overlapped.
+
+The opening picture shows two different realities producing identical daily counts. A computer that sees only those counts cannot distinguish between them.
+
+```mermaid
+flowchart TB
+    A["World A<br/>Monday: Anna, Boris, Clara<br/>Tuesday: Anna, Boris, Clara"] --> C["Stored result<br/>Monday = 3<br/>Tuesday = 3"]
+    B["World B<br/>Monday: Anna, Boris, Clara<br/>Tuesday: David, Eva, Farid"] --> C
+    C --> D["Question: unique people over both days?<br/>Not enough information"]
+```
+
+This is an odd kind of computer problem. The computer isn't too slow. It isn't too small. You could give it a billion processors and it still wouldn't recover the missing names. **The answer wasn't preserved in the information you chose to keep.**
+
+### 1. The real world is bigger than the description we store
+
+Let's rewind the fair. Think of the real world as the entire event: actual people, their faces, their names, when they arrived, which booths they visited, and whether they returned the next day.
+
+Now you want a computer to answer a question about that event. You have to decide how to describe reality in a form the computer can handle. Maybe you store names. Maybe customer IDs. Maybe just the number of people entering each day.
+
+That description is called a **representation**. It's the information you choose to keep.
+
+A representation is like a map of a city. A subway map is fantastic for finding train connections, but terrible for locating every tree. A street map answers a different question. Neither is a perfect copy of the city, and neither needs to be. The useful map is the one that preserves the details your question requires.
+
+If the fair organizer only ever asks for daily visitor counts, keeping the two totals might be enough. But if they later want unique visitors across a week, returning visitors, or the busiest booth, the totals no longer suffice.
+
+**You cannot calculate a distinction your data has erased.**
+
+### 2. An algorithm is a procedure, not a magician
+
+Suppose we kept the actual names. Now the unique-visitor problem is solvable.
+
+We could make a fresh list, read Monday's names, and write each name only once. Then read Tuesday's names and add anyone not already on the list. At the end, count the names. Four.
+
+Those are instructions. An **algorithm** is a well-defined procedure for solving a problem. A **program** is an implementation of that procedure in a form a computer can execute.
+
+Notice the order. First came the question. Then the choice of what information to preserve. Then a procedure to produce the answer. Only after that do we need JavaScript, Python, or another programming language.
+
+The second diagram keeps these decisions separate. When something goes wrong, they tell us where to investigate.
+
+```mermaid
+flowchart LR
+    Q["Question<br/>How many unique visitors?"] --> R["Representation<br/>Keep visitor identities"]
+    R --> A["Algorithm<br/>Collect distinct identities"]
+    A --> P["Program<br/>Execute the procedure"]
+    P --> O["Answer<br/>Four visitors"]
+```
+
+This order explains why a beautifully written program can still be useless. If the question is misunderstood, it solves the wrong problem. If the data is incomplete, it can't recover what was lost. If the procedure is too expensive, it may never finish in useful time. And if the implementation contains a bug, the right procedure produces the wrong result.
+
+Those are different kinds of failure, so they need different fixes.
+
+### 3. State is the computer's memory of the story so far
+
+Imagine the fair now runs a small app. Anna checks in on Monday. The app remembers that. When she returns Tuesday, it recognizes her and avoids counting her as a new unique visitor.
+
+The app's answer depends on what it already remembers. That remembered information is part of its **state**.
+
+Two identical requests can produce different results if the state differs. “Check in Anna” might create a new record the first time and simply register a return visit the second time. The input text looks the same. The world the request enters is different.
+
+And there may be hidden state: the current date, whether the database has committed a write, or an external service's response. Before declaring a program unpredictable, ask whether you've accounted for all the information that influences the result.
+
+### 4. Correct, possible, and practical are three different questions
+
+Let's imagine the fair becomes a huge international event with ten million visitors. We still retain complete identifiers. Unique counting is now **possible** in principle, because the needed information exists.
+
+But what if our method is to compare every visitor with every other visitor, one pair at a time? The calculation could be terribly expensive. A smarter way to organize the identities might avoid most of those comparisons.
+
+So we have three separate questions. **Do we have the information to answer? Do we have a procedure that gives the correct answer? Can it finish with acceptable time and resources?**
+
+Computer science concerns all three, not merely the act of writing instructions in a programming language.
+
+This also explains why an AI assistant cannot legitimately invent the missing Monday–Tuesday overlap. A fluent answer isn't a substitute for the underlying information. A tool is only as informative as the data and assumptions it uses.
+
+### Your mental checkpoint
+
+Before going deeper, try answering without looking back.
+
+**Question A:** The fair retains Monday's count of 100 and Tuesday's count of 100. How many unique visitors came across both days? **We cannot know exactly from those totals alone.**
+
+**Question B:** The fair retains names, but our program checks every name against every other name and takes hours. Is the problem missing information? **No. The data may be sufficient; the procedure is inefficient.**
+
+**Question C:** A request to check in Anna produces a different answer from yesterday. Is the program necessarily random? **No. Its remembered state or another relevant condition may have changed.**
+
+Carry one picture into Part II: **the real event, the information retained about it, the procedure used to answer a question, and the running program are four different things.** The technical lecture will explore what each distinction makes possible—and what it makes impossible.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. The Case of the Missing Users
 
 > **Case file #001** — *Analytics desk, Monday morning.* Suspect: two innocent-looking numbers.

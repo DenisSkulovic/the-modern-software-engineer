@@ -30,6 +30,144 @@ Every structure is an investment: you pay memory and maintenance to make *some* 
 
 ---
 
+# Part I — Intuition
+
+*The hotel's impossible filing cabinet: the same reservations, five questions, and no arrangement that makes everything equally easy.*
+
+### Picture the front desk at 11:47 PM
+
+A large hotel operates through a busy front desk. The clerk has hundreds of reservation cards. Each card contains a booking ID, a guest name, a room, a check-in date, and other details.
+
+A customer arrives and says, “My reservation number is R-845192. Can you find it?”
+
+The clerk looks at a giant pile of cards on the desk. One by one, she picks them up and checks their IDs.
+
+Eventually she finds the right card.
+
+A few minutes later, housekeeping calls: “Which rooms are checking out tomorrow?”
+
+The clerk starts another full scan of the pile.
+
+Then the night manager asks: “Which urgent task should we do first?”
+
+A third scan. Another delay.
+
+All the information exists. Nothing is lost. The difficulty is the **arrangement** of the information.
+
+This is the question that data structures answer: **How should we organize information so the operations we need become cheap?**
+
+### 1. The ordinary stack of cards
+
+First imagine an ordinary numbered row of cards. The clerk can immediately pick the card in position thirty-two, provided she already knows she wants position thirty-two.
+
+That's the intuition behind an **array**: items occupy indexed positions that can be accessed efficiently.
+
+But a booking ID like R-845192 is not necessarily the position of its card in that row. To find the card by booking ID, the clerk might still need to search through the sequence.
+
+This is an important distinction. A structure can be extremely good at one operation and mediocre at another.
+
+The first diagram keeps our hotel's needs together. The question changes; the information remains the same.
+
+```mermaid
+flowchart TB
+    R["One collection<br/>Hotel reservations"] --> A["Question 1<br/>Find exact booking ID"]
+    R --> B["Question 2<br/>Find tomorrow's departures"]
+    R --> C["Question 3<br/>Which job is most urgent?"]
+    R --> D["Question 4<br/>How are hotels connected?"]
+```
+
+### 2. Build a directory for the question you ask most
+
+The clerk now adds a directory. She can look up reservation ID R-845192 and discover where its card is stored without reading every other card.
+
+This is the purpose of an **index**: pay some cost to organize the information so future lookups are cheaper.
+
+A **hash table** is one common mechanism for making exact-key lookups fast on average. Instead of scanning every item, it uses a calculation based on the key to find a suitable location in an internal table.
+
+You don't need to understand collisions, resizing, or hashing algorithms yet. Just remember that the clerk traded extra organizational work and storage for much faster questions of the form “find this exact ID.”
+
+But now housekeeping asks for every booking checking out between Tuesday and Friday.
+
+An exact-ID directory isn't naturally arranged by departure date. We need another organization for a different question.
+
+### 3. Sometimes order matters more than exact identity
+
+Imagine keeping another directory sorted by checkout date.
+
+Now the clerk can find the beginning of Tuesday's departures, then read forward through the relevant dates. She doesn't need to inspect cards scattered across the entire hotel archive.
+
+An ordered structure can support range queries: everything between one boundary and another.
+
+A balanced search tree is one family of structures that supports such operations efficiently. We don't need its internal mechanics yet. The mental picture is enough: **keep information in an order that lets you skip large irrelevant regions**.
+
+The trade-off is that adding or modifying records may require updating the structure that maintains that order.
+
+In fact, a real database may maintain multiple indexes over the same underlying records, because customers, housekeeping, and accounting ask different questions.
+
+### 4. The next important thing is a different kind of question
+
+Now the night manager asks the clerk for the next task to perform.
+
+Some tasks are routine. Others are urgent. A payment issue must be handled before a low-priority housekeeping notification.
+
+The clerk doesn't need every task sorted perfectly by every field. She needs quick access to **the most urgent task right now**, and the ability to add new tasks as they arrive.
+
+A **priority queue**, often implemented with a heap, is built for precisely this kind of repeated next-item decision.
+
+Think of it as a task organizer that keeps the highest-priority job accessible without sorting the entire workload from scratch after every update.
+
+### 5. Relationships demand another view
+
+Finally, management asks about hotel-to-hotel shuttle connections. Which hotels are reachable from one another? What route uses the fewest transfers?
+
+A reservation directory doesn't naturally answer that. Now we care about relationships between places rather than simply storing independent cards.
+
+A **graph** models things and the connections between them. Hotels can be represented as nodes, and transport links as edges. Following connections becomes a graph problem.
+
+The second diagram shows how the hotel can maintain different arrangements depending on what the business keeps asking.
+
+```mermaid
+flowchart LR
+    S["Hotel's information"] --> I["ID directory<br/>Exact lookup"]
+    S --> T["Date-ordered index<br/>Ranges"]
+    S --> P["Priority organizer<br/>Next urgent task"]
+    S --> G["Connection map<br/>Relationships"]
+```
+
+Notice that we're not declaring one structure the winner. The same hotel can benefit from several structures because different teams need different operations.
+
+### 6. Every shortcut has a maintenance bill
+
+The clerk's new system feels wonderful. Lookups are faster. Departure lists are easier to prepare. Urgent tasks are found quickly.
+
+But now consider what happens when a reservation is cancelled.
+
+The clerk must update the original card and any directories containing information about it. If one index isn't updated, that directory may give a misleading answer.
+
+So an index doesn't merely consume storage. It creates maintenance work and a responsibility to keep multiple views consistent.
+
+This is why choosing data structures isn't a contest in which the structure with the best lookup complexity always wins. Real workloads also involve writes, deletions, iteration, ranges, ordering, memory constraints, and consistency.
+
+A simple row of cards might be all you need for twenty reservations. A specialized index earns its value when the operations justify its cost.
+
+### Your mental checkpoint
+
+**Question A:** Why doesn't a numbered array automatically make lookup by arbitrary reservation ID instantaneous? **The ID isn't necessarily the element's index; you may still have to search.**
+
+**Question B:** Why might a hotel need both an ID index and a date-ordered index? **Exact lookups and date-range queries are different access patterns.**
+
+**Question C:** What does a priority queue optimize? **Repeated access to the next highest-priority item, along with inserting work.**
+
+**Question D:** Why aren't extra indexes always free improvements? **They use memory or storage, require updating, and must stay consistent.**
+
+Take the front desk into Part II. As arrays, linked lists, hash tables, trees, heaps, and graphs appear, imagine that each is another way of organizing the hotel clerk's world to make a particular kind of question easier.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. The Hotel That Couldn't Find Its Guests
 
 > **Case file #004** — *11:47 PM. Four teams. Same reservations. Four different pains.*

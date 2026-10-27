@@ -27,6 +27,130 @@ By the end, you should be able to explain why bits need an interpretation scheme
 
 ---
 
+# Part I — Intuition
+
+*One hotel reservation travels through several computer systems. The numbers survive, but some of their meanings don't.*
+
+### First, imagine a box full of labels
+
+A traveler named Amélie books a hotel room for October 25. The room costs €129.90. She receives reservation identifier `9007199254740993`.
+
+A hotel clerk writes those details on a card. Another clerk copies the card into a different filing system. A third clerk sends the details to the payment desk.
+
+The card contains several kinds of information: a person's name, an amount of money, a reservation identifier, and a calendar date. On paper, we don't normally confuse them. We know that €129.90 is a price, not a phone number; that October 25 is a day, not an elapsed duration; and that a reservation number is a label, not something we should round.
+
+A computer, however, ultimately stores patterns of bits—zeros and ones. Those bits do not explain their own meaning. A program has to agree on how to interpret them.
+
+The opening diagram shows the same booking passing through several services. Each arrow creates an opportunity for a detail to be misunderstood.
+
+```mermaid
+flowchart LR
+    A["Booking form<br/>Amélie · €129.90<br/>Oct 25 · reservation ID"] --> B["Booking service<br/>Encodes fields"]
+    B --> C["JSON message<br/>Numbers and strings"]
+    C --> D["Another service<br/>Decodes fields"]
+    D --> E["Hotel record<br/>Is meaning preserved?"]
+```
+
+Nothing malicious needs to happen. Every service can be following its own rules correctly while the information changes meaning on its journey.
+
+### 1. The same symbols can tell different stories
+
+Imagine the clerk writes **42** on a piece of paper. What is it?
+
+Forty-two euros? Room forty-two? Forty-two guests? The forty-second reservation? The number alone doesn't tell us.
+
+The computer faces the same issue at a lower level. A pattern of bits might represent a small number, part of a letter, a color component, or something else. An agreed representation tells the computer how to interpret it.
+
+Think of the bits as notes on a musical staff. The ink marks mean something only because musicians agree on a notation system. Different rules produce different interpretations.
+
+In software, those rules appear as data types, encodings, file formats, database schemas, and API contracts.
+
+**The stored pattern and the meaning of that pattern are not the same thing.**
+
+### 2. Money is not just an ordinary approximate number
+
+Now look at Amélie's €129.90 room price.
+
+A person thinks of euros and cents. There are exactly one hundred cents per euro. If the business operates in cents, the exact amount is 12,990 cents.
+
+But a computer using an ordinary binary floating-point number may represent some decimal fractions only approximately. It's similar to trying to write one third using a finite number of decimal digits: `0.333...` keeps going. Certain simple decimal fractions become repeating fractions in binary.
+
+The approximation is often so tiny it doesn't matter for scientific calculations, graphics, or simulations. But billing requires clear rules about exact amounts, currency, scale, and rounding.
+
+So the clerk's card can carry an integer number of minor currency units, or an appropriate exact decimal representation, rather than trusting ordinary floating-point arithmetic to model money perfectly.
+
+The computer isn't broken when it rounds according to the representation it was given. The mistake is asking that representation to provide a guarantee it doesn't promise.
+
+### 3. A reservation ID looks like a number but isn't an amount
+
+Our reservation identifier is `9007199254740993`. Its digits look numerical, but their purpose is to identify one booking.
+
+We don't add two reservation IDs, take their average, or round them to the nearest hundred. We only need to preserve them exactly and compare them reliably.
+
+Some environments, including ordinary JavaScript `Number` values, cannot represent every sufficiently large integer exactly. If a service parses a large identifier as an imprecise number, it may silently change its final digits.
+
+That's a dreadful property for an identifier. The simple intuition is that **something that looks like a number may actually be a label that must never change**. A string is often the right representation at an API boundary.
+
+### 4. A name is what a person sees, not necessarily one simple sequence of bytes
+
+Now consider the name Amélie.
+
+On a screen, it looks straightforward. But text systems can represent visually identical characters in different ways. An accented character may be represented as one Unicode code point or as a base letter followed by a combining accent.
+
+Both representations can display the same name. A naive byte-for-byte comparison may nevertheless treat them as different.
+
+Similarly, what a person calls one visible character may contain several Unicode code points. Emoji and certain writing systems make this especially obvious.
+
+The software must decide whether it is comparing bytes, code points, visually perceived characters, or names under an application-specific normalization policy. None of those questions is answered simply by saying “it's a string.”
+
+### 5. A date is not a moment on a universal clock
+
+Finally, Amélie arrives on October 25.
+
+That is a **calendar date**. It tells the hotel which day she intends to check in. It does not specify an exact worldwide instant.
+
+Now imagine another service converts that date to a timestamp at midnight in one time zone and displays it in another. Depending on the conversion, the displayed calendar date might become October 24.
+
+The user never requested a different day. The software accidentally changed the kind of information it was carrying.
+
+These three notions are distinct: a date on a calendar, a local clock time in a particular time zone, and a specific instant on a global timeline. Different business operations need different representations.
+
+The second diagram is a reminder that one booking card contains several different promises.
+
+```mermaid
+flowchart TB
+    B["One booking record"] --> M["Money<br/>Exact amount + currency"]
+    B --> I["Reservation ID<br/>Preserve identity exactly"]
+    B --> N["Guest name<br/>Unicode interpretation"]
+    B --> D["Check-in<br/>Calendar date, not timestamp"]
+```
+
+### 6. Every boundary is a translation
+
+When the booking service serializes the record into JSON, writes it to a database, or sends it across a message queue, values move between representations.
+
+Sometimes this translation preserves everything important. Sometimes a number loses precision, a date gains an accidental time zone, a missing field becomes null, or visually identical text fails to compare as expected.
+
+The right engineering question is not merely “can these two systems exchange JSON?” It's **“will the receiving system reconstruct the same meaning?”**
+
+And here's a final distinction. Compression may preserve the original information exactly, or deliberately discard some of it. A cryptographic hash is a fingerprint, not a reversible copy. You cannot recover a booking's full details from its short hash value any more than you can reconstruct Amélie's face from a hotel check-in count.
+
+### Your mental checkpoint
+
+**Question A:** Why might €0.10 + €0.20 be awkward in binary floating-point? **Some decimal fractions aren't exactly representable in that format.**
+
+**Question B:** Should a reservation identifier be treated as an amount we can round? **No. Its identity must be preserved exactly.**
+
+**Question C:** Is “October 25” the same thing as “a particular UTC instant”? **No. A calendar date alone doesn't identify one instant.**
+
+Keep the original hotel card in your mind. In Part II we'll investigate the precise machinery—binary, floating point, Unicode, time zones, serialization—and why selecting a representation is part of defining what correctness means.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. Three Bugs, One Culprit
 
 > **Case file #002** — *Monday morning. Three tickets. One shared villain.*

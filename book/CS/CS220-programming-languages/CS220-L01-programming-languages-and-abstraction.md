@@ -30,6 +30,103 @@ By the end, you should be able to say what a programming language actually is (s
 
 ---
 
+# Part I — Intuition
+
+*One reservation reaches three different checkpoints. The first two trust the label on the package; only the last discovers what is actually inside.*
+
+### The picture to carry in your head
+
+Imagine a hotel accepting bookings from another company's API. A request arrives with a customer name, a number of guests, and a total price. Your TypeScript code describes the expected shape perfectly. The outside world, unfortunately, has never agreed to obey your TypeScript definitions.
+
+The picture below follows one booking from a developer's idea of the data to the value the program actually receives. The diagram matters less than the distinction: the compiler checks the program's stated rules, while the running application still has to examine information coming from outside those rules.
+
+```mermaid
+flowchart LR
+  A["Developer's model<br/>guests: number"] --> B["TypeScript check<br/>Is our code consistent?"]
+  B --> C["Running JavaScript<br/>Types mostly erased"]
+  D["External API<br/>guests: 'two'"] --> C
+  C --> E["Runtime validation<br/>Is this value acceptable?"]
+```
+
+## 1. A beautifully labeled parcel
+
+Our booking service expects a simple object. It knows the guest count should be a number, the price should follow an agreed representation, and the arrival date should be a calendar date. The developer writes an interface and lets the editor and compiler check every function using it.
+
+A colleague accidentally treats the guest count as a string inside the code. TypeScript complains. Wonderful: we found a contradiction before running the application. Another colleague tries to pass a booking object without a required property. Again, the compiler complains.
+
+It's tempting to conclude that bookings now have the correct shape. But that is a stronger promise than we earned. The compiler checked what our program *claims* about values. It didn't inspect every future packet arriving from the internet.
+
+Imagine a parcel at a warehouse. Someone has printed a label saying **TWO GLASS BOTTLES**. A warehouse worker can check that the label has the required fields and follows the company's formatting rules. They cannot establish that there are actually two glass bottles inside without opening the parcel.
+
+In software, static types are rather like well-enforced labeling rules. They prevent many internal misunderstandings. Runtime validation is what happens when we open the parcel.
+
+## 2. The parcel travels through a different company
+
+At noon, the supplier changes its API. Instead of sending the numeric guest count `2`, it sends the text `"2"`. Later, a broken integration sends `"two"`.
+
+Your TypeScript interfaces remain unchanged. Compilation succeeds. The application starts. Only when actual data reaches an operation expecting a number do we discover the disagreement.
+
+We haven't learned that TypeScript is useless. We've learned that a guarantee has a boundary. Within the assumptions of correctly typed application code, the compiler checks certain relationships. Across an untrusted boundary, the program needs evidence about the value it received.
+
+This is why the simplest useful mental model of a programming language has three pieces: **what you can write**, **what the written program means**, and **how a computer makes that meaning happen**.
+
+What you can write is syntax. What it means is semantics. How it executes is implementation. Those are different questions, even when one programming tool makes them feel seamless.
+
+**Checkpoint:** If a JSON response arrives with `guests: "two"`, will a TypeScript interface by itself reject that packet? No. The running application needs an actual check or parser at the boundary.
+
+## 3. Same behavior, different machinery
+
+Now imagine rewriting our booking calculation in Python, Java, or Rust. The arithmetic requirement stays the same. The language rules and execution strategies can be very different.
+
+Some languages check more properties before the application starts. Others defer more checks until execution. Some translate into a form executed by a virtual machine; others often produce machine code ahead of time. Some perform optimization while the program runs.
+
+Those implementation choices don't change the business question: can we trust the guest count, and is the computed booking valid? They change how mistakes are detected, how memory and execution are managed, and what the programmer is required to express.
+
+Think of different kitchens following the same reservation's meal order. One kitchen checks every instruction against a formal checklist before anyone cooks. Another relies more heavily on the chef noticing problems during preparation. The meals might be equally delicious, or equally wrong. The preparation systems make different mistakes easier or harder to catch.
+
+The technical lecture will describe compilation, interpretation, static and dynamic typing, and JIT compilation precisely. For now, keep the distinction between **the rule**, **the value**, and **the mechanism executing the rule**.
+
+## 4. Abstraction: useful packaging, dangerous assumptions
+
+Our team doesn't want to repeat price calculations everywhere. So it introduces a helpful booking function. Other modules call it without knowing how discounts and taxes are calculated. That is an abstraction: a useful interface concealing implementation details.
+
+But a clear interface can conceal a wrong assumption. Suppose the function silently assumes every price is already in euros. Another team supplies a price in pounds. The function produces a plausible number and nobody notices the missing conversion.
+
+The abstraction successfully hid its implementation. It also hid information that mattered to correctness. A good abstraction doesn't merely reduce visible code; it preserves the distinctions callers need.
+
+Types can help us express some of those distinctions. We might prevent developers from passing an arbitrary string as a currency, or from mixing a hotel identifier with a customer identifier. But no ordinary type declaration automatically establishes that an external payment actually succeeded.
+
+Another invisible detail appears when a function remembers information from its surrounding scope. Imagine creating a discount-calculation callback while the current campaign is active. The callback can continue referring to the variables it captured after the function that created it has returned. This is a **closure**—not a magical copied photograph of every value, but a function with access to retained bindings.
+
+Closures are useful. They can also preserve stale assumptions or keep objects alive longer than expected. The specific behavior depends on what was captured and how that binding later changes.
+
+The next picture shows how one simple function can keep a connection to data that outlives the scope where it was created. The reference is useful until that retained state is no longer wanted.
+
+```mermaid
+flowchart TB
+  A["Create discount function"] --> B["Function retains access<br/>to campaign binding"]
+  B --> C["Original caller returns"]
+  C --> D["Discount function still runs<br/>and reads retained state"]
+```
+
+## 5. The mental replay
+
+Our booking enters the system. A developer's types describe what valid data should look like. A compiler checks many relationships in the source code. The running application receives actual values and validates untrusted ones. The runtime executes the program through its own machinery. Abstractions make the system manageable, while also requiring us to inspect the assumptions they conceal.
+
+There's no need to memorize all the names of type-system features before this picture feels comfortable. The whole lesson is that different tools can make *different kinds of claims* about the same computation.
+
+### Three questions before the Deep Dive
+
+1. **What can a compile-time type check tell us?** That our program is consistent with certain declared and inferred rules, under its assumptions; not that arbitrary outside data is valid.
+2. **What should happen at an API boundary?** Treat incoming information as untrusted until it has been checked against the runtime contract.
+3. **Why can a helpful abstraction cause bugs?** It may conceal assumptions or distinctions that callers still need for correctness.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. The Code That Passed Every Check and Still Crashed
 
 > **Case file #006** — *02:17 AM. TypeScript green. Production on fire.*

@@ -28,6 +28,123 @@ We'll develop the concepts of distributions, means, medians, percentiles, varian
 
 ---
 
+# Part I — Intuition
+
+*Two versions of our search API have exactly the same average response time. Why does one make customers miserable?*
+
+### Picture one hundred customers in two checkout lines
+
+Imagine a hotel website with a search button. A customer clicks it, and the backend responds when it has found suitable hotels. We want to know whether a new search implementation is better than the old one.
+
+Rather than showing a dashboard, imagine one hundred people lined up at a service desk. Each person holds a ticket saying how long their search took.
+
+In **Version A**, every ticket says 200 milliseconds. Not spectacularly fast, but dependable.
+
+In **Version B**, ninety-five tickets say 100 milliseconds, and the remaining five say 2,100 milliseconds. Most people get results much faster. Five customers stare at the spinning indicator for over two seconds.
+
+Now calculate the average for each version. Version A averages 200 milliseconds. Version B also averages 200 milliseconds. Same number; profoundly different experiences.
+
+The picture below shows why. The average records the overall balance of the tickets. It doesn't tell us how the tickets are distributed among customers.
+
+```mermaid
+flowchart TB
+    A["Version A: 100 searches"] --> B["100 tickets at 200 ms"]
+    C["Version B: 100 searches"] --> D["95 tickets at 100 ms"]
+    C --> E["5 tickets at 2100 ms"]
+    B --> F["Average = 200 ms"]
+    D --> G["Average = 200 ms"]
+    E --> G
+```
+
+The backend team might claim both systems are equally fast. Most users might prefer B. The unlucky five might strongly prefer A. Neither conclusion can be read directly from the average alone.
+
+The missing idea is called a **distribution**: the shape of all the observed values, not merely one summary number.
+
+### 1. One number can't describe an entire crowd
+
+Imagine you're deciding where to live and someone tells you that the *average* income in two neighborhoods is identical. In one neighborhood everyone earns roughly the same. In the other, one extremely wealthy resident lives among many people with much lower incomes.
+
+The average is the same, but it describes two different worlds. Response times work like that too.
+
+The **mean** is the familiar arithmetic average. Add the values; divide by their count. It helps summarize totals, but unusually large measurements pull it upward.
+
+The **median** is the middle measurement after sorting. If half the responses are faster and half are slower, the median marks that central position. For Version B, the median is 100 milliseconds. That's useful for typical behavior, but it still doesn't reveal the five badly delayed requests.
+
+So we ask another question: “How slow are the unlucky customers?” A **percentile** helps locate a chosen point in the sorted list. The p99 is a threshold near the slowest one percent. In our simple Version B, p99 is 2,100 milliseconds.
+
+You now have three different descriptions: the same average, a faster typical response, and a much worse tail. All can be true simultaneously.
+
+### 2. The tail isn't just a funny edge case
+
+Imagine a traveler searching hotels, opening room details, checking availability, and completing checkout. They don't make one request. They make many requests across a journey.
+
+Even if only five percent of individual operations experience a long wait, the chance that *at least one* of ten independent operations is slow is much larger than five percent—about forty percent under that simplified assumption.
+
+This is one reason the **tail** of a latency distribution matters. Small probabilities repeated across several required steps can become a common feature of the overall experience.
+
+But not every slow request is unrelated. Perhaps an overloaded database makes several operations slow together. Dependence can change the calculation, just as we learned in the probability lecture.
+
+The practical lesson isn't “always prefer p99.” It's “look at the shape of the experience that matters.” Sometimes the mean matters for cost. Sometimes the median matters for typical users. Sometimes a tail threshold matters for reliability.
+
+### 3. A million measurements can still be the wrong million
+
+Our engineer says, “Relax. We logged a million requests.” That sounds conclusive—until you ask how the measurements were collected.
+
+Imagine the monitoring system records a response time only when the API successfully returns a response. But some of Version B's worst requests time out and never finish. Those customers see a failure, while their attempts disappear from the latency dashboard.
+
+The recorded population is not “all customer attempts.” It is “successful attempts that finished.” This is **selection bias**. Measuring more of the same successful requests doesn't fix the missing failures.
+
+Now imagine those million requests came from one testing machine in the same cloud region as the servers. They may tell us a great deal about that testing machine's workload, but far less about mobile customers across Europe.
+
+The first question in statistics is therefore not “How many observations?” It's **“Which observations belong to the question?”**
+
+### 4. Comparing two groups can fool us twice
+
+Suppose searches on mobile phones are typically slower than searches on desktop computers. Yesterday, our traffic was mostly mobile. Today, a marketing campaign brings more desktop users. The overall average improves.
+
+Did the new backend cause it? Not necessarily. The visitors changed.
+
+This problem becomes especially slippery when one average combines several kinds of operations. If the proportion of quick searches and expensive checkouts changes, an overall number can worsen even when each operation gets faster. That's the intuition behind **Simpson's paradox**.
+
+The second picture separates the two tasks: first compare *similar kinds of requests*, then decide how to combine them for the business question.
+
+```mermaid
+flowchart TD
+    A["All request timings"] --> B["Mobile search"]
+    A --> C["Desktop search"]
+    A --> D["Checkout"]
+    B --> E["Compare like with like"]
+    C --> E
+    D --> E
+    E --> F["Then interpret the overall mix"]
+```
+
+Sometimes we need to make claims about customers we've not yet observed. A sample might show ten percent of requests are slow, but another sample could show nine or eleven. That is **sampling uncertainty**. A **confidence interval** is one way to express this uncertainty under explicit assumptions about how the sample was gathered. It is not a spell that repairs biased measurements.
+
+### 5. Keep the measurement instrument in the story
+
+If the backend measures only the controller method, but the customer waits for DNS, network, proxy, queuing, and browser rendering, their timers answer different questions. Neither is automatically false. They start and stop at different places.
+
+Likewise, averaging each server's p99 doesn't generally reconstruct the p99 of all requests across the fleet. The per-server summaries have thrown away information about the combined distribution. To do it properly, we need enough compatible underlying measurements, such as mergeable histogram counts.
+
+**A statistic is not an explanation.** It is a compressed description of a particular set of observations, collected through a particular measurement system.
+
+### Your mental checkpoint
+
+**Question A:** If two APIs average 200 milliseconds, must they feel equally responsive? **No.** Their distributions may be very different.
+
+**Question B:** What is missing if the dashboard records only successful requests? **Failed and timed-out customer attempts**, which may be the worst experiences.
+
+**Question C:** If the overall average improves after a release, what else might have changed? **The mix of customers and request types**, not just the software.
+
+Carry one picture into Part II: **one hundred people holding one hundred response-time tickets**. The mean, median, p99, histogram, and confidence interval are different attempts to answer different questions about those tickets—and the unseen tickets they might represent.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. Two Hundred Milliseconds, Two Completely Different Systems
 
 It's Tuesday morning, and our hotel-booking platform has just completed a major backend optimization.

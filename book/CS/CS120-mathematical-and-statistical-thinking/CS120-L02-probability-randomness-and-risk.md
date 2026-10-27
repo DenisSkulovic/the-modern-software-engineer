@@ -30,6 +30,114 @@ The equations are deliberately simple. Each represents an idea that can be under
 
 ---
 
+# Part I — Intuition
+
+*The fraud alarm works almost perfectly. So why are nearly all the people it accuses innocent?*
+
+### Picture an airport-sized hall of transactions
+
+Imagine our hotel platform processing one hundred thousand bookings. Picture each booking as a person standing in a vast hall. A tiny number wear red coats: those represent fraudulent transactions. Everybody else wears a blue coat: legitimate travelers.
+
+We know that fraud affects approximately **one in a thousand** transactions in this simplified example. Out of one hundred thousand people, that means only one hundred wear red. The other ninety-nine thousand nine hundred wear blue.
+
+At the exit, a clever security detector examines everyone and sounds an alarm when it suspects fraud. It's very good. When someone wears red, it detects them 99% of the time. When someone wears blue, it correctly lets them through 99% of the time.
+
+But that leaves one percent of the enormous blue crowd being stopped accidentally.
+
+The first picture makes the imbalance visible. Notice that the detector doesn't start with equal numbers of innocent and fraudulent people.
+
+```mermaid
+flowchart TD
+    A["100,000 transactions"] --> B["100 fraudulent"]
+    A --> C["99,900 legitimate"]
+    B --> D["99 genuine alarms"]
+    B --> E["1 missed fraud"]
+    C --> F["999 false alarms"]
+    C --> G["98,901 correctly cleared"]
+    D --> H["1,098 alarms altogether"]
+    F --> H
+```
+
+The security team gets 1,098 alarms. Only 99 are genuine. Roughly **nine percent** of the alarms point to fraud. The other 91% accuse legitimate travelers.
+
+The detector hasn't malfunctioned. The arithmetic isn't faulty. The problem is that we asked the wrong question about its accuracy.
+
+### 1. Two similar sentences ask opposite questions
+
+Consider two sentences.
+
+**First:** “When a booking is fraudulent, how often does the alarm ring?” Answer: 99%.
+
+**Second:** “When the alarm rings, how often is the booking fraudulent?” Answer: about 9%.
+
+They sound almost like the same claim. They are not. In the first case we start by looking only at fraudulent bookings, then ask how many received alerts. In the second case we start by looking only at *alerts*, then ask how many were genuine.
+
+The crowd we divide by has changed. That is the essential meaning of **conditional probability**: the chance of one event after we've restricted our attention to another event.
+
+The rarity of fraud *before* seeing an alert is called the **base rate** or, in a Bayesian calculation, part of our prior information. An alert provides evidence and changes our estimate. But because legitimate transactions are so numerous, one percent of them creates many false alarms.
+
+This method of updating what we believe using evidence and prior probabilities is the intuition behind **Bayes' theorem**. It doesn't require mystical mathematics. The easiest way to start is to imagine a large crowd and count people in the correct group.
+
+### 2. A detector isn't good or bad in isolation
+
+Now move our detector to a different hall: a special investigation queue where ten percent of transactions are truly fraudulent.
+
+The same detector, with the same 99% detection rate and one-percent false alarm rate, now gives much more reliable positive alerts. Out of ten thousand transactions, it raises about 990 genuine alarms and ninety false ones. More than nine out of ten alarms point to real fraud.
+
+Nothing about the detector changed. What changed was the kind of crowd we applied it to.
+
+This explains why a statistic measured in one environment can mislead us in another. A model validated on a carefully selected investigation queue may behave very differently when deployed to all normal customers.
+
+### 3. Two alarms might come from one cause
+
+Suppose the detector notices that a customer appears to be in another country. A second rule notices that the customer uses an anonymizing network. Both alarms fire.
+
+Are these two independent pieces of evidence? Maybe not. The anonymizing connection may itself explain the unusual location.
+
+If two observations share one underlying cause, treating them as independent confirmations may exaggerate confidence.
+
+The second picture shows the distinction. Two *separate* causes can provide genuinely different information; two sensors responding to the *same* cause might not.
+
+```mermaid
+flowchart LR
+    A["One anonymizing connection"] --> B["Unusual location alert"]
+    A --> C["Proxy network alert"]
+    B --> D["Two alerts, perhaps one cause"]
+    C --> D
+```
+
+**Independence** matters because many simple probability calculations multiply chances together. That multiplication is justified only under the correct independence assumptions. Two servers in separate machines might fail independently from certain hardware problems, but both might fail together during a shared power or database outage.
+
+The right question is not merely “How many alarms do I have?” It's “How much genuinely new information does each alarm add?”
+
+### 4. Probability helps make decisions, not just predictions
+
+Now the fraud team asks whether it should automatically reject every alerted booking. The answer isn't contained in the detector's percentage.
+
+Rejecting legitimate customers has a cost: lost bookings, support work, distrust. Allowing fraud also has a cost: chargebacks and financial loss. One of those costs might be far larger than the other for a particular transaction.
+
+A useful way to reason about the decision is to combine the chance of an outcome with its consequence. This gives the intuition behind **expected value**. A nine-percent chance of losing five hundred euros represents forty-five euros of expected loss under a simplified model. It doesn't mean any individual booking will lose exactly forty-five euros.
+
+We also have to remember that very rare outcomes accumulate. A bug affecting one in a million requests may happen regularly if the platform processes hundreds of millions of requests. An unlikely random-ID collision becomes more likely as the number of possible pairs of IDs grows. These are different consequences of the same question: how many opportunities does the event have to occur?
+
+And attempts aren't always fresh chances. Three retries during one ten-minute supplier outage share the same failure cause; they're not automatically independent rolls of a die. Worse, blindly retrying a booking might create a second reservation after the first actually succeeded.
+
+### Your mental checkpoint
+
+**Question A:** Which fact should you ask for before celebrating 99% fraud detection accuracy? **How common fraud is and how often legitimate transactions are falsely flagged.**
+
+**Question B:** Two alerts fire because of the same proxy connection. Does that automatically double your confidence? **No.** The alerts may be correlated evidence of one cause.
+
+**Question C:** A request timed out. Is another attempt necessarily an independent chance of success? **No.** The failure may persist, and the first operation may already have succeeded.
+
+Carry this picture into Part II: **start with the full crowd, narrow to the group described by the question, and count what the evidence truly tells you**. The formulas simply make that reasoning reusable.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. The Fraud Detector That Accused Almost Everyone Innocent
 
 It's Thursday morning at our hotel-booking platform.

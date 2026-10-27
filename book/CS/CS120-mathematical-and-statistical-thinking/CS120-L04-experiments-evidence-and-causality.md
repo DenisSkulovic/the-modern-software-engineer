@@ -32,6 +32,119 @@ The spoken lecture contains the reasoning. The detailed calculations, experiment
 
 ---
 
+# Part I — Intuition
+
+*The product team redesigned checkout, and bookings went up. Before celebrating, we need to answer one awkward question: what would have happened without the redesign?*
+
+### Imagine two doors into the same hotel
+
+Our booking platform has an old checkout page and a beautifully redesigned one. The old page requires several steps. The new page has a cleaner layout and fewer forms. After release, the dashboard reports that conversion grew from five percent to 5.6 percent.
+
+That's a twelve-percent **relative** increase, or 0.6 **percentage points** in absolute terms. Both statements describe the same observed difference. But neither tells us its cause.
+
+Imagine you run a physical hotel and install a shiny new entrance. Bookings increase the following week. Did the entrance cause the improvement—or did a festival begin across the street? Perhaps more wealthy travelers arrived, or prices fell, or a competing hotel closed.
+
+The old-versus-new comparison changed **time** as well as **entrance**. That makes the conclusion uncertain.
+
+In our website, the same issue appears with devices. Suppose mobile customers convert at three percent and desktop customers at seven percent. Before release, the visitor mix was half mobile and half desktop, giving five percent overall. After release, desktop traffic rises to 65 percent. Even if neither device group improves at all, the overall conversion becomes 5.6 percent.
+
+The interface could be completely innocent of the apparent lift.
+
+The first picture illustrates the problem: the release and the changing customer mix travel together, both potentially influencing conversion.
+
+```mermaid
+flowchart TD
+    A["Later calendar period"] --> B["New checkout design"]
+    A --> C["Different customer mix"]
+    B --> D["Observed conversion"]
+    C --> D
+    E["Question: which change caused the increase?"] --> D
+```
+
+The general issue is **confounding**. An observed effect may have several plausible causes, and our comparison doesn't isolate the one we care about.
+
+### 1. We need two versions of the same world
+
+What do we actually want to know? For every customer who saw the redesign, we'd like to know whether they would also have booked using the old checkout, in precisely the same circumstances.
+
+But we cannot give the same person two separate realities at the same moment. A customer either experiences one checkout or the other. The alternative outcome is unobserved. Statisticians call it the **counterfactual**.
+
+We can still learn about average effects if we create two comparable groups. Think of splitting arriving travelers randomly between two clearly marked doors. One group uses the old entrance; the other uses the new. Both groups arrive during the same time period and under broadly similar conditions.
+
+On the website, we assign eligible customers randomly to **control** (old checkout) and **treatment** (new checkout). Random assignment won't produce perfectly identical groups, but it helps avoid systematically sending more valuable, eager, or desktop-heavy customers to one version.
+
+This is the basic purpose of an A/B experiment: **create a comparison where the treatment—not who received it—is the main systematic difference**.
+
+### 2. A person is not an HTTP request
+
+Now imagine our website randomly assigns every request rather than every customer. A traveler sees the new checkout, clicks Back, and suddenly sees the old one. The next refresh switches again.
+
+We aren't measuring the experience of one coherent checkout design anymore. We're measuring an inconsistent mixture.
+
+For this feature, a stable customer-level assignment may be more appropriate, with careful handling of anonymous visitors and repeat sessions. Then we can ask how many *assigned eligible customers* completed a booking during a defined period.
+
+This is also why choosing the denominator matters. If we count only customers who successfully loaded the new checkout, a crash that prevents the page from opening could make treatment users disappear from our statistics. We would accidentally exclude the people who had the worst experience.
+
+The experiment must record assignments in a way that doesn't depend on successful treatment behavior.
+
+### 3. Even random groups will differ by chance
+
+Suppose each group has ten thousand customers. The old checkout produces five hundred bookings; the new checkout produces five hundred sixty.
+
+That sounds promising. But imagine running the same experiment repeatedly in a world where both checkouts are equally effective. Some random splits would still produce more bookings in one group than the other. Randomness doesn't guarantee identical outcomes.
+
+We therefore need a way to judge whether our observed difference is larger than the ordinary variation expected under a defined no-effect model. This is where **hypothesis tests** and **confidence intervals** enter.
+
+The crucial intuition isn't a formula. It's that an experiment produces an *estimate*, not the truth etched into stone. A point estimate can look positive while a plausible range of effects includes no improvement or even slight harm.
+
+A small **p-value** is not the probability that the new design works. It concerns how surprising the data would be under a specified null-hypothesis model and testing procedure. And a “statistically significant” improvement might be too small to justify the cost of building or maintaining the feature.
+
+### 4. The measuring machine can lie
+
+Now picture a real A/B test engine with several stages: assign a customer, show the version, record relevant events, then count bookings.
+
+Every stage can fail. What if the new version crashes more often? What if some browser types don't send exposure events? What if analysts accidentally exclude customers who abandon checkout?
+
+The second diagram shows that a result is only trustworthy if the comparison survives the entire measurement process.
+
+```mermaid
+flowchart LR
+    A["Eligible customer"] --> B["Stable random assignment"]
+    B --> C["Old or new checkout"]
+    C --> D["Capture ALL relevant outcomes"]
+    D --> E["Compare groups with uncertainty"]
+```
+
+Suppose assignment was meant to be half-and-half, but we record noticeably fewer treatment customers than controls. This may be a **sample ratio mismatch**. It could signal broken bucketing, missing telemetry, or biased inclusion. Before celebrating conversion, investigate why the expected groups aren't represented as intended.
+
+Likewise, peeking at an ordinary fixed-horizon p-value every hour and stopping at the first favorable moment can produce more false discoveries than the nominal threshold promises. Searching through twenty metrics and reporting only the prettiest one creates another opportunity for coincidence to masquerade as improvement.
+
+A trustworthy experiment decides important rules before inspecting the results.
+
+### 5. Winning means more than clicking Book
+
+Imagine the new page increases completed bookings but hides the cancellation policy, creates duplicate payments, or increases support complaints. We can't call that a success simply because the conversion metric improved.
+
+So we choose one clear **primary metric** to represent the goal and additional **guardrail metrics** to catch unacceptable harm. Then we weigh effect size, uncertainty, product value, costs, and applicability to future customers.
+
+An experiment is a tool for making a better decision. It doesn't make the decision for us.
+
+### Your mental checkpoint
+
+**Question A:** Conversion rose after the launch. Does that prove causation? **No.** Other changes might explain it.
+
+**Question B:** Why assign customers randomly to old and new designs? **To make the groups comparable in expectation**, reducing systematic confounding.
+
+**Question C:** Can a statistically convincing conversion lift still be a bad release? **Yes.** It might be practically tiny or harm payment correctness, users, or reliability.
+
+Carry one picture into Part II: **two doors admitting comparable travelers at the same time**, with a trustworthy clerk recording everyone assigned to each door. The technical statistics are how we evaluate the difference *after* building a fair comparison.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. The Redesign That Increased Conversion by 12%
 
 It's Tuesday afternoon, and the product team at our hotel-booking company has excellent news.

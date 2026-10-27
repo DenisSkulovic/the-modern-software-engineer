@@ -28,6 +28,111 @@ Mathematical notation will appear occasionally, but every important idea is expl
 
 ---
 
+# Part I — Intuition
+
+*One hotel, one last room, and two perfectly reasonable employees. Why can both do their jobs correctly while the hotel gets overbooked?*
+
+### First, picture the front desk
+
+Imagine a tiny hotel with just one room left for tonight. Two receptionists, Anna and Boris, work at different desks. Both can see a shared screen displaying the number of available rooms.
+
+At noon, the screen says **one room available**. Anna receives a call from a guest who wants it. At precisely the same moment, Boris receives a call from another guest. They both glance at the screen. Both see one room. Both tell their guests, “Yes, we can book that.” Each records a reservation, then updates availability.
+
+At the end, the screen may say zero rooms left. It looks sensible. Except the hotel has promised the same last room to two guests.
+
+Nobody misread the screen. Nobody made a typing mistake. The mistake was in the *rule for changing the shared information*: checking availability and committing a reservation were allowed to happen separately.
+
+The first picture shows the two calls overlapping. The important detail is the gap between **checking** and **claiming**.
+
+```mermaid
+sequenceDiagram
+    participant A as Anna
+    participant S as Shared inventory
+    participant B as Boris
+    A->>S: Any rooms left?
+    S-->>A: One
+    B->>S: Any rooms left?
+    S-->>B: One
+    A->>S: Confirm reservation A
+    B->>S: Confirm reservation B
+    Note over A,B: Two promises for one room
+```
+
+A few examples of working bookings could never tell us that this particular overlap is impossible. What we need is a statement that must remain true no matter how the day unfolds.
+
+### 1. The rule that must never break
+
+Let's write the simplest possible promise about our hotel: **the number of rooms promised for a night must never exceed the number of rooms that can actually be sold for that night**.
+
+That promise has a name: an **invariant**. It isn't a description of what usually happens. It's a rule that must remain true throughout every legitimate change of state.
+
+When zero rooms are booked, the rule holds. When one guest books the last room, it still holds. If the system attempts to confirm a second booking, it must refuse or perform some explicitly different business process. It cannot just keep creating promises and hope that the numbers work out afterward.
+
+Now imagine an administrator changes the hotel's capacity from two rooms to one while two reservations are already confirmed. Even if Anna and Boris never make a mistake, that administrative action can break the rule. The invariant belongs to **all operations that change the relevant state**, not only the customer-facing booking button.
+
+This is why stating the rule before inspecting code is so useful. It tells us what every implementation must protect.
+
+### 2. A test is a photograph; a claim is about the whole film
+
+Anna tests the booking system. She books the last room, tries another booking, and sees “Sold out.” The test passes. Boris tries a cancellation and another booking. That passes too.
+
+Those tests are valuable, but each is like a photograph taken during a particular sequence of events. They don't show every possible order in which two employees can act.
+
+Now imagine someone says, “The system **always** prevents overbooking.” That's a much bigger claim than “The three examples we tried worked.” One valid example of an overbooking disproves the universal claim. Such an example is called a **counterexample**.
+
+Notice the asymmetry. Showing a hundred good bookings doesn't establish that *all* bookings will be good. Showing one legitimate bad sequence establishes that “never overbooks” is false.
+
+This introduces a kind of mathematical thinking that is useful even without equations: pay attention to words like **every**, **some**, **never**, and **if**. They change exactly what you're claiming.
+
+### 3. What if we turn the rule around?
+
+Suppose our booking policy says, “If a reservation is confirmed, its room must be allocated.” Does that mean “If a room is allocated, its reservation is confirmed”?
+
+Not necessarily. We might temporarily hold a room while a customer is paying. The allocation exists, but confirmation hasn't happened yet.
+
+This is the difference between a requirement and a guarantee. Allocation is **necessary** for a valid confirmed booking in our example, but allocation alone is not **sufficient** to confirm it. Payment or other conditions might still be missing.
+
+Small logical slips like reversing an “if” statement cause surprisingly serious design mistakes. They appear in authorization too: “Every administrator can edit bookings” does not imply “Everyone who can edit bookings is an administrator.”
+
+### 4. Build the safe operation from the rule
+
+How should we repair the reception desk?
+
+The critical step is not merely displaying the correct count. It is making the *check and claim* behave as one protected decision. A shared authoritative system must decide: “There is capacity **right now**, so I will commit exactly one unit of it.” When Anna wins that decision, Boris must find that the last unit is no longer available.
+
+This is often implemented using an atomic conditional database operation or a transaction that preserves the entire business rule. We will examine those mechanisms later. At the intuition level, all you need is the sequence in the next picture.
+
+```mermaid
+flowchart TD
+    A["Request to reserve a room"] --> B{"Can capacity be claimed now?"}
+    B -->|Yes| C["Claim it atomically\nand record the booking"]
+    B -->|No| D["Decline or offer another option"]
+    C --> E["Invariant still holds"]
+    D --> E
+```
+
+This shows the central idea of a **precondition** and a **postcondition**. Before a successful claim, valid capacity must be available at the decision point. Afterward, the reservation and capacity records must agree, and the invariant must still hold.
+
+There's also a simple proof-shaped idea hiding here. Begin in a valid state. Check that every permitted action leaves the system in a valid state. If both are true—and we've included all relevant actions—then a sequence of those actions cannot create an invalid state. That's the intuition behind mathematical induction applied to software state.
+
+The catch is that assumptions matter. If another booking platform can independently sell the same inventory, our local model is incomplete. A perfectly correct rule for a fictional hotel isn't proof of correctness for a real hotel with hidden sellers.
+
+### Your mental checkpoint
+
+**Question A:** The availability counter says zero, but two guests hold confirmations for one room. Is the counter itself enough to prove correctness? **No.** It doesn't establish that confirmed commitments fit capacity.
+
+**Question B:** Anna successfully books the last room, then Boris tries. Which step must be protected against overlap? **The decision to check and claim remaining capacity**, together with appropriately recording the booking.
+
+**Question C:** Does a thousand passing tests prove that no bad execution exists? **No.** One valid counterexample can disprove a universal claim.
+
+Carry this image into Part II: **a rule about the hotel, not about one function; a starting state; and every action that might change it**. The mathematical vocabulary is simply a more precise way to discuss that picture.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. The Booking System That Passed Every Test
 
 It's Monday, 10:42 in the morning.

@@ -27,6 +27,138 @@ By the end, you should be able to explain why a cheap next step can lead to an e
 
 ---
 
+# Part I — Intuition
+
+*The train journey that looked cheapest at every stop and still cost a fortune: why good algorithms are about choosing which work can safely be skipped.*
+
+### You're planning a train trip from Berlin to Vilnius
+
+Imagine an app that helps you find the cheapest possible railway journey. It knows a simplified set of connections and prices. You start in Berlin and want to arrive in Vilnius.
+
+The app examines its options. It could take a train from Berlin to Warsaw for €10. Or to Kaunas for €25. Or a direct hypothetical connection to Vilnius for €80.
+
+It chooses Warsaw. Ten euros is the cheapest ticket immediately available.
+
+But from Warsaw, the onward ticket to Vilnius costs €90. The total trip costs €100.
+
+Meanwhile, Berlin to Kaunas for €25, then Kaunas to Vilnius for €20, would have cost €45. Even the €80 direct ticket would have been cheaper than the app's choice.
+
+The app made a reasonable-looking decision at every step. It followed its instructions perfectly. And it chose a terrible journey.
+
+Our first diagram contains the entire puzzle. The numbers are fictional fares, chosen only to explain the idea.
+
+```mermaid
+flowchart LR
+    B["Berlin"] -->|"€10"| W["Warsaw"]
+    W -->|"€90"| V["Vilnius"]
+    B -->|"€25"| K["Kaunas"]
+    K -->|"€20"| V
+    B -->|"€80"| V
+```
+
+**Choosing the cheapest next step is not the same as choosing the cheapest complete journey.**
+
+This is a surprisingly general problem. A decision that looks best locally can lead to a worse result globally.
+
+### 1. The shortest-looking shortcut may be unjustified
+
+The train planner's rule was simple: always pick the cheapest connection available right now.
+
+That is an example of a **greedy** strategy. Make the best-looking immediate choice without exploring every possible future consequence.
+
+Greedy strategies can be brilliant when a problem has the right structure. But they aren't automatically correct. Our railway example is a counterexample to the specific rule “take the cheapest outgoing edge.”
+
+A proper route-planning algorithm must account for the cost already paid and the remaining possible journey. In a graph with nonnegative edge costs, Dijkstra's algorithm provides one way to do that correctly. Its choices are more carefully justified than our naive ticket-by-ticket greediness.
+
+The important intuition isn't its implementation. It's that a shortcut becomes safe only when we know **why the options we're skipping cannot contain a better answer**.
+
+### 2. Sorting creates useful structure
+
+Now imagine the booking office has a list of a million departure records and you need to find trains leaving after 14:00.
+
+If the records are in random order, the clerk may need to inspect them all.
+
+If they are sorted by departure time, the clerk can look near the middle. If the middle train leaves at 10:00, everything before it is too early. Discard that entire half. Repeat with the remaining half.
+
+This is the core of **binary search**: when information is sorted appropriately, one comparison can eliminate half the remaining possibilities.
+
+It isn't magic. It depends on a promise that the remaining data is ordered. Without that promise, discarding half could eliminate the answer.
+
+In ordinary unsorted data, searching one by one may be the reasonable approach. Sorting first has a cost, so it isn't automatically worth doing for a single lookup. But if the timetable will answer thousands of future searches, paying that preparation cost can make sense.
+
+The second diagram compares the different ways the clerk might approach a large timetable.
+
+```mermaid
+flowchart TB
+    Q["Find the first departure after 14:00"] --> U["Unsorted list<br/>Inspect candidates one by one"]
+    Q --> S["Sorted list<br/>Discard half at a time"]
+    S --> R["Repeat until the boundary is found"]
+```
+
+One lesson connects sorting, searching, and indexing: **do a little work to organize the possibilities, then avoid exploring candidates that cannot help**.
+
+### 3. Split the problem into smaller pieces
+
+Suppose the railway map is enormous. You could divide some tasks into smaller pieces, solve those pieces, and combine the results.
+
+This is the spirit of **divide and conquer**.
+
+Sorting algorithms such as merge sort use that idea: split a large collection, sort the parts, and merge them into one ordered result.
+
+But not every problem can be separated without consequences. For a cheapest route, the interesting question is how the choices interact. Two partial journeys can't always be combined arbitrarily.
+
+So dividing the problem is useful when smaller solutions fit together in a way that preserves the intended answer.
+
+### 4. A map is more than a list of trains
+
+Our cities and connections naturally form a **graph**.
+
+The cities are nodes. The railway connections are edges. Their prices are weights.
+
+Now different questions require different ways of exploring the same graph.
+
+Can you get from Berlin to Vilnius at all? That is a reachability problem.
+
+What journey uses the fewest transfers if every leg counts equally? That is a different problem.
+
+What journey has the lowest total fare when prices differ? That requires respecting the weights.
+
+A search that considers cities in broad layers, like ripples spreading through water, is the intuition behind breadth-first search. A search that follows one path deeply before returning is the intuition behind depth-first search. The cheapest weighted path requires an appropriate weighted-path algorithm and assumptions.
+
+The graph isn't an algorithm by itself. It's the description of the possible journeys. The procedure depends on which question we're trying to answer.
+
+### 5. Don't solve the same subproblem again and again
+
+Imagine our app calculates a cheapest onward journey from Kaunas to Vilnius for one traveler. Five seconds later, another traveler asks an overlapping question that needs exactly the same sub-result under unchanged fares and constraints.
+
+The app could calculate the same thing from scratch.
+
+Or it could remember the result and reuse it when it's still valid.
+
+That is the simple intuition behind **memoization** and many forms of **dynamic programming**: solve a reusable subproblem once, then use its answer instead of repeating all the work.
+
+But reuse has a condition: the question must truly be the same, and its inputs must still mean the same thing. If ticket prices change, a previously calculated cheapest route may no longer be correct.
+
+We haven't built a full route planner yet. We've identified its real engineering challenge: how to avoid unnecessary work **without skipping possibilities that matter**.
+
+### Your mental checkpoint
+
+**Question A:** Why did the €10 ticket through Warsaw lead to a worse trip? **The cheapest next leg didn't minimize the total fare.**
+
+**Question B:** What makes it safe for binary search to discard half the departures? **A meaningful ordering that guarantees the discarded half cannot contain the target.**
+
+**Question C:** Is a list of connected cities the same thing as an algorithm for the cheapest path? **No. The graph represents possibilities; the algorithm explores them according to the objective.**
+
+**Question D:** When is reusing a cached subproblem answer unsafe? **When the inputs or relevant conditions have changed.**
+
+Carry the railway journey into Part II. Whenever you meet a new algorithmic pattern, ask two questions: **Which work does this approach avoid? And what makes it legitimate to avoid that work?**
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. The Journey That Should Have Been Cheaper
 
 > **Case file #005** — *Berlin → Vilnius. Budget traveler. Algorithm picks the worst route.*
