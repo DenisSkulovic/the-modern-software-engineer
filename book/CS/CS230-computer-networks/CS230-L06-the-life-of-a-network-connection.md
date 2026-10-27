@@ -1838,3 +1838,106 @@ The goal is to reason across the application, transport, and infrastructure laye
 8. [Linux TCP Manual](https://man7.org/linux/man-pages/man7/tcp.7.html) — TCP implementation and socket options on Linux.
 9. [Node.js — Net Module](https://nodejs.org/api/net.html) — TCP sockets and connection events.
 10. [Node.js — Streams](https://nodejs.org/api/stream.html) — Buffering and backpressure in Node.js applications.
+
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS230-L06  CONNECTIONS / TCP / UDP / QUIC — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Connection          Coordinated endpoint state machines over unreliable packets
+                      — NOT a reserved physical path or router-held tunnel
+  Socket vs conn.     Socket = OS interface/endpoint abstraction;
+                      TCP connection = particular transport conversation + state
+  Four-tuple          src IP + src port + dst IP + dst port
+                      (+ protocol / network namespace). One listen port -> many clients
+  Ephemeral ports     OS-picked temporary client source ports; finite;
+                      limit often toward ONE destination / NAT egress — not "65535 total"
+
+TCP HANDSHAKE (~1 RTT before ordinary data)
+  SYN -> SYN-ACK -> ACK   synchronize ISNs both directions; establish shared state
+  SYN-SENT / incomplete vs completed queue awaiting accept
+  Successful TCP != application healthy / useful response ready
+  SYN flood -> incomplete-handshake resource exhaustion; SYN cookies = one defense
+
+BYTE STREAM — NO APPLICATION MESSAGES
+  Writes may coalesce/split; reads != write boundaries
+  Receiver must frame: length-prefix | delimiter (+ escape) | structured binary
+  HTTP / DB / broker libraries own framing; raw TCP -> YOU own it
+
+BUFFERS & BACKPRESSURE
+  write success ~= local acceptance into send buffer — NOT remote delivery / app processing
+  Receive buffer fill -> flow control; congestion control = path capacity
+  Node write() false -> pause until drain; true != peer processed data
+  Ignore backpressure -> memory pressure from slow network
+
+RELIABILITY BOUNDARY
+  Seq/ACK (+ SACK) -> detect gaps, retransmit; duplicates filtered at stream layer
+  Lost ACK -> may retransmit already-received bytes; app still sees once
+  TCP reliable bytes != exactly-once business ops
+  Request committed + response lost -> client uncertain; needs idempotency / reconcile
+
+HEAD-OF-LINE (TCP)
+  One ordered byte stream -> missing segment blocks later bytes to higher layer
+  HTTP/2 multiplexes logical streams ON that TCP stream -> loss can stall many streams
+  Convenience of ordering <-> coupling of independent ops
+
+TERMINATION
+  FIN           orderly end of one send direction; half-close possible
+  CLOSE-WAIT    peer FIN received; local app must finish shutdown —
+                rising CLOSE-WAIT -> lifecycle leak (not fixed by more CPU)
+  TIME-WAIT     after active close; absorbs delayed duplicates / final FIN retransmit;
+                not a bug; short-lived churn accumulates state / port pressure
+  RST           abrupt reject/abort -> ECONNREFUSED / ECONNRESET;
+                reset after send != "server never processed"
+
+SILENCE & KEEPALIVE (THREE MEANINGS)
+  Idle + path break -> may still look ESTABLISHED until probe / send / timeout
+  TCP keepalive      transport probes idle connection (often slow / off by default)
+  HTTP keep-alive    reuse connection for multiple exchanges
+  App heartbeats     application liveness — != TCP health != business success
+  Ask which keepalive when someone "enables keepalive"
+
+TIMEOUTS
+  Connection timeout     bound wait for establish
+  Response / inactivity  headers vs idle; tiny periodic data can defeat inactivity timer
+  Overall deadline       propagate remaining budget down the chain
+  Timeout = stop waiting locally — NOT proof remote op failed
+  Side effects -> idempotency keys + status reconciliation
+
+CONNECTION POOLING
+  Reuse avoids TCP(+TLS) setup / teardown; consumes OS + intermediary state
+  Stale reuse: client idle retention > intermediary idle close ->
+               first request after idle fails (ECONNRESET / hang up); next OK
+  Align client max idle < intermediary idle (+ margin); handle closure events
+  Blind retry: safe for read-only; create/reservation needs Idempotency-Key etc.
+  Unlimited fresh conns -> handshake load, ephemeral/NAT pressure, TIME-WAIT;
+  huge pools -> idle cost / upstream overload. Configure from workload + path
+
+UDP
+  Datagrams preserve message boundary at transport; no TCP-style stream
+  No built-in connect / delivery / order / retransmit / flow / congestion
+  Prefer when latest state > old retransmission (games positions); still implement
+  reliability / congestion where needed. "Connectionless" != NAT-stateless
+
+QUIC (over UDP — not "just UDP")
+  Connection + reliable streams + ACK/loss/congestion/flow + security
+  Multiple independently ordered streams -> loss on A needn't block B's available data
+  Still shares capacity / congestion; not lossless
+  TLS 1.3 integrated; ~1-RTT secure data; 0-RTT early data -> REPLAY risk —
+               restrict to replay-safe ops
+  Connection IDs -> migrate across address/port change (capability, not always on)
+  User-space deployability; UDP may be blocked -> fallback needed
+  HTTP/3 uses QUIC; != "TCP but always faster"
+
+INCIDENT PATTERN (pool + LB idle)
+  Idle first-fail / next-OK -> lifecycle disagreement, not "TCP broke"
+  Pool = distributed lifecycle state over unreliable network -> config + observe + safe retry
+
+SENIOR LINE: know transport guarantees vs application guarantees —
+             write / handshake / timeout / established != remote business outcome.
+```

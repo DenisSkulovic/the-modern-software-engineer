@@ -1377,3 +1377,105 @@ The following official PostgreSQL references complement this session:
 - **Date and Time Types:** https://www.postgresql.org/docs/current/datatype-datetime.html
 - **ALTER TABLE and Constraint Validation:** https://www.postgresql.org/docs/current/sql-altertable.html
 - **CREATE INDEX and Concurrent Index Builds:** https://www.postgresql.org/docs/current/sql-createindex.html
+
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS330-L01  RELATIONAL DATABASE DESIGN — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Schema = model of business facts, not a mirror of TypeScript objects
+  Valid rows can still encode the wrong business model
+  Distinct concepts ≠ interchangeable names
+    room type ≠ physical room ≠ inventory night ≠ reservation
+
+ENTITIES, RELATIONSHIPS, CARDINALITY
+  Cardinality is a business statement, not merely SQL syntax
+  1:N common (hotel → room types; customer → reservations)
+  M:N via intermediate table (reservation_items) — place for quantity,
+    price, rate plan, partial cancel / assignment
+  1:1 rare — useful for lifecycle / ownership / security / access pattern;
+    don't split for aesthetics
+  Independence test: can these things exist, change, or be deleted separately?
+
+IDENTITY AND KEYS
+  Primary key     stable technical identity (often surrogate)
+  Business UNIQUE real-world uniqueness (hotel_id, room_number)
+  Natural key     from business data — only if unique AND stable
+  Surrogate key   generated ID/UUID — common because business IDs change
+  Don't conflate identity with business meaning
+  Integers vs UUIDs: compactness/order vs independent generation / locality
+
+NORMALIZATION — THREE ANOMALIES
+  Update anomaly   same current fact copied → coordinated mass updates
+  Insertion anomaly can't store independent fact without inventing another
+  Deletion anomaly deleting one fact accidentally destroys another
+  Goal: store independently meaningful facts; reduce unnecessary duplication
+  Functional dependency: hotel_id → hotel_name, hotel_address
+  1NF  don't stuff independently queryable collections into one cell
+  2NF  no non-key attrs depending on only part of a composite key
+  3NF  no unnecessary non-key → non-key duplication (hotel address on reservation)
+  Engineering question: does this attribute belong to THIS row's entity?
+
+SNAPSHOTS ≠ DENORMALIZATION SIN
+  Current rate ≠ agreed price (same number, different fact)
+  Normalize independently maintained current facts
+  Preserve historical snapshots (invoice title/price, tax at order time)
+  Reconstructing history via today's mutable reference data → fiction
+
+CONSTRAINTS (SHARED PERSISTENCE BOUNDARY)
+  NOT NULL   require value; NULL semantics = unknown / missing / N/A
+  UNIQUE     scoped uniqueness; ordinary PG UNIQUE treats NULLs as distinct
+             (NULLS NOT DISTINCT available when needed)
+  FOREIGN KEY existence + ON UPDATE/DELETE behavior
+             CASCADE dangerous for historical/financial entities
+  CHECK      row-local conditions; NOT arbitrary cross-row inventory rules
+  App validation = polite entrance; DB constraint = locked door — want both
+  Valid value ≠ valid transition (status CHECK ≠ full state machine)
+
+HOTEL SCHEMA PATTERNS (LECTURE MODEL)
+  hotels, room_types (hotel-scoped UNIQUE code), customers, reservations,
+  reservation_items with quantity + quoted_total_minor + currency
+  Composite FKs (reservation_id, hotel_id) / (room_type_id, hotel_id)
+    → prevent Hotel A reservation + Hotel B room type
+  Schema enforces relationships; not every business rule (min items,
+    inventory, status transitions)
+
+DATES AND TEMPORAL TYPES
+  Stay nights = half-open [check_in, check_out) — checkout exclusive
+  Hotel nights → DATE + property IANA timezone (Europe/Vilnius)
+  Event instants → TIMESTAMPTZ
+  Choose types by meaning, not "looks date-shaped"
+
+DOUBLE BOOKING — TWO DIFFERENT MODELS
+  Assigned physical room: GiST EXCLUDE on room_id + daterange overlap
+    (btree_gist; WHERE held/confirmed)
+  Pooled category inventory: capacity by type×night — needs transactional
+    coordination (→ CS330-L03); exclusion constraint alone insufficient
+
+MONEY / STATUS TRAPS
+  Prefer amount_minor BIGINT + currency CHAR(3) or NUMERIC — not float
+  CHAR(3) length ≠ valid currency code
+  Status membership ≠ permitted transitions
+
+DENORMALIZATION
+  Derived summaries OK for performance / reporting — with maintenance contract
+  Ask: source of truth? freshness? rebuildable? drives ops decisions?
+  Normalize operational truth by default; govern every duplicate
+
+SCHEMA EVOLUTION — EXPAND → MIGRATE → CONTRACT
+  1 Expand nullable / compatible column
+  2 Deploy writers that populate it
+  3 Backfill (batched, idempotent)
+  4 Enforce (CHECK … NOT VALID then VALIDATE; then NOT NULL)
+  5 Contract remove compatibility once old versions gone
+  CREATE INDEX CONCURRENTLY for large tables; ops cost is a design dimension
+
+LOGICAL ✓  INTEGRITY ✓  OPERATIONAL ✓ — a schema can fail any one
+
+SENIOR LINE: distrust simplicity when the business itself isn't simple.
+```

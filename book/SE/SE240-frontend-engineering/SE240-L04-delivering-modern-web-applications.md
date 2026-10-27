@@ -1441,6 +1441,75 @@ Continue in **SE240 — Browser and Frontend Engineering**.
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
 
----
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE240-L04  DELIVERING MODERN WEB APPLICATIONS — INTERVIEW GLANCE CARD
+
+DEPLOYMENT MYSTERY
+  Old tab             Still runs previous JS; lazy import → ReservationsView.OLD.js → 404
+  New build           Has ReservationsView.NEW.js; deleted old chunks
+  Key insight         Publishing a new frontend does not replace JS already in browsers
+
+BUILD PIPELINE
+  Source ≠ browser    .vue / TS annotations need transform; imports/assets resolved
+  Vite dev            Native ESM on demand; HMR; fast start — ≠ production delivery
+  Vite build          Bundled/optimized dist/: hashed JS/CSS chunks, compiled Vue
+  Typecheck           vite transform ≠ vue-tsc / CI type checking
+  Tree shaking        Drop unreachable exports; side-effect imports & dynamic code limit it
+  Principle           Best JS cost cut = don't ship unnecessary JS
+
+CODE SPLITTING / LAZY ROUTES
+  dynamic import()    Separate chunks; load on navigation
+  Trade-off           Smaller initial load vs first-navigation delay + chunk 404 risk
+  Waterfall           Discover deps late → sequential fetches; preload helps
+  Chunk boundaries    Match real navigation/usage
+
+SAFE PUBLISH (static SPA + hashed assets)
+  Wrong               Delete old → upload new HTML → upload assets (gaps + break old tabs)
+  Better              Upload new versioned assets → verify → publish HTML → retain old assets awhile
+  Optional            /releases/<id>/… + switch HTML pointer
+  Principle           A release = compatible resource set that may outlive the next release
+  vite:preloadError   Reload fallback only; not excuse to delete live chunks; avoid refresh loops
+
+CACHING
+  Hashed JS/CSS       Cache-Control: public, max-age=31536000, immutable (URL changes on content)
+  HTML entry          Same URL across releases → no-cache / revalidate before reuse
+  CDN invalidate HTML Helps edge get new shell; cannot flush running browser JS
+  Pair                Stable HTML URL + controlled freshness · versioned assets + long cache
+
+STATIC HOSTING
+  SPA output          Static files (Nginx/S3/CloudFront) — Node for build ≠ required for serving
+  History fallback    Refresh /reservations → serve index.html for frontend routes
+  Don't rewrite       Missing /api or missing .js → HTML 200 (MIME/parse disasters)
+
+RENDERING STRATEGIES
+  CSR                 Shell HTML → download JS → execute → fetch → render (good rich SaaS)
+  SSR                 Server HTML with content → display early → hydrate for interactivity
+  Hydration           Client Vue binds to existing DOM; mismatch if server/client disagree
+  Mismatch causes     Math.random, timezone/locale Date formatting, diverging state
+  Avoid               Serialize initial state; deterministic first paint; defer browser-only
+  onMounted           Browser-only (window/document); handle null SSR first paint
+  SSR state hazard    Module-level mutable user state → cross-request leaks; fresh app/store per request
+  SSG                 Prebuild HTML at build time; great for stable marketing/docs; freshness limits
+  Mix                 Marketing SSG · public details SSR · auth dashboard CSR · live data via API
+  SEO                 SSR/SSG help public discoverability; irrelevant for auth-only SaaS
+
+CDN
+  Edge cache          Hashed static easy; personalized HTML needs isolation / no shared cache
+
+CONFIG SECRETS
+  VITE_*              Embedded in client bundle at build — publicly inspectable
+  Never               Put payment/API secrets in VITE_ env for the browser
+  Runtime config      /config.json flexibility vs caching/init complexity
+  Rule                Anything delivered to the browser is accessible to the user
+
+RELEASE CHECKLIST
+  Build/test → publish versioned assets → publish HTML → cache policy → verify → keep rollback
+  Also                API compatibility with still-running old frontends (SE310-L01)
+
+SENIOR LINE: Frontend deploy isn't atomic replacement everywhere—old versions keep running.
+```
 

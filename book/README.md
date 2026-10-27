@@ -26,7 +26,7 @@ book/
 └── AI/                    ← Artificial Intelligence courses
 ```
 
-**3 disciplines · 16 core courses · 73 lectures** (most at manuscript status; `CS340` is stubbed and under construction; edition `2.0.0`).
+**3 disciplines · 16 core courses · 73 lectures** (most at manuscript status; `CS340` L01–L03 manuscript, L04–L07 still stubbed; edition `2.0.0`).
 
 Lecture identity: `CS330-L03`. Frontmatter carries `id`, `manuscript`, `edition`, `legacy_ids`, `prev`/`next`.
 

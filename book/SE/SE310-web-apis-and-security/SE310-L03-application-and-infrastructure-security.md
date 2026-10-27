@@ -1275,4 +1275,88 @@ When reviewing application and infrastructure security, ask:
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
 
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE310-L03  APPLICATION AND INFRASTRUCTURE SECURITY — INTERVIEW GLANCE CARD
+
+OPENING BREACH
+  Valid JWT + HTTPS + private DB — findOne({ id }) without tenant → cross-hotel invoice
+  Lesson         One green control ≠ guarantee it was never designed to provide
+
+THREAT MODEL
+  Not a checklist alone  Controls protect assets against threats at boundaries
+  Ask                    Assets · actors · entry points · trust boundaries · authority
+  App as intermediary    Broad IAM to S3 + weak app authz → limited user → bulk access
+  STRIDE                 Spoof · Tamper · Repudiate · Disclose · DoS · Elevate privilege
+
+AUTHN vs AUTHZ (BOLA)
+  Authn                  Who?
+  Authz                  May they do this on this resource under these conditions?
+  Fix pattern            Trusted tenantId/scope in query — never trust client header alone
+  Dimensions             Identity · tenant · role · resource · action · domain context
+  UI hide                Not a security boundary
+
+MULTI-TENANT ISOLATION
+  Always scope           tenant_id in queries; one forgotten filter = cross-tenant leak
+  Options                App filters · Postgres RLS · schemas/DBs · dedicated infra
+  RLS                    Policy + app context (pooled connections careful); FORCE RLS nuances
+  Everywhere             S3 keys, Redis, jobs, search, logs, exports, webhooks, support tools
+  Namespacing            tenant:456:reservation:123 reduces collisions — ≠ authorization
+
+LEAST PRIVILEGE / DEFENSE IN DEPTH
+  IAM                    s3:* on * → blast radius; narrow Get/Put on needed prefix
+  Layers                 Tenant check → object authz → IAM role → bucket policy → private object
+  Senior Q               If this process is compromised, what can its credentials do?
+
+SECRETS LIFECYCLE
+  Create→store→deliver→use→rotate/revoke
+  Leaks                  Logs, debug prints, stale employee access
+  Prefer                 Temporary IAM role creds; rotate with dual-key when possible
+
+ENCRYPTION
+  In transit             TLS hop-by-hop; termination creates new boundary
+  At rest                Protects storage threats; authorized app can still return plaintext wrongly
+  KMS                    Key access/lifecycle/separation of duties matter
+  Passwords              Hash (e.g. Argon2id + salt) — not reversible encryption
+
+INJECTION / MASS ASSIGNMENT
+  SQL                    Parameterize values; whitelist identifiers (ORDER BY)
+  Broader                Shell, templates, paths, query langs, regex, unsafe deserialize
+  Mass assignment        update(userId, req.body) → isAdmin:true; map approved fields only
+  JSON.parse             Values ≠ validated business-safe objects
+
+SSRF
+  fetch(userUrl)         Server may reach internal services / cloud metadata
+  Defenses               Avoid arbitrary URLs; allowlist; protocol limits; no forbidden nets;
+                         safe redirects; DNS-rebind care; timeouts/size; egress + least privilege
+  https:// check alone   Insufficient
+
+BROWSER LAYER (recap)
+  XSS / CSRF / CSP       Still matter; CORS ≠ backend authz; JWT storage affects CSRF risk
+
+SUPPLY CHAIN
+  npm / CI / images      Malicious dep or privileged Action → artifact/deploy compromise
+  Controls               Lockfiles, scans, least CI perms, pin Actions to SHA, short-lived creds,
+                         separate verify vs deploy, branch/env protection, SBOM, provenance
+  Signed ≠ benign        Compromised legitimate pipeline can sign malice
+
+CONTAINER / CLOUD
+  Not invulnerable       Non-root, drop caps, no privilege, scan/update images
+  Network                DB not on open internet; still need query/tenant authz if app compromised
+  Env / admin access     Separate prod secrets from PR CI; MFA; audited temporary privilege
+  Principle              Restrict authority; limit blast radius
+
+DETECTION / RESPONSE
+  200 can be a breach    Authz failures, bulk export, IAM changes, odd egress — without PII in logs
+  Phases                 Contain · preserve evidence · scope · remediate · recover · notify (e.g. GDPR)
+  Don't                  Blind wipe that destroys forensics
+
+MENTAL MODEL QUESTIONS
+  Assets · Identity · Authorization · Trust boundaries · Authority if compromised ·
+  Defense in depth · Detection/response
+
+SENIOR LINE: Security = disciplined control of authority across boundaries—not a pile of tech logos.
+```

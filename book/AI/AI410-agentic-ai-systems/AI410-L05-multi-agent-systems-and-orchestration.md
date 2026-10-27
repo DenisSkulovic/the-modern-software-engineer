@@ -1583,3 +1583,45 @@ Continue in **AI410 — Agentic AI Systems and Production Engineering**.
    Research examining how multi-agent framework architecture influences latency, coordination, accuracy, and scalability.  
    https://arxiv.org/abs/2602.03128
 
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+AI410-L05  MULTI-AGENT ORCHESTRATION — INTERVIEW GLANCE CARD
+
+MORE AGENTS ≠ MORE INTELLIGENCE
+  Multi-stage LLM pipeline ≠ multi-agent
+  Multi-agent: independent decision-making in delegated responsibilities
+  Same model OK if instructions/tools/context/permissions differ
+  Supervisor can pick wrong synthesis despite conflicting worker evidence
+
+WHY SPLIT
+  Specialization (fewer tools/instructions); context isolation;
+  parallelism; independent capabilities — only if they fix a real limit
+
+PATTERNS
+  Supervisor–worker: delegate, collect, synthesize (supervisor can err)
+  Handoffs: ownership changes; clear transfer of context/responsibility
+  Deterministic orchestrator + agentic workers (workers ≠ agentic boss)
+  Agentic workers do not require an agentic supervisor
+
+PARALLEL / COMMUNICATION
+  T ≈ T_dispatch + max(T_workers) + T_merge
+  Communication is lossy; structured findings > prose dumps
+  Shared vs independent state — avoid silent inconsistency
+  Tool ownership & security boundaries per agent
+
+FAILURES / COST
+  Cascading errors; inconsistent conclusions; expanded attack surface
+  Cost = Σ(calls×tokens) + tools + coordination; time ≈ critical path + merge
+  Eval end-to-end + trajectories, not only specialist unit tests
+
+WHEN WORTH IT
+  Decomposition improves capability/context/parallelism enough to beat
+  coordination cost — otherwise one bounded agent / workflow wins
+
+SENIOR LINE: more agents = more useful work opportunities AND more lossy boundaries.
+```

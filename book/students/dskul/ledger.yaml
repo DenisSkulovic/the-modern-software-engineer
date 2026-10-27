@@ -146,15 +146,15 @@ lectures:
   CS230-L03:
     course: CS230
     title: 'HTTP: The Protocol That Runs the Web'
-    status: unopened
-    confidence: 0
-    passes: 0
-    opened_on: null
+    status: studying
+    confidence: 2
+    passes: 1
+    opened_on: '2026-10-27'
     settled_on: null
-    last_touched: null
+    last_touched: '2026-10-27'
     next_encore: null
-    encore_interval_days: null
-    notes: ''
+    encore_interval_days: 14
+    notes: 'Full voice listen-through; one session. Prose done; labs not started.'
   CS230-L04:
     course: CS230
     title: "DNS: The Internet's Distributed Naming System"

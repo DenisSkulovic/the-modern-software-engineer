@@ -1391,3 +1391,92 @@ In **CS430-L01 — Distributed Systems and Partial Failure**, we'll investigate 
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE320-L03  QUEUES / WORKERS — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Execute effect ≠ record completion ≠ business effect done
+  Crash after send, before ack → recovery redelivers → duplicates
+  Queue lock coordinates ownership inside queue; can't undo external work
+
+WHY QUEUES
+  Separate critical accept from secondary consequences
+  Scale workers independently; absorb bursts; retry failures
+  Contract shifts: “done” → “durably accepted for later”
+  202 Accepted + job status vs 201 after committed reservation
+
+BULLMQ LIFECYCLE (simplified)
+  waiting → claim → active → completed | retry/delay | failed
+  Lock renewal while processing; stall → recover to waiting
+  Stall ≠ permanent state; blocked event loop can stall too
+  Overlap possible if lock lost while JS still running
+
+DELIVERY MODELS (careful terms)
+  At-most-once   may lose work; no deliberate redelivery
+  At-least-once  unfinished can retry; duplicates possible (BullMQ-ish)
+  Exactly-once effect  needs idempotency / provider coords — not
+                       “broker magic” alone
+  Delivery ≠ handler run ≠ business effect
+
+IDEMPOTENCY
+  Business operation ID (refund-9281) > mere queue job ID
+  Local PG: INSERT processed_operations ON CONFLICT + effect in ONE txn
+  External call: mark-before / call-before both race; need provider
+  idempotency keys, query, or reconcile
+  Enforce where effect occurs
+
+JOB ID ≠ PROCESSING IDEMPOTENCY
+  Custom jobId: enqueue dedupe while job exists
+  removeOnComplete: ID free again; stalls still re-execute same job
+  Technical queue ID ≠ business uniqueness guarantee
+
+DUAL-WRITE / OUTBOX
+  save() then queue.add() — no shared atomicity with Redis
+  Outbox: insert business + outbox_events same PG txn → publisher → queue
+  Publisher may republish; consumers need idempotency
+  FOR UPDATE SKIP LOCKED for concurrent publishers; don't hold txn
+  during slow network
+  Outbox = durable obligation; queue = schedule attempts
+
+RETRIES
+  Transient vs permanent (invalid email ≠ retry forever)
+  Ambiguous timeout ≠ permission for new payment ID
+  attempts + exponential backoff + jitter; respect deadlines
+  Exhausted → poison / failed set / DLQ-like store; inspect + replay
+  Job fail ≠ business fail (reservation confirmed, email failed)
+
+CONCURRENCY / ORDERING
+  concurrency:N good for I/O; not free CPU parallelism
+  Completion order ≠ submission under concurrency/retries
+  Entity version / partition-by-entity / conditional updates
+  Partition alone insufficient if delayed duplicates appear
+
+BACKPRESSURE
+  Arrival > service forever → unbounded backlog (memory only delays)
+  Near 100% util → waiting time explodes on small bursts
+  Measure oldest waiting age + rates, not only depth
+  Scale / limit / rate-limit / coalesce / separate latency classes
+
+OPS
+  Redis for queues: noeviction + suitable AOF/persistence
+  Producer vs worker outage policies differ
+  Graceful close reduces dupes; doesn't remove need for idempotency
+  Monitor waiting/active/failed, stalls, age, AND business outcomes
+
+QUEUE ≠ WORKFLOW ENGINE
+  Complex multi-day payment/booking: durable state in PG;
+  queue advances steps; job graph ≠ full business machine
+
+FOUR RESPONSIBILITIES
+  Business state · Durable intent · Execution scheduling · Effect enforcement
+
+SENIOR LINE: Design as if worker crashes right after the side effect
+             and before recording success.
+```
+
+---
+

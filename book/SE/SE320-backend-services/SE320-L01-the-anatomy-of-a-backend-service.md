@@ -1684,3 +1684,103 @@ These references complement the lecture without being prerequisites:
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE320-L01  BACKEND ANATOMY — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Backend ≠ controller + DB call
+  Preserve business rules while coordinating components with
+  different constraints / failure modes
+  Request crosses responsibility boundaries (questions), not
+  necessarily separate processes
+
+REQUEST PATH (illustrative)
+  HTTP server → middleware → routing → authN → authZ/validation
+  → controller → application service → domain + deps
+  → repository/adapter → DB → serialize → response
+
+RESPONSIBILITY QUESTIONS
+  Transport     How receive?
+  AuthN         Who?
+  AuthZ         Permitted for THIS operation/resource?
+  Validation    Input contract?
+  App service   What business operation?
+  Domain        What rules?
+  Persistence   How retrieve/modify durable data?
+  Response      How communicate outcome?
+
+MIDDLEWARE
+  Cross-cutting / transport: logging, body parse, request ID,
+  rate limit, authN identity
+  Call next() OR respond OR hang
+  Trap: giant chains with DB writes / business side effects
+  Business ops stay visible in use cases
+
+AUTHN ≠ AUTHZ
+  Valid token ≠ may access every ID (BOLA / object-level authZ)
+  Scope from trusted identity, not client body.tenantId
+  Trust boundary: external input → privileged system
+  AuthZ must survive workers/CLI — not only HTTP controller
+
+VALIDATION LAYERS
+  Structural   shape near transport (e.g. Zod)
+  Business     domain rules (dates, min stay…)
+  State-dep.   inventory/paid/cancelled — snapshot ≠ concurrent invariant
+  Never trust client totals/prices as authoritative
+
+CONTROLLER vs APPLICATION SERVICE
+  Controller = HTTP adapter (parse, status, shape)
+  App service = use case (reusable from jobs/GraphQL)
+  Domain = rules without Express/HTTP/DB
+
+PERSISTENCE
+  Design interfaces around needed ops, not generic CRUD
+  Dependency inversion: app owns ports; infra implements
+  Modular monolith: feature modules + deliberate public APIs
+  Folders ≠ boundaries if every module mutates every table
+
+TRANSACTIONS & SIDE EFFECTS
+  Same client for BEGIN…COMMIT; pool.query() ≠ shared txn
+  DB txn ≠ external email/payment atomicity
+  Dual-write: DB + queue.add() not atomic
+  Prefer outbox intent in same txn; worker delivers later
+
+SYNC vs ASYNC
+  Sync: must complete before truthful promise
+  Async: consequence under separate recovery contract
+  Background work ≠ mere performance trick
+
+DI / COMPOSITION
+  Composition root assembles deps; business shouldn't own infra construction
+  DI ≠ need a heavy container for every helper
+
+REQUEST CONTEXT
+  requestId for log correlation; AsyncLocalStorage OK for diagnostics
+  Explicit params for actor/tenant/txn ownership
+  Ambient context ≠ durable worker state tomorrow
+
+ERRORS (typical mapping)
+  400 malformed · 401 authN · 403 forbidden · 404 missing/undisclosed
+  409 conflict · 422 semantic · 429 rate · 500 unexpected · 503 unavailable
+  App errors → HTTP adapter maps; machine-readable codes
+  Don't leak stacks/SQL/secrets; uncertain outcome ≠ proven failure
+
+RESOURCES / LIFECYCLE
+  Hardware free ≠ runtime capacity (pool, event loop, FDs)
+  Hold DB conn while awaiting HTTP → pool exhaustion, low CPU
+  Liveness vs readiness; /health ≠ ready if DB unreachable
+  Manage resources + lifecycle, not only correct functions
+
+INCIDENT PATTERN
+  Persist OK + notify timeout → 500 → retry → duplicates
+  Fix: truthful commit boundary + outbox + idempotency
+
+SENIOR LINE: What responsible? Assume? Guarantee? When assumption breaks?
+```
+
+---
+

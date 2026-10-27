@@ -1437,6 +1437,79 @@ Continue in **CS430 — Distributed Systems and Reliable Workflows**.
 - **MDN — AbortSignal:** https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal
 - **Martin Kleppmann — Designing Data-Intensive Applications, 2nd Edition:** Chapters on distributed systems, consistency, and coordination.
 
-
 ---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS430-L01  DISTRIBUTED SYSTEMS & PARTIAL FAILURE — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Remote call ≠ local function with latency
+  Partial failure: components fail independently; caller may not observe truth
+  Timeout = caller's waiting bound — NOT remote outcome
+  UNKNOWN is sometimes the only honest state
+  Observation ≠ business result (ETIMEDOUT ≠ payment declined)
+
+REQUEST OUTCOMES
+  Fail before send / lost request / during process / after commit / lost response
+  Same client timeout sequence can mean €450 charged once OR twice
+
+TIMEOUTS & DEADLINES
+  Bound wait; abort local fetch ≠ remote rollback / stop
+  Deadline = overall budget; each hop gets remaining time (monotonic clock)
+  Too short → false aborts; too long → resource pileup
+  Payment timeouts need status lookup + idempotency, not just shorter waits
+
+RETRIES
+  Useful for transients; amplify load (retry storms: 3×3×3 = 27)
+  Concentrate retries at one deliberate layer; shared deadline
+  Exponential backoff + jitter (avoid synchronized waves)
+  Retry only when operationally bounded AND semantically safe
+  503 maybe; validation no; payment timeout = special care
+
+IDEMPOTENCY
+  Stable operation identity (Idempotency-Key) for one business intent
+  Server: claim identity → PROCESSING → SUCCEEDED/FAILED; replay result
+  Fingerprint params — same key + different amount = conflict (409)
+  Concurrent claim needs atomic uniqueness/tx (race = double charge)
+  Finite key retention (e.g. Stripe) — know provider contract
+  Guarantee: repeated same intent ≠ unintended extra effects under protocol
+  No provider idempotency → lookup/reconcile by stable reference; else policy
+
+CIRCUIT BREAKER
+  CLOSED → too many failures → OPEN (fail fast) → HALF-OPEN probes → …
+  Doesn't repair dependency / prove payment status / make retries safe
+  Fallback must preserve semantics (optional enrich vs payment authority)
+  Combine with bounded retries; avoid synchronized half-open stampedes
+
+BULKHEADS
+  Isolate concurrency/pools per workload so one slow dependency can't eat all
+  Bounded reject/queue > unlimited acceptance
+  Reliability sometimes = do less work
+
+TAIL LATENCY
+  Many serial deps: end-to-end p99 suffers even if each is "99% OK"
+  Parallelize independent calls; cancel/fallback carefully (Promise.all traps)
+
+CLOCKS & LEASES
+  Wall clock ≠ global order; monotonic for local elapsed only
+  Lease expiry doesn't stop a paused worker → dual owners
+  Fencing token: resource rejects older ownership generation
+
+CORRELATION IDS
+  Request ID ≠ Trace ID ≠ Operation ID ≠ Reservation ID ≠ Provider ref
+  Retry: new request ID, SAME operation ID
+  Observability helps investigate; durable state + reconcile = correctness
+
+PAYMENT WORKFLOW PATTERN
+  Durable payment operation → submit with stable key → success/fail/UNKNOWN
+  Preserve pending on ambiguity; reconcile/retry safely
+  Customer messaging must match what backend can guarantee (e.g. 202)
+  Remote op state lives in durable records — not one HTTP success/fail
+
+SENIOR LINE: make uncertainty explicit; design recovery around it.
+```
 

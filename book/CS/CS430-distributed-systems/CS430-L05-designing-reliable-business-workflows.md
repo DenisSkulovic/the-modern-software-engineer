@@ -1583,6 +1583,92 @@ In **SE490-L03 — System Design Workshop: Build for 100× Traffic**, we'll brin
 - **PostgreSQL — Explicit Locking:** https://www.postgresql.org/docs/current/explicit-locking.html
 - **PostgreSQL — SELECT and Row Locking:** https://www.postgresql.org/docs/current/sql-select.html
 
-
 ---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS430-L05  RELIABLE BUSINESS WORKFLOWS — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Multi-system booking: intent → hold → auth → supplier confirm → capture
+  Timeout ≠ failure; process memory ≠ truth
+  Workflow must remember intent, established facts, and uncertainty after crash
+  Success = recoverable correct NEXT action from durable state
+
+START FROM GUARANTEES
+  Prepaid example: confirmed only after supplier confirm + payment capture
+  Email is consequence, not atomic success condition
+  Invariants: inventory correctness, payment once, durable recoverability,
+    truthful status, every nonterminal state has progress/expire/compensate/escalate
+
+STATE MACHINE ≠ ONE BOOLEAN
+  Separate dimensions: booking / payment / inventory statuses
+  Versioned conditional transitions (UPDATE … WHERE status AND version)
+  Zero rows → reload; don't force stale next state
+  Late PaymentAuthorized must not revive cancelled booking blindly
+
+PROTOCOL STEPS (DURABLE EACH)
+  A Idempotent booking intent (key + request hash)
+  B Inventory hold + hold id/deadline
+  C Payment authorize (e.g. Stripe capture_method=manual → requires_capture)
+  D Supplier confirm — reconcile if UNKNOWN
+  E Capture with stable provider id — never new payment identity on timeout
+  F Confirm booking; notify async
+
+HOLD EXPIRATION RACE
+  Cleanup and confirm race on same hold
+  Atomically claim HELD→RELEASING vs HELD→CONFIRMING (mutual exclusion)
+  Local claim ≠ supplier truth; still reconcile remote outcome
+  Safety margins before deadline; don't treat local expiry as supplier reject
+    while confirmation UNKNOWN
+
+AUTH ≠ CAPTURE ≠ SETTLEMENT
+  Prefer cancel auth over capture+refund when supplier rejects after auth
+  Authorizations expire; long-horizon hotels ≠ hold card for months
+  Ask: authorized? captured? provider definitive?
+
+WEBHOOKS
+  Duplicate, out-of-order, arrive during recovery
+  Verify signature on RAW body → durable inbox (provider, event_id PK) → 2xx
+  Then background reconcile — don't do heavy work before ack storage
+  Fail ack if can't persist (provider should retry)
+  Inbox dedupe ≠ business dedupe; object_id+type may also matter
+  Event = evidence → reconcile against workflow; not unconditional overwrite
+  Late capture after cancel → refund obligation, not auto-confirm
+
+RECONCILIATION (FIRST-CLASS)
+  Webhooks alone can leave permanent UNKNOWN if delivery dies
+  Poll unresolved payment/supplier ops by stable refs
+  Lookup timeout ≠ business failure
+  Compare local vs provider/supplier/ledger periodically
+
+COMPENSATION CASES
+  Hold + payment declined → release hold
+  Auth + supplier reject → cancel auth (not capture)
+  Supplier confirm + capture fail → policy: retry / new pay / cancel (fees?)
+  Capture + supplier UNKNOWN → reconcile before finalize/refund
+  Compensation itself needs durable id + reconcile (refund timeout)
+
+ORCHESTRATOR
+  Durable switch on status; one recoverable step at a time
+  Claim → record intended external op id → commit → call → record outcome
+  Don't hold long PG txs across external HTTP
+  Duplicate workers: version/lease claim + provider idempotency for stale resume
+
+BROWSER / CANCEL / CLOCKS
+  Disconnect ≠ cancel booking; 202 + GET status; same key returns same attempt
+  Explicit cancel = business op depending on current state
+  Many clocks: hold, auth, API timeout, reconcile cadence — independent
+  Local timestamps schedule; provider rules decide validity
+
+OPS
+  Timeline of transitions with external ids for support
+  Age of oldest unresolved booking; severity: email fail ≪ capture w/o room
+
+SENIOR LINE: reliable when next action recovers from durable state —
+             not when every step succeeds in the original request.
+```
 

@@ -1651,6 +1651,98 @@ Continue in **CS430 — Distributed Systems and Reliable Workflows**.
 - **AWS — Saga Choreography Pattern:** https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/saga-choreography.html
 - **PostgreSQL — Two-Phase Transactions:** https://www.postgresql.org/docs/current/two-phase.html
 
-
 ---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS430-L04  MICROSERVICES, EVENTS & BOUNDARIES — INTERVIEW GLANCE CARD
+
+CORE TRADE
+  Split services → lose one local transactional boundary
+  Cost of distribution ≠ only latency — loss of simple shared authority
+  Opening failure: inventory held, payment auth unknown, hold expires,
+    another books room, late webhook — each local step "worked"
+
+WHAT IS A MICROSERVICE?
+  Owns a business capability; intentional interface; independent deploy;
+  owns its persistent state; others use contracts — not internals
+  Micro ≠ tiny; ValidationService/DatabaseService ≠ good boundaries
+  Layered split + network = distributed function-call tax
+
+MODULAR MONOLITH FIRST
+  Modules + one DB → local txs for shared invariants (allocate+confirm)
+  Discipline: public interfaces, owned tables — not free-for-all joins
+  Deploy/scale/fault isolation costs grow with org — justify vs coordination
+
+BOUNDARIES FROM INVARIANTS
+  What must change state together? → consistency boundary candidates
+  Reservations↔inventory: strong transactional coupling
+  Notifications: async candidate (email fail ≠ undo booking)
+  Aggregate ≠ microservice synonym
+
+DATA OWNERSHIP
+  Don't SELECT another service's tables — breaks independent evolution
+  DB-per-service ≠ server-per-service (schemas/DBs on shared PG OK-ish)
+  Logical ownership ≠ physical isolation
+  Cross-domain reports harder → composition or read models
+
+READS ACROSS BOUNDARIES
+  A API composition: clear ownership; latency/availability coupling
+  B Materialized read model / CQRS projection: fast; async lag;
+    don't refund from stale projection — consult authority
+
+SYNC CALLS
+  Look like functions; timeouts after remote commit; need idempotency
+  Chatty chains amplify latency/fragility; use sync when answer needed now
+
+EVENTS VS COMMANDS
+  Command: request action (AuthorizePayment) — intended recipient
+  Event: report fact (PaymentAuthorized) — many consumers
+  Publish only what publisher can truthfully assert
+  Event schemas are APIs (units, status meaning, versioning)
+
+DUAL-WRITE PROBLEM
+  DB commit then publish OR publish then DB — either can diverge
+  Transactional outbox: business change + outbox row in ONE DB tx
+  Relay publishes; crash → duplicate delivery → consumers must be idempotent
+  Polling outbox vs CDC/Debezium — different ops; neither = exactly-once
+
+ORDERING
+  Concurrent consumers can apply Cancel then Confirm → wrong projection
+  Aggregate version / ordered partition / fetch missing deltas
+  Design for consumer state transitions — don't assume publish order = apply
+
+SAGAS
+  Sequence of local commits + compensations — not one global rollback
+  Compensation = new business op (refund ≠ time travel; email irreversible)
+  Choreography: react to events — loose; hard to own overall state
+  Orchestration: explicit coordinator + durable workflow state — clearer for
+    multi-step payment/inventory with timeouts/compensation
+
+2PC
+  PREPARE / COMMIT PREPARED exists — not impossible
+  Couples participants; holds resources; coordinator failure; many APIs
+    (payments, brokers) don't participate
+  Prefer durable state machines + idempotency + compensation for typical SaaS
+
+WHEN MICROSERVICES EARN COST
+  Independent teams with stable contracts
+  Distinct scale / isolation / technology / external product boundary
+  NOT "more deployable units" fashion
+
+DISTRIBUTED MONOLITH
+  Many services + coordinated releases + shared schemas + sync call chains
+  Pays microservices tax without independence — fix boundaries, not mesh
+
+EVOLUTION
+  Strangler: extract one capability (e.g. notifications via outbox) first
+  Prefer clear ownership, weak sync deps, distinct ops needs early
+  Inventory/payments later — with designed consistency protocol
+
+SENIOR LINE: place boundaries where independence is valuable and
+             coordination remains manageable.
+```
 

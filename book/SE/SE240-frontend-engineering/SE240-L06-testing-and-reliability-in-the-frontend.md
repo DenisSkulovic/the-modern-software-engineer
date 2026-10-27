@@ -1338,6 +1338,68 @@ In **SE490-L02 — Architecture Workshop: Design a Modern Web Product**, we'll d
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
 
----
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE240-L06  TESTING AND RELIABILITY IN THE FRONTEND — INTERVIEW GLANCE CARD
+
+OPENING BUG
+  1200 green tests    Still booked wrong dates — stale async response overwrote booking state
+  Lesson              Isolated pieces OK; interaction + timing failed; coverage ≠ confidence
+
+WHAT A TEST PROVES
+  Narrow oracle       Pass ≠ all edge cases; expect(f(x)).toBe(f(x)) proves nothing
+  Don't clone prod    Same wrong algorithm in test = shared conceptual error
+  Goal                Evidence vs requirements/invariants — not green checkmarks
+
+FOUR LEVELS
+  Unit                Pure logic (canCancel) — fast; doesn't prove UI/backend agreement
+  Component           Vue Test Utils: props, emit, disabled; await trigger for Vue flush
+  Integration         Real composables/store + controlled API boundary — catches contract mismatches
+  E2E / Playwright    Real browser journey; realism = which deps are genuine
+
+MOCKING
+  Mock APIs prove     Frontend handles that fake response — not real backend/DB/auth/proxy
+  Ask                 Which real boundaries does this “E2E” actually cross?
+  Rule                Preserve behavior under test; substitute outside that responsibility
+  Paradox             Instant mockResolvedValue removes race that caused production bug
+  Fault injection     Force A-then-B reverse completion; 401/409/timeout/unmount/double-click
+
+COVERAGE
+  Statement/branch/…  Executed ≠ correct; wrong formula can have 100% coverage
+  Mutation testing    Change code; do tests fail? Stronger signal than line %
+  Prefer              Risk-based: pricing, state machines, authz, critical journeys
+  Not                 100% coverage worship / testing trivial getters
+
+FLAKY TESTS
+  Cost                Destroy credibility → ignore real failures
+  Fixed sleep         waitForTimeout fragile; prefer expect(…).toBeVisible() auto-wait
+  Fragile selectors   nth-child CSS → prefer getByRole/name or stable test ids
+  Shared state        Order-dependent / parallel contamination → isolate contexts/data
+  Real races          Longer sleep hides product bug — fix app or make race deterministic
+
+ACCESSIBILITY
+  Semantic HTML       <button> vs clickable <div>
+  Locators            getByRole helps stability and surfaces missing semantics
+  axe-core            Useful but incomplete; keyboard, focus restore, SR need more
+  Principle           Test how real people interact — not only mouse-happy developers
+
+BROWSER MATRIX
+  Playwright engines  Chromium/Firefox/WebKit ≠ every Safari/device
+  Strategy            Risk-based: PR smoke → critical engines → periodic broader → real devices
+
+CI ARCHITECTURE
+  PR                  Types, lint, unit, component, focused integration, critical smoke
+  After               Post-deploy smoke + scheduled broader suites
+  Smallest scope      That still gives convincing evidence; few large boundary tests complement
+  Prioritize by risk  Duplicate booking / totals / checkout > decorative badge color
+
+PRODUCTION RELIABILITY
+  Beyond suite        JS errors, failed APIs, CWV, booking completion metrics
+  Rollback            SE240-L04: old clients + caches; backend must stay compatible
+
+SENIOR LINE: Suite value = making important bugs hard to ship—not impressive dashboards.
+```
 

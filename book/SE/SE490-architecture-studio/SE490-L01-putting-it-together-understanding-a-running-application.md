@@ -1539,3 +1539,53 @@ The second skill is what allows the first to become reliable engineering.
 
 Continue in **SE490 — Architecture and Systems Design Studio**.
 
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE490-L01  RUNNING APPLICATION — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Separate observations from hypotheses ("dashboard slow" ≠ "Postgres overloaded")
+  Four Friday incidents = four constraint classes interacting under load/change
+  Fix mechanism first; infrastructure sophistication ≠ problem-solving
+
+INCIDENT → MECHANISM → FIX
+  Dashboard N+1     1 + n sequential invoice queries; CPU idle, waiting on DB
+                    Promise.all still n queries → can stampede pool
+                    Fix: set-based SQL (DISTINCT ON / window / join) + index
+  Double booking    check-then-act race across API instances; local mutex ≠ shared
+                    Fix: conditional UPDATE … AND available > 0 RETURNING in txn;
+                    multi-night all-or-nothing; payment OUTSIDE DB txn
+  Worker OOM 137    V8 heapUsed OK; external/RSS grow (Buffers); Promise.all unbounded
+                    Peak memory ≠ leak; bound concurrency; upload then drop PDF
+  Corrupted ID      JSON number > MAX_SAFE_INTEGER → IEEE754 loss on parse
+                    TS number / bigint after parse cannot recover digits
+                    Fix: string IDs (or safe parse); reject unsafe numerics
+
+BOOKING WORKFLOW (distributed)
+  PENDING → INVENTORY_HELD → PAYMENT_AUTHORIZED → CONFIRMED
+  Hold + expire; Idempotency-Key; reconcile UNKNOWN payment outcomes
+  Enforce invariant where shared state lives (Postgres), not in process memory
+
+INVESTIGATION / PRIORITY
+  Correctness & customer harm > cosmetic latency
+  Contain → repair data → permanent fix → verify with failure-mode tests
+  Concurrent booking test; peak RSS; ID boundary values; not happy-path only
+
+OBSERVABILITY (5th problem)
+  Logs / metrics / traces; request IDs; dependency timings; query counts
+  System that can't explain itself prolongs every incident
+
+LONG-TERM BOUNDARIES
+  Validate external data; own invariants; bound resources; design for queries;
+  recovery as normal (idempotency, retries, reconciliation)
+
+FOUR CONSTRAINTS
+  Information | Work | Time/ordering | Environment — they interact (retries amplify)
+
+SENIOR LINE: manage unsafe assumptions; produce code ≠ understand a system.
+```

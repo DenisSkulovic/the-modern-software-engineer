@@ -850,3 +850,109 @@ The lecture is self-contained. These help for deeper exploration.
 7. [web.dev — Time to First Byte](https://web.dev/articles/ttfb)
 8. [MDN — Service Worker Fetch Events](https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/fetch_event)
 
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS230-L01  JOURNEY OF A WEB REQUEST — INTERVIEW GLANCE CARD
+
+CORE QUESTION
+  At what point does the browser actually need your application server?
+  Immediately / eventually / several times / not at all — all legitimate.
+
+URL = INSTRUCTIONS, NOT ONE ADDRESS
+  Scheme     https → HTTP semantics over secure transport
+             (HTTP/2+TLS+TCP or HTTP/3+QUIC+UDP — not “always TCP”)
+  Hostname   stays.example.com — name, not IP; TLS identity + Host/:authority
+  Path       /search — resource; may be SPA route, not a disk file
+  Query      city=… — part of request target; HTTPS ≠ secret from logs/history
+  Fragment   #results — CLIENT ONLY; never sent as HTTP request target
+  Origin     scheme + hostname + port (HTTPS default 443) — CORS later
+
+BEFORE THE NETWORK
+  Cold visit     discover, connect, fetch document
+  Refresh        DNS/conn/cache may reuse → validate or refetch
+  Back/forward   bfcache may restore suspended page (≠ cache hit)
+  SPA route      JS view change; may skip new HTML; maybe API or local data
+  Service worker intercept → cache/offline shell without origin
+
+DNS — WHERE A NAME LIVES
+  Indirection: stable name ≠ fixed network location
+  Path: stub/browser → recursive resolver → root → TLD → authoritative
+  A / AAAA   IPv4 / IPv6 addresses (possibly many)
+  CNAME      alias → another name (CDN common)
+  TTL        caches reuse until expiry — cut old infra early → “DNS broken”
+  DNS reveals advertised endpoint, NOT backend/DB/Lambda architecture
+
+IP ROUTING vs DNS
+  DNS: where should I send traffic?
+  IP:  how can this packet move toward that destination?
+  Routers forward packets; they don’t care about GET /search
+  Fiber ≈ 200 km/ms → 5000 km ≈ 25 ms one-way / ~50 ms RTT floor
+  RTT hurts when many SEQUENTIAL round trips precede useful bytes
+
+TCP — RELIABLE BYTE STREAM
+  Connection = (src IP, src port, dst IP, dst port) + transport context
+  Socket = OS endpoint abstraction
+  Handshake SYN → SYN-ACK → ACK ≈ 1 RTT before app data (typical)
+  Does NOT understand HTTP/JSON; message boundaries are higher-layer
+  Reuse / HTTP/2 multiplexing: avoid paying setup per resource
+
+TLS — RIGHT PEER + PROTECTED BYTES
+  Encrypt without authenticate → still impersonation risk
+  TLS 1.3 over TCP: often ~1 extra RTT before app data
+  Certificate: hostname, validity, chain, private-key proof
+  Termination: Browser──TLS A──►CDN──TLS B──►App  (different keys)
+  “HTTPS enabled” ≠ end-to-end through Node/DB
+  ALPN picks h2 / http/1.1; HTTP/3 integrates TLS inside QUIC
+
+HTTP — APPLICATION MEANING
+  Method + target + headers + body; Host/:authority selects virtual host
+  GET conventionally safe; Cookie reconstructs “session” illusion
+  Semantics ≠ wire serialization (HTTP/2 binary frames)
+  Status: 200 / 301·302 / 304 / 401·403 / 404 / 500·503
+  Redirects add sequential steps; HSTS may skip insecure first hop
+  Content-Type / Content-Encoding; streaming overlaps server+browser work
+
+EDGE BEFORE YOUR APP
+  Browser → CDN / reverse proxy → (cache?) → WAF → LB → App → deps
+  Cache hit: empty backend logs + working site — no contradiction
+  Public service > application process
+  Cache carefully: hashed static OK; personal data + bad key = leak
+
+MEASUREMENT BOUNDARIES
+  “Backend 43 ms” ≠ page experience
+  Ask: measured from where to where?
+  Misses: DNS, TCP/QUIC, TLS, transit, CDN, queues, transfer, JS, APIs
+
+AFTER HTML — CRITICAL PATH
+  DOM → style → layout → paint → composite
+  HTML fans out: CSS, JS→init→API→render, fonts, images
+  Elapsed ≈ critical dependency path, not sum of all work
+  Parallel 3×200 ms ≈ 200 ms; sequential 3×200 ms ≈ 600 ms
+  TTFB = first response byte (def. includes redirects/setup…) ≠ server CPU
+  Fast delivery ≠ fast paint ≠ fast interaction
+
+HTTP VERSIONS (SAME LANGUAGE, DIFFERENT MACHINERY)
+  1.1  reuse; limited concurrency; multi-conn workaround
+  2    multiplex over ONE TCP ordered stream → TCP HoL under loss
+  3    QUIC/UDP; independent streams; TLS integrated; 0-RTT (replay care)
+  Diagnose PERFORMANCE at transport; CORRECTNESS at HTTP semantics
+
+COLD JOURNEY (RESPONSIBILITIES)
+  URL → local state → DNS → route → TCP/QUIC → TLS → HTTP req
+  → edge/cache? → app → HTTP resp → parse/load/JS/render → page
+
+MYSTERY REVISITED
+  Slow first: critical path HTML→big JS→startup→API late
+  Fast reload: caches, DNS, conn reuse
+  No logs: CDN / SPA / SW / client already has data
+  Offline shell: SW + local data
+
+SENIOR LINE: which critical-path dependency owns the delay, and what
+             mechanism sets its cost? App code time ≠ experience time.
+```
+

@@ -2210,3 +2210,90 @@ The goal is to develop an evidence-based model of the complete request path.
 13. [MDN — X-Forwarded-For](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-For) — Forwarded address chains and security considerations.
 14. [Nginx — Proxy Module](https://nginx.org/en/docs/http/ngx_http_proxy_module.html) — Reverse proxying, buffering, connection behavior, and upstream configuration.
 15. [AWS — Application Load Balancers](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html) — Practical layer-seven load balancing in AWS.
+
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS230-L08  PROXIES / LB / CDN / HTTP VERSIONS — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  One browser "request" ≠ one continuous connection to Node —
+               many hops: Browser → CDN → LB → backend → DB; protocols may differ
+  App semantics can survive; transport identity of the connection usually does not
+  Intermediary = programmable participant (route/cache/headers/TLS) — not a pipe
+  Infrastructure rules = executable application behavior
+
+PROXIES
+  Forward    on behalf of clients (corp egress); CONNECT tunnel may pass TLS;
+             TLS inspection = different trust model
+  Reverse    on behalf of server infra (TLS term, routing, cache, filter…)
+  Gateway    ambiguous: IP router vs API gateway (L7) — ask layer + responsibilities
+
+LOAD BALANCING
+  L4         IP/port/protocol; efficient; no path/cookie-aware HTTP routing alone
+  L7         method/host/path/headers; often TLS terminate to inspect
+  ≠ scaling  distributes among targets; doesn't invent DB/API capacity
+  Algorithms round-robin (assignments ≠ equal cost); least-conn / outstanding reqs
+               (metric ≈ load?); weighted; consistent hash / affinity
+  Sticky     affinity hides local-session pain; crash/scale/deploy still lose state —
+               prefer external session / stateless auth; LB ≠ immortal process
+
+HEALTH / DRAIN
+  Liveness ≠ readiness; alive+listening can still fail all business work
+  Over-checking external deps → partial outage → empty healthy pool
+  Health check = routing control — not proof every workflow succeeds
+  Connection draining: stop new work; finish in-flight; long-lived (WS/stream) need policy
+
+CLIENT IDENTITY AFTER PROXY
+  Backend sees proxy as peer; X-Forwarded-For / Forwarded / X-Forwarded-Proto|Host
+  Header ≠ proof — clients can forge; trust only configured proxy boundary;
+               pick client addr by trusted positions/networks — not "leftmost always"
+  Wrong scheme guess → http redirects / insecure cookies if Proto untrusted
+
+TLS AT INTERMEDIARIES
+  Terminate at CDN/LB → plaintext there; re-encrypt ≠ continuous client↔app TLS
+  Passthrough preserves end TLS; loses ordinary L7 path/body inspect & cache
+
+CDN / CACHE
+  Globally distributed reverse proxy — not only static files
+  Cache key = equivalence for reuse; URL-only for /api/me/* → cross-customer leak
+  Auth Cookie ≠ same shared-cache restriction as Authorization header
+  Cache-Control: private / no-store / no-cache (store+revalidate) / public
+  Sensitive: prefer no-store + CDN policy; Vary ≠ universal auth fix
+  Stampede on expiry → coalescing / stale-while-revalidate / origin shield
+               (only if equivalence & business staleness OK)
+  Intermediary that answers = security/correctness boundary
+
+HTTP VERSIONS
+  1.1  textual; persistent; no modern mux; pipelining rare → parallel conns
+       HTTP-layer HoL if ordered pipeline
+  2    binary frames; stream mux; HPACK; flow/priority; STILL one TCP ordered stream
+       → TCP loss can block other streams (transport HoL)
+  3    HTTP over QUIC; independent stream delivery; TLS 1.3 integrated;
+       discover Alt-Svc / HTTPS DNS / prior knowledge; UDP block → fall back
+       Not always faster — measure; ≠ immune to loss/congestion/deps
+
+STREAMING
+  Chunked / H2-H3 frames / SSE (text/event-stream) / WebSockets / gRPC streams
+  Proxy buffering can batch SSE — flush + disable buffer per route; every hop must cooperate
+  WS: upgrade/long-lived → idle timeouts, drain, reconnect; not eternal
+  gRPC on H2: still deadlines/cancel/backpressure/uncertain outcomes
+
+TIMEOUTS / RETRIES / OBSERVABILITY
+  502 bad/invalid upstream via gateway; 503 unavailable; 504 gateway timeout
+  Status origin matters — may never hit Node
+  Multi-layer retries → amplification / retry storm; bound + backoff; respect idempotency
+  Cancel ≠ remote rollback; overall deadline / budget across hops
+  TTFB ≠ handler time; correlate IDs across CDN/LB/app; cache hit → no app span
+
+DESIGN SNIPPET
+  Hashed static → long CDN TTL; public search → keyed+freshness; /me → no shared cache;
+  transactions → idempotency; streams → streaming-capable ingress
+
+SENIOR LINE: ask what an intermediary can inspect, decide, store —
+             and what breaks when its equivalence assumptions are wrong.
+```

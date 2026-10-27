@@ -1593,3 +1593,51 @@ Continue in **AI410 — Agentic AI Systems and Production Engineering**.
    Practical security considerations for MCP deployments, including credential handling, tool exposure, and trust-boundary risks.  
    https://cheatsheetseries.owasp.org/cheatsheets/MCP_Security_Cheat_Sheet.html
 
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+AI410-L04  MCP — INTERVIEW GLANCE CARD
+
+WHAT MCP IS
+  Integration protocol: discover/invoke external tools & contextual info
+  Not an agent framework; not a trust/authz solution
+  JSON-RPC 2.0 messages; client must check negotiated features
+
+ROLES
+  Host: AI app coordinating UX, which integrations, execution policy
+  Client: protocol participant inside host (one per server connection)
+  Server: exposes capabilities; may wrap ordinary APIs; often no LLM
+  Benefit: one server → many hosts (Cursor/VS Code/custom)
+
+CAPABILITIES
+  Tools (actions) | Resources (readable context) | Prompts (templates)
+  Tools don't auto-authorize — same AI410-L01 rules apply
+
+TRANSPORTS
+  Local process (stdio) and remote; production needs authn/authz, TLS, limits
+  Stateless protocol OK; business workflow still durable/stateful
+
+HOST ↔ LLM
+  Host discovers schemas → offers to model → executes allowed calls → returns
+  MCP client demo can exist with zero LLM — protocol ≠ intelligence
+
+SECURITY
+  Convenient integrations expand attack surface
+  Standard interface ≠ trustworthy endpoints; least privilege; approve mutations
+  Every privileged request carries appropriate authority
+
+WHEN TO USE
+  Multi-host interoperability / reusable company capability surface
+  Single app → own domain services: direct interfaces often simpler
+  Choose MCP for interoperability, not "because there's a model"
+
+OPS
+  Version schemas; observe tool calls; rate limits; don't treat MCP as bus
+    for authoritative money/inventory without ordinary workflows
+
+SENIOR LINE: MCP standardizes connection — not trust, invocation, or permission.
+```

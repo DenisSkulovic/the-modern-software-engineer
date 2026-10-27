@@ -1565,4 +1565,61 @@ Continue in **SE490 — Architecture and Systems Design Studio**.
 - **AWS — Transactional Outbox:** https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html
 - **AWS Builders' Library — Using Load Shedding to Avoid Overload:** https://aws.amazon.com/builders-library/using-load-shedding-to-avoid-overload/
 
+---
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE490-L03  BUILD FOR 100× TRAFFIC — INTERVIEW GLANCE CARD
+
+DEFINE WORKLOAD FIRST
+  120 → 12,000 RPS example: ~80% search, ~1% booking — not uniform cost
+  Search = read-scaling; booking = correctness + workflow capacity
+  Cache hit math: 9600×3 uncached vs 10% miss → leverage, not a promise
+  External supplier rate limit can be hard ceiling (e.g. 80 vs 120 booking/s)
+
+SUCCESS ≠ RPS
+  SLOs for latency + inventory invariants + no duplicate payment + recovery
+  202 Accepted ≠ completed booking; track business outcomes
+
+PHASE ORDER (6 weeks)
+  1 Telemetry baseline  2 Booking correctness/idempotency
+  3 Cheap SQL/ORM       4 Targeted cache + stampede protection
+  5 Connection budgets / admission  6 Scale APIs/workers
+  7 Load+failure tests  8 Replicas/infra only if measured need
+  Progressive traffic stages; stop when thresholds break
+
+EFFICIENCY BEFORE TOPOLOGY
+  pg_stat_statements by total_exec_time; EXPLAIN ANALYZE carefully
+  Indexes for access patterns; keyset pagination; fix N+1/ORM; then cache
+  Making one request cheaper > more machines doing inefficient work
+
+CACHE LAYERS
+  CDN assets; Redis for summaries/search; advisory search ≠ booking claim
+  Stampede mitigations; Redis fail → bounded fallback (protect booking path)
+
+BOOKING PATH
+  Conditional capacity UPDATE; multi-night txn; short locks (no external wait)
+  UNIQUE (tenant, idempotency_key); durable workflow; reconcile UNKNOWN
+
+HORIZONTAL SCALE TRAPS
+  Instances × pool size → connection storm; PgBouncer/RDS Proxy budget
+  Shared durable state for sessions/idempotency/holds; local cache ≠ authority
+  Hot inventory row: more Nodes ≠ more update capacity (serialization)
+
+WORKERS / REPLICAS / SHARD
+  Outbox → queues; separate worker pools; idempotent consumers; watch depth
+  Replica lag: consistency-sensitive reads → primary
+  Partition maybe; shard last (hot keys, cross-shard pain)
+  Modular monolith OK; extract only with evidence
+
+FAILURE / COST
+  Bounded recovery (jitter/backoff); avoid recovery storms
+  Cost per successful booking; log/trace/API/retry costs accumulate
+  Decision framework: correctness → model data → invariants → measure →
+  bottleneck → capacity → failure recovery → test → evolve
+
+SENIOR LINE: simplest architecture that preserves guarantees at measured load.
+```

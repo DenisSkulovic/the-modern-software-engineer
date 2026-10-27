@@ -1639,3 +1639,52 @@ Continue in **AI410 — Agentic AI Systems and Production Engineering**.
    A useful security reference for constructing adversarial evaluation scenarios involving injection, information disclosure, excessive agency, and unsafe integrations.  
    https://genai.owasp.org/llm-top-10/
 
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+AI410-L06  EVALUATING NONDETERMINISTIC SOFTWARE — INTERVIEW GLANCE CARD
+
+WHY TESTS DIFFER
+  Structure OK ≠ semantics OK ≠ task success under constraints
+  Eval: make important failures observable before production
+
+QUALITY CONTRACT FIRST
+  Decompose business outcome; hard constraints vs soft optimization
+  Success = business operation, not fluent language
+  Public benchmark win ≠ product fit
+
+DATASETS
+  Real traffic / incidents / synthetic / expert edges; stratify categories
+  Dev / regression / holdout separation; don't overfit the test set
+  Ground truth is a human spec — can be ambiguous; disagreement informative
+
+GRADERS
+  Deterministic first (schema, authz, uniqueness, state)
+  Grade environment state, not only transcript claims
+  LLM-as-judge: narrow task; reference-based vs free; calibrate humans
+  Biases (position, verbosity); judge is another component to validate
+
+RAG / AGENTS
+  Retrieval metrics + context coverage + faithfulness/correctness/citations
+  Oracle-context isolates generation
+  Agent: trajectories + invariants (must/must-not tools) + simulated externals
+
+STATISTICS / CI
+  Rate is estimate; SE≈√(p̂(1−p̂)/n); paired comparisons; rare fails need n
+  Gates: hard invariants / task quality / regression / latency-cost
+  Avoid flaky bureaucracy; tools (Promptfoo, LangSmith) hold harness, not truth
+
+ONLINE
+  Business outcomes; distrust vanity proxies; privacy in sampling
+  A/B, shadow, canary; production failures feed eval suite
+
+ANTI-PATTERNS
+  Only impressive demos; exact string match; uncalibrated judge;
+  edit tests until green; average away critical fails; ignore timeouts
+
+SENIOR LINE: high score ≠ goal; credible evidence of right task under constraints.
+```

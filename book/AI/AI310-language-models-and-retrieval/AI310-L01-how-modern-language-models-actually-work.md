@@ -1241,3 +1241,61 @@ Continue in **AI310 — Language Models and Retrieval Engineering**.
    An influential explanation of why pretraining alone does not produce an instruction-following assistant and how post-training changes model behavior.  
    https://arxiv.org/abs/2203.02155
 
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+AI310-L01  HOW LLMS WORK — INTERVIEW GLANCE CARD
+
+CORE OBJECTIVE
+  Autoregressive LM: P(next token | preceding tokens)
+  Chain rule over sequence; next-token prediction → learn structure
+  Plausible ≠ true; mechanism ≠ "just autocomplete triviality"
+
+TOKENIZATION
+  Subword (BPE etc.): not words; drives context use, cost, awkward tasks
+  Char length ≠ token count (code/Unicode differ)
+
+EMBEDDINGS → CONTEXTUAL REPS
+  Token ID → learned vector; meaning distributed; "bank" disambiguated in layers
+  Embedding table = start; transformer builds context-sensitive reps
+
+TRANSFORMER
+  Embeddings + position → N blocks → logits
+  Attention: Q/K/V; softmax(QKᵀ/√dₖ)V — mix distant info (not DB lookup)
+  Multi-head parallel mixing; causal mask (no future); FFN transforms per position
+  Residuals/norm/position encodings; stack layers for staged computation
+
+TRAINING / POST-TRAINING
+  Cross-entropy −log P(correct); backprop; mix of generalize + memorize
+  Pretrain = document continuation; SFT/RLHF/pref = assistant behavior
+  Reasoning training / more inference compute ≠ guaranteed correctness
+
+INFERENCE
+  Prefill (parallelize known prompt) → decode autoregressively
+  KV cache: avoid recompute; memory grows with context
+  Full attention ~n² component; TTFT vs streaming generation feel
+
+SAMPLING
+  Greedy / temperature / top-p (nucleus); T→0 ≈ greedy, still can be wrong
+  Determinism ≠ truth; sampling ≠ validation
+
+CONTEXT WINDOW
+  Parametric (weights) vs contextual (this request) vs app retrieval
+  Large window ≠ equal use of every detail ("lost" mid-context possible)
+
+WHY REASON + HALLUCINATE
+  Structure → real generalization; training ≠ truth oracle
+  Token P ≠ calibrated fact confidence; early error compounds
+  Style/helpfulness ≠ correctness; reason can't invent missing facts
+
+ENG SPLIT
+  LLM: ambiguous language / flexible generation
+  Deterministic code: invariants, money, ownership, exact APIs
+  Model = component, not oracle — ground with tools/docs/tests
+
+SENIOR LINE: generating a convincing answer ≠ establishing it is correct.
+```

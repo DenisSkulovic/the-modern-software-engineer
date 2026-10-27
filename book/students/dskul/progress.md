@@ -8,9 +8,9 @@ Personal learning tracker (not manuscript status). Design: [`../../STATUS.md`](.
 
 | Status | Count |
 | --- | ---: |
-| `unopened` · | 60 |
+| `unopened` · | 59 |
 | `wandering` ~ | 1 |
-| `studying` > | 5 |
+| `studying` > | 6 |
 | `labbing` * | 0 |
 | `settled` ✓ | 0 |
 | `fluent` ★ | 0 |
@@ -38,12 +38,13 @@ _Nothing overdue. Nice._
 | --- | --- | --- |
 | `CS110` | `underway` | `>>>>·` |
 | `CS220` | `unopened` | `···` |
-| `CS230` | `underway` | `~>·······` |
+| `CS230` | `underway` | `~>>······` |
 | `CS320` | `unopened` | `···` |
 | `SE240` | `unopened` | `······` |
 | `SE310` | `unopened` | `···` |
 | `SE320` | `unopened` | `···` |
 | `CS330` | `unopened` | `···` |
+| `CS340` | `unopened` | `·······` |
 | `CS430` | `unopened` | `·····` |
 | `SE330` | `unopened` | `···` |
 | `SE340` | `unopened` | `····` |
@@ -79,7 +80,7 @@ Glyphs: `·`=unopened, `~`=wandering, `>`=studying, `*`=labbing, `✓`=settled, 
 | `CS220-L03` | `unopened` | 0 | 0 | — | — |  |
 | `CS230-L01` | `wandering` | 1 | 1 | 2026-10-26 | — | Voice listen-through once — attentive bu |
 | `CS230-L02` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.  |
-| `CS230-L03` | `unopened` | 0 | 0 | — | — |  |
+| `CS230-L03` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.  |
 | `CS230-L04` | `unopened` | 0 | 0 | — | — |  |
 | `CS230-L05` | `unopened` | 0 | 0 | — | — |  |
 | `CS230-L06` | `unopened` | 0 | 0 | — | — |  |

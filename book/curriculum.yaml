@@ -308,14 +308,14 @@ courses:
     slug: inside-a-storage-engine
     legacy_ids: []
     source: CS/CS340-data-systems-beyond-relational/CS340-L02-inside-a-storage-engine.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS340-L03
     title: Document Databases and MongoDB
     slug: document-databases-and-mongodb
     legacy_ids: []
     source: CS/CS340-data-systems-beyond-relational/CS340-L03-document-databases-and-mongodb.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS340-L04
     title: Indexes, Queries, and Aggregation Beyond SQL

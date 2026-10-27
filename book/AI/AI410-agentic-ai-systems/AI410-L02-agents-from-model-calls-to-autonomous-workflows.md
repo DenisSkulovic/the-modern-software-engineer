@@ -1557,3 +1557,53 @@ Continue in **AI410 — Agentic AI Systems and Production Engineering**.
    Documentation on evaluating agent behavior and execution trajectories rather than relying solely on final responses.  
    https://developers.openai.com/api/docs/guides/agents
 
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+AI410-L02  AGENTS / WORKFLOWS — INTERVIEW GLANCE CARD
+
+DEFINITION
+  Agent: model selects actions toward objective, observes results, adapts
+  Workflow: app owns control flow; model may power a step
+  Spectrum: classify → tool assistant → branchy workflow → autonomous task agent
+  Autonomy expands capability AND path space
+
+LOOP
+  Observe → Decide → Act → Observe; Aₜ=π(Sₜ,Oₜ,Objective)
+  Model proposes; app owns authz, limits, persistence, termination
+  Finish/clarify/tool_call structured decisions; MAX_STEPS budget
+
+PLANNING
+  Reactive incremental OK (debug); plans provisional & revisable
+  Don't plan every 2-step task for diagram beauty
+
+STATE
+  App owns operational state; transcript ≠ execution truth
+  Conversation continuity ≠ workflow recovery ≠ external side-effect correctness
+  Checkpoint + idempotency/reconcile (crash after email send)
+
+AGENTS vs DETERMINISTIC
+  Known refund sequence → deterministic + LLM interpret/explain
+  Unknown investigation path → bounded agent justified
+  Rule: can sequence be determined reliably in advance?
+
+MIDDLE GROUND
+  Routing; prompt chaining; agentic decisions at uncertain branches only
+  Termination: model "done" is observation — verify acceptance criteria
+  Errors compound across long trajectories; reduce unnecessary decisions
+
+BUDGETS / DURABILITY / OBS
+  Steps, tools, time, tokens, cost; human intervention points
+  Durable runs; independent completion checks
+  Trace full trajectory — final answer alone insufficient
+
+WHEN WORTH IT
+  Path uncertainty + evaluable progress + enforceable bounds
+  Flexible how it investigates; disciplined what it's allowed to do
+
+SENIOR LINE: freedom where judgment helps; structure where correctness is mandatory.
+```

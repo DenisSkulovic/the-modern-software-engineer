@@ -111,8 +111,8 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (they are cours
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
 | `CS340-L01` | The Database That Didn't Fit Into Tables | `manuscript` | `2.0.0` | `` |
-| `CS340-L02` | Inside a Storage Engine | `stub` | `2.0.0` | `` |
-| `CS340-L03` | Document Databases and MongoDB | `stub` | `2.0.0` | `` |
+| `CS340-L02` | Inside a Storage Engine | `manuscript` | `2.0.0` | `` |
+| `CS340-L03` | Document Databases and MongoDB | `manuscript` | `2.0.0` | `` |
 | `CS340-L04` | Indexes, Queries, and Aggregation Beyond SQL | `stub` | `2.0.0` | `` |
 | `CS340-L05` | Replication, Consistency, and Sharding in Practice | `stub` | `2.0.0` | `` |
 | `CS340-L06` | Specialized Data Systems | `stub` | `2.0.0` | `` |

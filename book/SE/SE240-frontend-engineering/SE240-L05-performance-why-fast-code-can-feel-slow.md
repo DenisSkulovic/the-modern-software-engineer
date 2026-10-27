@@ -1166,6 +1166,64 @@ Continue in **SE240 — Browser and Frontend Engineering**.
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
 
----
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE240-L05  PERFORMANCE: WHY FAST CODE CAN FEEL SLOW — INTERVIEW GLANCE CARD
+
+CORE INSIGHT
+  Fast APIs ≠ good UX  Backend 68 ms; users still see LCP 4.8s / INP 680ms / CLS 0.24
+  Critical path        Longest dependent chain to the result that matters
+  Optimize off-path    May barely change what the user experiences
+
+CORE WEB VITALS (p75; mobile & desktop separate)
+  Metric   Measures                         Good / Poor
+  LCP      Prominent content paint          ≤2.5s / >4s
+  INP      Interaction → next paint         ≤200ms / >500ms (whole visit, not FID)
+  CLS      Unexpected layout movement       ≤0.1 / >0.25 (largest burst)
+
+LCP BREAKDOWN (image example)
+  TTFB | resource discovery delay | transfer | element render delay
+  Discovery trap  Image URL only after HTML→JS→Vue→fetch hotel → late start
+  Fix discovery   SSR/HTML <img> or careful preload + fetchpriority=high
+  Transfer        Right-sized responsive images; AVIF/WebP; CDN — only helps transfer phase
+  Render delay    Waiting on unrelated Promise.all; main-thread JS; hidden until ready
+  Lesson          LCP delayed by load OR by app refusing to paint what it already has
+
+NETWORK WATERFALL
+  Read            When request starts and why — not only bar length
+  Bytes ≠ equal   Below-fold 2MB lazy may matter less than 50KB on critical JS path
+
+INP BREAKDOWN
+  Input delay     Main thread busy (unrelated JS / render) before handler runs
+  Processing      Handler does sync expensive work before paint can happen
+  Presentation    Style/layout/paint after handlers (e.g. 5k cards resize)
+  Yield           Chunk work + setTimeout(0) / scheduler.yield; Worker if DOM-independent
+  async ≠ off-thread  (SE240-L01)
+
+CLS
+  Causes          Images without dimensions; ads/banners; font swap; late widgets/API inserts
+  Fix             width/height or aspect-ratio space; stable placeholders; don't shove targets
+  Not all motion  Accordion after user input may be excluded; late shift after click can still count
+  Transforms      Often don't move surrounding layout boxes like geometry changes
+
+LAB vs FIELD
+  Lab             Lighthouse / Performance — diagnose & regress under control
+  RUM / field     Real devices/networks; web-vitals onLCP/onINP/onCLS; CrUX if eligible
+  Percentiles     Prefer p75 over averages; segment mobile vs desktop
+  Tools           Network (discovery) · Performance (long tasks, layout, INP) · field telemetry
+
+OPTIMIZATION TRAP
+  Three metrics → three mechanisms (discovery+JS / DOM+layout / reserved space)
+  Don't migrate frameworks or add Redis from CWV alone — diagnose first
+
+PERFORMANCE BUDGETS
+  Asset budgets   e.g. initial JS ≤250KB (illustrative)
+  Experience      Mobile LCP/INP/CLS objectives
+  Balance         Correctness, a11y, UX, maintainability — not worship Lighthouse score
+
+SENIOR LINE: Don't optimize the slow-looking op—find the dependency that delays the customer.
+```
 

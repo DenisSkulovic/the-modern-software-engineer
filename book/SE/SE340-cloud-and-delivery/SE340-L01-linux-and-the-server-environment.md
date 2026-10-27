@@ -1448,4 +1448,71 @@ Continue in **SE340 — Linux, Cloud Infrastructure, and Delivery**.
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE340-L01  LINUX / SERVER — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Hardware free ≠ OS permission/capacity for a resource
+  App runs as process(es) under limits, FDs, creds, sockets
+  Syscalls cross into kernel; Node maps errors (EMFILE, EACCES…)
+
+PROCESS / SCHEDULING
+  PID, address space, threads, FDs, UID/GID, env, cwd, limits, signals
+  fork/exec (or spawn); Node = event loop + libuv pool + threads
+  One hot JS loop can stall requests while host CPU % looks low
+  States: R runnable · S sleep · D uninterruptible I/O · Z zombie
+  Load avg ≠ CPU % (includes uninterruptible waiters)
+
+FILE DESCRIPTORS
+  Files, TCP/Unix sockets, pipes, devices…
+  EMFILE = too many open; inspect /proc/PID/fd, lsof, limits
+  Soft vs hard RLIMIT_NOFILE; ulimit -n = shell, not service
+  Raising limit ≠ fix leak; watch growth pattern (leak vs burst)
+
+MEMORY
+  VIRT vs RES; Linux cache uses “free” RAM — prefer available
+  Limits: process, cgroup, container, heap, host pressure
+  OOM killer; exit 137 = SIGKILL hint, not proof of OOM
+  process.memoryUsage() clues (heap vs RSS)
+
+FILESYSTEM / PERMS
+  UID/GID; dir x = traverse; least privilege > run as root
+  Inode exhaustion vs block space (df -h vs df -i)
+  Deleted-but-open file still holds space (lsof +L1)
+
+ENVIRONMENT
+  Same binary ≠ same env: vars, cwd, user, limits, PATH
+  Relative paths use process cwd (readlink /proc/PID/cwd)
+  Env vars not a security vault
+
+SIGNALS
+  SIGTERM handleable cleanup; SIGKILL cannot catch
+  Graceful: stop accept → drain with deadline → close resources
+  process.exit() abrupts async work; prefer exitCode + drain
+
+SYSTEMD
+  Unit: User, WorkingDirectory, ExecStart, Restart, LimitNOFILE,
+  TimeoutStopSec; After= ≠ dependency healthy
+  journalctl -u; restart ≠ recover business correctness
+  Restart loops on poison messages
+
+NETWORKING
+  Listen ≠ reachable; 127.0.0.1 vs 0.0.0.0
+  ss -ltnp; refuse ≠ timeout ≠ HTTP 503 (different layers)
+  TIME-WAIT normal; don't blind-tune kernel first
+
+INVESTIGATION LAYERS
+  Process → identity → resources → environment → network
+  → supervisor → evidence (/proc, logs, sockets)
+
+SENIOR LINE: App doesn't run on bare metal — it runs inside OS
+             abstractions, permissions, and limits.
+```
+
+---
+
 

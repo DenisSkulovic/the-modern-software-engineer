@@ -1563,4 +1563,91 @@ When designing a test strategy, ask:
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE440-L03  TESTING STRATEGIES — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Coverage = code executed; ≠ failure modes that matter
+  Passing test = evidence under defined conditions/assertions
+  Ask: behavior? real vs substituted? modes exercised?
+       what defect would make it fail?
+
+CORRECTNESS DIMENSIONS
+  Functional · integration · concurrency · operational
+  · security · performance · resilience
+  No single technique covers all
+
+UNIT TESTS
+  Controlled scope; assert business invariants
+  Prefer behavior over “called helper thrice”
+  Don't mock every collaborator by dogma
+  Best for complex deterministic logic
+
+TEST DOUBLES
+  Stub = canned replies · Fake = simplified working impl
+  Spy = record calls · Mock = expected interactions
+  Over-mocking tests imagination, not system
+
+INTEGRATION
+  Real boundaries (PG constraints, txns, HTTP adapters)
+  External: unit-test translation; controlled HTTP server;
+            selective sandboxes; never destructive live prod
+  Contract (e.g. Pact): consumer expectations vs provider
+  Contracts ≠ full business correctness; apply to events too
+  Mocked consumer + changed provider field → both green, prod breaks
+
+E2E
+  Critical journeys across boundaries; few, stable, high value
+  Flaky E2E + auto-rerun until green hides nondeterminism
+
+PYRAMID / TROPHY
+  Shape follows where complexity/risk lives—not a law
+  DB-heavy apps need real integration; pricing algos need units
+
+CONCURRENCY
+  Race: both read available=1 → oversell
+  Promise.all may not hit race; force interleaving or atomic SQL
+  UNIQUE / conditional UPDATE enforce invariants
+
+ASYNC WORKFLOWS
+  Test duplicate delivery, crash after persist, provider fail,
+  poison payload, concurrent workers, out-of-order
+  Invoke handler ≠ prove queue ack/stall/retry semantics
+
+PROPERTY-BASED
+  Generate inputs; assert invariants; shrink counterexamples
+  Weak property (“returns a number”) ≠ useful
+
+PERFORMANCE
+  Load · stress · soak · spike; representative mix
+  Measure rate, throughput, errors, latency dist, saturation, recovery
+  Watch coordinated omission; mocked/light endpoints ≠ real capacity
+
+RESILIENCE
+  Fault inject with expected invariant first (timeout → uncertain,
+  no double charge, reconcile)
+  Toxiproxy-style delays/disconnects
+
+DATA / ENV
+  Isolate fixtures; control clock/random; know staging ≠ prod risks
+
+COVERAGE / MUTATION
+  Coverage finds gaps; mutation finds weak assertions
+  95% → 99% won't fix missing boundary tests
+
+PORTFOLIO BY RISK
+  Invariants → DB uniqueness/txn → duplicates/retries → contracts
+  → authZ → critical E2E → perf/resilience as needed
+  Tool (Karate etc.) serves a layer; doesn't own strategy
+
+SENIOR LINE: Strong suite reduces uncertainty about important
+             production behavior—not maximum lines executed.
+```
+
+---
+
 

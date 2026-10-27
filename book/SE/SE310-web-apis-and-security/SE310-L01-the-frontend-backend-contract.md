@@ -1467,6 +1467,81 @@ Continue in **SE310 — Web APIs, Identity, and Security**.
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
 
----
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE310-L01  THE FRONTEND–BACKEND CONTRACT — INTERVIEW GLANCE CARD
+
+OPENING INCIDENT
+  price: number → { amountMinor, currency }  Backend & FE tests green; old tabs/caches break
+  Lesson         Independently correct implementations can be incompatible
+  Contract       Lives across independently deployed/cached/rolled-back programs
+
+API = PROMISE
+  Beyond “returns hotel”  Inputs, shape, optionality, meaning, errors, auth, cache, retry, staleness, evolution
+  Schema vs behavior      Structure of messages ≠ what they mean / how system behaves
+  availableRooms=1        Now? Query start? Cache? Holds? Guaranteed through checkout?
+
+REST-STYLE
+  Resources ≠ tables      GET /reservations/9821 may join many stores
+  Not all CRUD            Cancel may be POST …/cancel (audit/refunds) ≠ DELETE
+  Methods matter          Safety / idempotency (CS230-L03)
+  Granularity             Many fine calls vs BFF aggregate for a page — product choice
+
+GRAPHQL
+  Client selects fields   Schema = explicit type contract; mutations/subscriptions exist
+  N+1 risk                Nested resolvers can explode queries; batching/loaders
+  Complexity / authz      Field choice ≠ permission; need limits
+  Errors                  HTTP 200 can still carry GraphQL errors — inspect response, not only ok
+
+RPC / gRPC
+  Operations              CreateReservation, Cancel…; Protobuf field numbers are wire contract
+  Attractive for          Command-oriented internal services; codegen; binary
+  Trap                    Looks like a local call — network failures, timeouts after success, partial failure
+  Mix OK                  Browser REST · dashboard GraphQL · internal gRPC — design quality > fashion
+
+TYPES ≠ RUNTIME
+  TS annotation           Does not validate JSON from the network
+  Trust boundary          unknown + Zod/schema parse at edge
+  Schema vs business      Shape OK ≠ commercially acceptable / bookable
+  Validate both sides     Structural · semantic · authorization · business consistency
+  Client untrusted        Anyone can craft HTTP without your Vue UI
+
+SERIALIZATION TRAPS
+  null vs omitted         PATCH: clear field vs leave unchanged — define it
+  Large IDs               Beyond MAX_SAFE_INTEGER → prefer string IDs in browser APIs
+  Date vs instant         "2026-11-10" calendar ≠ "…Z" UTC instant
+  Money                   amountMinor + currency + rounding/tax/estimate|quote|final meaning
+
+PAGINATION
+  Offset                  Simple; inserts/deletes → dupes/skips; large offsets costly
+  Cursor                  Stable position + tie-breaker; opaque nextCursor; still not perfect snapshots
+  Filters/sort            Part of contract; paginate in DB — don't load 50k into Node then slice
+
+ERRORS
+  Useless                 400 + "Something went wrong"
+  Useful                  problem+json + stable code (ROOM_UNAVAILABLE) → actionable UI
+  Don't parse             Human message strings
+  Guide recovery          Field fix / reauth / refresh / retry-if-safe / reconcile unknown
+
+VERSIONING
+  Expand–migrate–contract Add new field · migrate clients · remove old when safe
+  Breaking                Remove/rename/type change/meaning change/new required request field…
+  Subtle break            New enum value breaks exhaustive switches
+  /v2                     Costly dual maintenance; prefer compatible evolution when practical
+  Rollbacks               New FE must tolerate older BE (or reverse) across coexistence window
+
+OPENAPI / CONTRACT TESTS
+  Spec                    Documents agreement; codegen helps
+  Contract test           Checks implementation honors consumer expectations (e.g. Pact)
+  Limit                   Structure ≠ inventory/payment correctness
+
+RESERVATION CONTRACT SKETCH
+  POST + Idempotency-Key; quoteId not client price; 201 + Location; 409 ROOM_UNAVAILABLE
+  Timeout                 Don't new-key blind retry — status / idempotent retry
+
+SENIOR LINE: Reliable contracts let sides evolve without everyone changing at the same instant.
+```
 

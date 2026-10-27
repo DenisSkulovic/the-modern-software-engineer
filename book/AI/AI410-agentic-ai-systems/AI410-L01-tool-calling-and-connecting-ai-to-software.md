@@ -1641,3 +1641,55 @@ Continue in **AI410 — Agentic AI Systems and Production Engineering**.
    An overview of direct and indirect prompt injection, including risks introduced by untrusted external content.  
    https://genai.owasp.org/llmrisk/llm012025-prompt-injection/
 
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+AI410-L01  TOOL CALLING — INTERVIEW GLANCE CARD
+
+CENTRAL RULE
+  Model deciding to call a tool ≠ authorization to execute it
+  Opening failure: valid JSON refund of another customer's payment
+
+PROTOCOL
+  Schemas → model may request → app validates/executes → result → model
+  App owns execution; call_id correlates results ≠ business idempotency key
+  Schema validity ≠ legitimate intent / ownership / disclosability
+
+IMPLEMENTATION PATTERN
+  AuthContext from session (never model-generated identity)
+  Allowlist dispatcher + re-validate args (Zod); narrow result DTOs
+  Bound rounds; read-only first; minimize fields returned
+
+TRUST
+  Tool results = observations (indirect prompt injection possible)
+  Untrusted read + privileged write = high risk
+  Read / compute / mutate = different risk classes
+  Capability tools ≫ execute_sql / update_arbitrary_fields
+
+AUTHZ / CONFUSED DEPUTY
+  Ownership, eligibility, amounts from trusted principal + workflow
+  Privileged credential + persuadable agent = confused deputy
+  Authority from authenticated principal + approved workflow
+
+APPROVAL / IDEMPOTENCY
+  Prepare → show immutable quote → approve → commit; recheck versions
+  Meaningful risk-based approval (not every read)
+  Stable business operation ID across retries; provider idempotency keys
+  Persist REQUESTED…UNKNOWN; reconcile before retry; timeout ≠ failed
+
+MULTI-STEP
+  Prefer deterministic orchestration when sequence known
+  Parallel only independent non-conflicting ops; tool-call budgets
+  Safe typed errors; don't leak internals; errors also untrusted
+
+TOOL SURFACE
+  Meaningful capabilities; consolidate overlaps; no arbitrary SQL
+  Gateway: allowlist→validate→authz→preconditions→approval→limits→domain
+  Trace conversation / tool_call / operation / authz / outcome
+
+SENIOR LINE: a tool call is a proposal to cross a trust boundary — not permission.
+```

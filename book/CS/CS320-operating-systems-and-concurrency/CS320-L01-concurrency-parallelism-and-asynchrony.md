@@ -1577,3 +1577,74 @@ And what if the loop lasted five seconds instead of half a second?
 
 **Experiment D — Event-loop blocking.** The synchronous busy loop prevents the timer callback from executing at its intended threshold. Other JavaScript callbacks on the same execution thread are similarly delayed. In an HTTP server, a long-running synchronous callback can damage responsiveness across many requests.
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS320-L01  CONCURRENCY / PARALLELISM / ASYNCHRONY — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Race: correctness depends on relative timing of overlapping ops
+  Individually correct steps can fail when other work runs between them
+  Concurrency = overlapping progress; Parallelism = simultaneous execution
+  Can be concurrent without parallel (one core time-slicing)
+
+NODE / EVENT LOOP
+  One main JS thread; I/O wait frees thread for other ready work
+  OS / libuv / DB/network do work off the JS thread
+  Scheduling ≠ executing (setTimeout(0) is a threshold, not “now”)
+  Phases (simplified): pending → poll I/O → check/setImmediate → close → timers…
+  Long sync JS blocks all other callbacks on that thread (event-loop starvation)
+
+MICROTASKS
+  Promise reactions: after current sync, before later timer/I/O callbacks
+  Example order: A, D sync; then C (promise); then B (timer 0)
+  async fn starts sync; await suspends continuation (even Promise.resolve())
+  process.nextTick: separate queue; usually before promise microtasks (CJS nuances)
+  Microtask flood / recursive nextTick can starve timers & I/O
+
+ONE-THREAD RACES
+  check → await → mutate  lets another continuation see stale state (rooms → −1)
+  Move check+decrement before await: fixes THIS in-process race
+  Trap: local fix ≠ multi-instance / DB inventory / crash after decrement
+
+ATOMICITY & COORDINATION
+  Enforce inventory where authoritative state lives (usually DB)
+  Conditional UPDATE … AND available > 0 RETURNING; SELECT … FOR UPDATE
+  Multi-night: multi-row + consistent lock order + transaction
+  Mutex: one-at-a-time critical section (process-local — not cross-instance)
+  Semaphore: N permits (API rate / pool / heavy jobs)
+  Deadlock: wait cycle; ≠ mere lock contention; consistent lock order helps
+  Don’t hold DB locks across external HTTP
+
+Promise.all
+  Overlaps independent I/O waits — not new JS threads / not auto CPU parallel
+  Rejection ≠ cancel siblings; partial side effects can remain
+  Ask: any finish order / one fails — still correct business process?
+
+BOUNDED CONCURRENCY
+  Unbounded map+all → rate limits, pool saturation, memory, worse latency
+  Batch of N simple but straggler stalls next batch; pool/semaphore smoother
+  Bound to capacity of the dependency
+
+async ≠ CPU PARALLEL
+  async + tight loop still occupies main thread; await chunks = fairness ≠ cores
+  worker_threads: separate JS contexts; message/transfer/SharedArrayBuffer costs
+  Prefer pools; don’t use workers for ordinary HTTP/DB I/O
+  libuv native pool ≠ worker_threads API
+  “Node is single-threaded” → clarify: main JS thread + other runtime/OS threads
+
+CANCELLATION / TIMEOUTS
+  AbortController signals “stop wanting”; server may already have done work
+  Cooperative; cancellation ≠ undo; timeout ≠ remote definitely failed
+  Idempotency / durable workflow for retries after uncertain outcomes
+
+TESTING RACES
+  Don’t hope for timing; controlled interleaving; assert invariants
+  (confirmed reservations ≤ inventory), not “got a response”
+
+SENIOR LINE: concurrency is allowing several things to happen without losing
+             control of what must remain true — time is part of correctness.
+```
+

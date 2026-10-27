@@ -1669,4 +1669,62 @@ Continue in **SE340 — Linux, Cloud Infrastructure, and Delivery**.
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE340-L02  CONTAINERS — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Container = isolated process environment sharing host kernel
+  ≠ full VM with guest OS (Docker Desktop often nests Linux VM)
+  “Works on my machine” → package user-space env consistently
+
+NAMESPACES (visibility)
+  PID · Network · Mount · UTS · IPC · User · Cgroup · Time
+  Container localhost ≠ other container's DB (own netns)
+  Host sees container processes; container sees restricted view
+
+CGROUPS (consumption)
+  CPU / memory / PIDs / I/O limits — independent of namespaces
+  Throttle with idle host CPU; OOM at cgroup limit despite host RAM
+  Exit 137 may be SIGKILL; confirm via inspect/logs/cgroup events
+
+DOCKER MODEL
+  Image = immutable blueprint (layers, copy-on-write)
+  Container = runtime instance + writable layer
+  Restart same container keeps writable state; recreate loses it
+  Volumes/bind mounts for durable data; volume ≠ backup
+
+PRODUCTION DOCKERFILE HABITS
+  Multi-stage: build tools out of runtime
+  npm ci + lockfile; copy deps before source (cache)
+  USER non-root; pin major tags; digest for stronger identity
+  .dockerignore; secrets via mounts — not COPY/ENV into layers
+  EXPOSE = metadata; -p publishes; app bind 0.0.0.0 for reachability
+  Exec-form CMD ["node",…] for PID1 signal handling
+
+COMPOSE / NETWORKING
+  Service DNS name (db:5432); bridge network
+  depends_on healthy ≠ forever available; still need retries
+  Named volume for PG data; bind mounts hide image paths under mount
+
+SECURITY
+  Isolation ≠ dedicated VM; shared kernel risk
+  Avoid --privileged; docker.sock mount ≈ host control
+  Harden: non-root, drop caps, read-only + tmpfs, no-new-privileges
+  Not universal portability: arch, musl vs glibc, kernel, externals
+
+ORCHESTRATION
+  K8s: Pods, Deployments, Services, Nodes, control plane
+  Automates placement/replicas/rollouts — not business correctness
+  Small teams may prefer ECS/Fargate or managed hosts over K8s
+
+SENIOR LINE: Containers package and isolate processes; they don't
+             remove OS, network, security, persistence, or reliability limits.
+```
+
+---
+
 

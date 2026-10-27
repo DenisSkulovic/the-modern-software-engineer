@@ -1803,6 +1803,82 @@ Continue in **CS430 — Distributed Systems and Reliable Workflows**.
 - **Node.js — Performance Hooks:** https://nodejs.org/api/perf_hooks.html
 - **AWS Builders' Library — Using Load Shedding to Avoid Overload:** https://aws.amazon.com/builders-library/using-load-shedding-to-avoid-overload/
 
-
 ---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS430-L03  SCALING AND LOAD MANAGEMENT — INTERVIEW GLANCE CARD
+
+OPENING INCIDENT
+  4 → 12 app instances: app CPU down, p95/timeouts UP, DB connections explode
+  Scaling one tier amplifies pressure on shared bottleneck (PostgreSQL)
+  Scale the bottleneck — not the easiest-to-replicate component
+
+CAPACITY VS THROUGHPUT VS LATENCY
+  Capacity   sustainable work under defined SLOs/correctness
+  Throughput completed work / time
+  Latency    time per operation
+  Offered load ↑ can ↓ useful completed work under overload
+  Goodput = useful successful work (confirmed bookings ≠ error floods)
+
+VERTICAL VS HORIZONTAL
+  Vertical: bigger machine — simpler; contended row still serializes
+  Horizontal: more instances — great if mostly independent; shared deps remain
+  Serverless concurrency can stampede DB connections — proxies/limits matter
+  Question: can the COMPLETE request path absorb more work?
+
+BOTTLENECKS MOVE
+  End-to-end rate ≤ slowest required stage
+  Fix inventory → next limiter appears (Amdahl intuition: unscalable fraction wins)
+
+QUEUES & LITTLE'S LAW
+  L = λ W  (avg in-system = throughput × time-in-system) when stable
+  Higher latency → more concurrency for same throughput → more contention
+  Arrival > service → backlog grows; queue doesn't invent capacity
+  Near saturation (M/M/1 intuition): tiny spare capacity → latency explodes
+  High utilization ≠ high efficiency for customers
+
+CONNECTION POOLS
+  Reuse + concurrency limit; wait or timeout when exhausted
+  Bigger pool ≠ faster if DB already contended
+  Pool size × instance count × workers = total connection budget
+  Separate pool wait vs SQL time in diagnostics
+  PgBouncer: multiplex many clients → fewer server connections
+    session vs transaction pooling — session state semantics change
+
+POSTGRESQL BOTTLENECKS BEYOND CPU
+  Lock waits, storage I/O, work_mem / memory pressure, idle-in-transaction
+  Connections consume resources even idle; max_connections ≠ executable QPS
+  Investigate: pg_stat_activity, wait_event, pg_blocking_pids
+  App: pool.totalCount / idleCount / waitingCount — interpret with DB side
+
+NODE.JS
+  Low machine CPU can hide one saturated event-loop thread
+  Sync CPU work blocks unrelated requests; measure event-loop delay
+  More processes help CPU-bound JS; useless if waiting on saturated DB
+
+BACKPRESSURE / LOAD SHEDDING
+  Admit only what can finish; short queue; else fast 503 + Retry-After
+  Clients need retry budgets/backoff — else shedding fuels storms
+  Prioritize critical work; drop expired waiters before expensive deps
+  Completing more useful work often means refusing some work early
+
+BACKGROUND WORKERS
+  Higher concurrency vs rate-limited APIs → retries → worse efficiency
+  Queue depth alone insufficient — age of oldest job, arrival vs completion
+  Separate capacity domains (email / reconcile / PDF / analytics)
+
+CAPACITY PLANNING & LOAD TESTS
+  Request mix matters more than raw RPS; convert to dependency demand
+  Preserve headroom for bursts, failures, cache misses, deployments
+  Ramp stages; observe where latency/queues/goodput break
+  Closed-loop (fixed concurrency) can hide overload; open-loop keeps arrival rate
+  Coordinated omission understates latency during stalls
+  Measure p50/p95/p99 WITH error/timeout rates — not averages alone
+
+SENIOR LINE: more concurrency can reduce completed useful work.
+```
 

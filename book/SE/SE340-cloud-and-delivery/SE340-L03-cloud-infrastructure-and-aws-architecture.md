@@ -1366,4 +1366,70 @@ Continue in **SE340 — Linux, Cloud Infrastructure, and Delivery**.
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE340-L03  AWS ARCHITECTURE — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Cloud eases acquiring resources; doesn't erase constraints
+  Scaling compute ≠ scaling the system (Lambda vs RDS connections)
+  Managed ≠ fully managed; serverless ≠ no servers
+
+GEOGRAPHY
+  Region → AZs (failure domains)
+  Multi-AZ app + single-AZ DB = SPOF remains
+  Multi-AZ ≠ immune to bad migrations / corruption / regional outage
+
+VPC / NETWORK
+  Subnets per AZ; public = IGW route (+ addressing/SG)
+  Private + NAT for IPv4 egress without inbound exposure
+  NAT cost + AZ design; VPC endpoints can avoid NAT for AWS APIs
+  Topology = security + availability + cost
+
+SECURITY GROUPS / IAM
+  SG stateful; reference other SGs (scale-friendly)
+  NACL subnet/stateless secondary
+  IAM: least privilege roles, temporary creds, no long-lived keys
+  Explicit deny overrides allow; connectivity ≠ authorization
+  Prefix IAM ≠ tenant isolation — app still authorizes keys
+
+COMPUTE SPECTRUM
+  EC2          VM control; you patch/deploy
+  ECS/Fargate  persistent containers; managed hosts
+  Lambda       event-driven; concurrency unit; 15m max classic
+  Choose by duration, control, pooling, cost, pattern
+
+FRONT DOOR
+  ALB = L7 distribute/health/TLS; API Gateway = API features/throttle
+  Throttle: controlled 429 > accept until total collapse
+
+LAMBDA–POSTGRESQL TRAP
+  L = λW concurrency estimate; many envs × pool size explode conns
+  RDS Proxy helps pooling; ≠ more query capacity
+  Admission control + reuse + optimize + cache/async as needed
+
+DATA / ASYNC
+  S3 objects (strong consistency ≠ multi-object txn); CloudFront CDN
+  Content-hash assets; OAC for private origins
+  RDS/PG for relational txn; DynamoDB for key/access patterns
+  SQS at-least-once + visibility timeout; EventBridge routes events
+  Queue buffers ≠ infinite capacity; backlog age matters
+
+COST
+  Baseline (RDS, NAT) vs usage (Lambda, transfer, logs)
+  Retries/cross-AZ/logging can dominate; total eng cost counts
+
+SEVEN BOUNDARIES
+  Geography · Networking · Identity · Compute · Data
+  · Capacity/failure · Economics
+
+SENIOR LINE: Reliability/security/perf/cost emerge from how
+             services are connected—not from logos alone.
+```
+
+---
+
 

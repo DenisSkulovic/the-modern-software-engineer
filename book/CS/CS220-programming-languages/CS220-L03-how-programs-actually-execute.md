@@ -1473,3 +1473,67 @@ That's not a failure of the experiment.
 It's an opportunity to learn the most important lesson of performance engineering:
 
 **Measure first. Explain the result second.**
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS220-L03  HOW PROGRAMS EXECUTE — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  CPU never sees TypeScript — ISA + registers + memory hierarchy
+  Fetch–decode–execute is foundation; modern CPUs pipeline, predict, OoO, speculate
+  Arithmetic often cheap; waiting for data often isn’t
+
+MEMORY HIERARCHY
+  Registers → L1 → L2 → LLC → RAM → storage (faster/smaller ↔ slower/larger)
+  Cache lines (~64B common): spatial locality helps arrays; pointer-chasing lists hurt
+  Same Big-O ≠ same wall time when access patterns differ
+
+CONTROL FLOW & ILP
+  Branch prediction: common path wins; mispredict discards speculative work
+  Predictability of control/data patterns affects real cost (measure; not universal law)
+  Out-of-order: independent ops progress while loads wait; dependencies limit ILP
+  Program order ≠ internal exec order ≠ architecturally observable order
+
+PARALLELISM CAP
+  Amdahl: Speedup = 1 / ((1−P) + P/N); serial fraction caps win (P=0.9,N=8 ≈4.7×; ∞→10×)
+  Same reasoning for latency budgets: speeding 20ms of a 465ms request ≈ tiny win
+  Ask: what fraction of TOTAL time can this change affect?
+
+V8 TIERS (conceptual)
+  Source → Ignition bytecode → Sparkplug baseline → Maglev mid → TurboFan/Turboshaft top
+  Start fast; invest optimization where hot
+  Speculative opts + guards; assumption fail → deoptimize (correctness restored, cost)
+  + means numbers / strings / coercions — history shapes specialized code
+
+HIDDEN CLASSES / INLINE CACHES
+  Shape (hidden class / Map internal) from property names & insertion order
+  Inline cache learns access strategy at a site
+  Monomorphic → polymorphic → megamorphic (more shapes → more general path)
+  Trap: diverse partner shapes MAY slow hot property access — hypothesis, not verdict
+  Don’t rearrange literals by folklore — profile first
+
+MEASUREMENT
+  Wall-clock   elapsed (includes waiting)
+  CPU time     processor work (I/O-wait can be high wall, low CPU)
+  Profile      where samples concentrate (self vs total time)
+  node --cpu-prof → .cpuprofile; flame width ≈ sample weight, not timeline
+  process.cpuUsage + performance.now to contrast wait vs compute
+
+MICROBENCHMARK LIES
+  Warmup/tiers · dead-code elim · GC pauses · CPU freq/OS noise · unrealistic inputs
+  Better: representative data, repeats, distributions, correctness, app-level impact
+  Don’t optimize the 0.01% of latency
+
+THROUGHPUT vs LATENCY
+  Throughput = work/time; latency = one op duration — not interchangeable
+  Async I/O overlaps waits; sync CPU still occupies the JS thread (→ CS320)
+
+AI / FOLKLORE TRAP
+  “Looks optimized” / “cache locality” claims need evidence on the hot path
+
+SENIOR LINE: when slow, ask what the machine is spending time doing — and why —
+             not which source line looks inefficient.
+```

@@ -1570,3 +1570,90 @@ Official PostgreSQL documentation:
 For an additional technical explanation of PostgreSQL's Serializable implementation:
 
 - **PostgreSQL Wiki — Serializable Snapshot Isolation:** https://wiki.postgresql.org/wiki/SSI
+
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS330-L03  TRANSACTIONS & ISOLATION — INTERVIEW GLANCE CARD
+
+CORE FAILURE
+  Two correct txs can double-book: both read "1 left", both insert, both commit
+  BEGIN/COMMIT ≠ automatic serializability of business invariants
+  Ask: what invariant? which ops can break it? where is enforcement?
+
+ACID — WHAT EACH LETTER DOES *NOT* PROMISE
+  Atomicity   all-or-nothing DB effects — not "business was sensible"
+  Consistency preserves defined integrity — DB doesn't invent all rules
+  Isolation   visibility/anomaly contract by level — not always serial
+  Durability  committed work survives crash (config/storage dependent)
+              client may not know outcome if response lost
+  Atomicity ≠ serializability; durability ≠ client knowledge
+
+MVCC
+  Updates create row versions; readers/writers often don't block each other
+  Snapshot visibility ≠ latest globally committed state
+  Old versions → vacuum / bloat; long txs hinder cleanup
+
+ISOLATION LEVELS (PostgreSQL)
+  Read Uncommitted   behaves as Read Committed (no dirty reads)
+  Read Committed     DEFAULT; statement snapshots; non-repeatable + phantoms OK
+  Repeatable Read    stable snapshot; PG also prevents phantoms;
+                     write skew / serialization anomalies STILL possible
+  Serializable       SSI; refuses nonserializable histories; expect 40001 retries
+  Stable snapshot ≠ serializable execution (two-doctors write skew)
+
+ANOMALIES
+  Dirty read          uncommitted data — PG prevents
+  Non-repeatable read same row changes between statements (RC)
+  Phantom             new matching rows appear (RC)
+  Lost update         read → compute in app → write stale absolute value
+  Write skew          each tx decides from snapshot; different rows; both commit
+
+LOST UPDATE FIX SHAPE
+  BAD:  SET remaining = 4   (stale absolute from app memory)
+  GOOD: SET remaining = remaining - 1   (DB-side current value)
+  BETTER for capacity claim:
+    UPDATE … SET remaining = remaining - 1
+    WHERE … AND remaining > 0 RETURNING remaining;
+    Only insert reservation if exactly one row updated; same txn
+
+LOCKING
+  SELECT … FOR UPDATE  pessimistic; locks returned rows
+  Cannot lock ABSENCE — empty result locks nothing; inserts may still appear
+  Shared inventory row = coordination point all booking paths must use
+  Optimistic version: UPDATE … WHERE id AND version = N; zero rows = conflict
+  Version protects that entity — not aggregate/cross-row invariants
+
+DEADLOCKS
+  Circular lock wait → 40P01 deadlock_detected; one tx aborted
+  Prevent: consistent lock order (e.g. ascending dates); short txs
+  Waiting ≠ deadlock; lock wait still causes latency
+  Don't hold DB locks while calling external payment APIs
+
+TX BOUNDARIES
+  Encompass coherent DB work that must succeed/fail together
+  TypeORM: use transaction manager — not silent global dataSource.manager
+  External side effects OUTSIDE DB tx; durable workflow + idempotency
+  Smallest coherent atomic unit — not the whole multi-system process
+
+RETRIES
+  Retry COMPLETE transaction (re-decide on fresh data) for 40001 / 40P01
+  Bound attempts; exponential backoff + jitter
+  NEVER blindly retry callbacks with irreversible external charges
+  Unique violations may be real duplicates — classify errors
+
+TOOLKIT MATCH TO INVARIANT
+  UNIQUE / EXCLUDE constraints     identified seat / non-overlapping room
+  Atomic conditional update        shared counter / inventory row
+  FOR UPDATE                       contested existing rows
+  Optimistic version               rare concurrent entity edits
+  Serializable + retry             complex predicate / multi-row invariants
+  Redis distributed lock           usually NOT primary correctness for PG data
+                                   (lease expiry / fencing risks)
+
+SENIOR LINE: correctness across concurrent schedules — not "we use transactions."
+```

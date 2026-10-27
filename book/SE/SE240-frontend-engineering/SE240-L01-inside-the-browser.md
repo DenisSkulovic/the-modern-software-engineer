@@ -1205,6 +1205,87 @@ Continue in **SE240 — Browser and Frontend Engineering**.
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
 
----
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE240-L01  INSIDE THE BROWSER — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Browser             Small OS: network, parse, JS, DOM, layout, paint, input, media, storage, security
+  Main thread         Much JS + document-rendering coordination share it → long JS delays events / DOM / frames
+  Hotel mystery       Sort of 5,000 hotels froze UI; algorithm fine — browser rebuild/layout of huge DOM was cost
+  Fix that worked     Keep full data in memory; render only ~30 visible cards (virtualization / windowing)
+
+HTML → DOM
+  Parse               HTML string → Document Object Model (nodes + relationships)
+  DOM ≠ pixels        Changing DOM does not mean screen already updated
+  Progressive parse   Can start before full download; preload scanners discover resources early
+  Sync <script>       Can block HTML parsing (JS may mutate document / document.write)
+  async               Download async; execute when ready; order not preserved
+  defer               Download without blocking; run after parse, before DOMContentLoaded, in order
+  type="module"       Deferred by default; dependency-aware
+
+CSS → GEOMETRY
+  CSSOM + cascade     Rules → which styles apply (origins, importance, specificity, source order)
+  DOM ≠ layout tree   display:none → in DOM, no ordinary layout box
+                      visibility:hidden → still participates in layout
+  Layout / reflow     Solve interacting geometry; local change can cascade widely
+
+RENDERING PIPELINE (conceptual)
+  HTML→DOM / CSS→styles → Style calc → Layout → Paint → Compositing → Screen
+  Paint               Drawing instructions / raster of glyphs, backgrounds, borders, shadows, images
+  Compositing         Layers move/combine; can avoid full repaint; layers cost memory
+
+CSS CHANGE COST (simplified — not absolute)
+  Change              Layout?   Paint?              Composite?
+  width               Usually   Usually             Usually
+  background-color    Usually N Yes                 Usually
+  transform / opacity Usually N Potentially avoid   Yes (compositor-friendly)
+  Principle           Cheapest update often avoids geometry + content repaint
+  Caution             will-change everywhere has cost — measure first
+
+FRAME BUDGET
+  60 Hz ≈ 16.7 ms/frame; 120 Hz ≈ 8.3 ms — JS shares interval with style/layout/paint
+  Long task (e.g. 180 ms) spans many frames → conspicuous freeze
+  Perf = when work runs + how long main thread stays unavailable — not only total CPU
+
+EVENT LOOP
+  Cycle (simplified)  Task → pending microtasks → opportunity to update rendering → …
+  Order demo          sync A,D → microtask C → timer task B
+  Microtasks          Ordinarily drain before render opportunity → can delay paint
+  Endless microtasks  Can starve rendering
+  async/await         Does NOT move sync CPU work off main thread
+  await fetch         Network can proceed without occupying main thread
+  Asynchrony ≠ parallel CPU execution
+
+PAINT TIMING
+  Sync callback       Intermediate DOM states often never painted (Loading… → Done)
+  requestAnimationFrame  Before upcoming repaint; still not license for expensive work
+  Vue nextTick()      Waits for Vue DOM flush — NOT a paint guarantee
+  Chain               Reactive update ≠ DOM updated ≠ frame painted
+
+FORCED SYNC LAYOUT / THRASHING
+  Pattern             Write style → read offsetHeight → write → read… forces repeated layout
+  Fix                 Group reads, then writes (or writes then one read pass)
+  Principle           Don't invalidate layout then demand geometry in a tight loop
+
+VUE + LARGE LISTS
+  Cost sources        Sort JS, Vue patch, DOM ops, layout, paint — profile before blaming reactivity
+  Virtualization      Large dataset; DOM holds viewport + buffer; scroll updates window
+  Caveats             Variable heights, a11y, focus; doesn't fix O(n) CPU over whole dataset
+
+WEB WORKERS
+  Use                 CPU-heavy work off main thread via postMessage
+  Cannot              Directly manipulate page DOM
+  Cost                Structured clone / transfer; shared memory = complexity
+  Don't fix           Layout of 5,000 DOM nodes — main thread still renders
+
+DIAGNOSE FIRST
+  Long task → Performance panel; thrashing → interleaved vs grouped; animate left vs transform
+  Vue slow?           JS vs components vs layout vs paint vs network — then choose fix
+
+SENIOR LINE: Slow frontend ≠ slow JS math. Often the browser work after JS finishes.
+```
 

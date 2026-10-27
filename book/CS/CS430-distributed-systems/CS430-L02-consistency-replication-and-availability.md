@@ -1502,6 +1502,89 @@ Continue in **CS430 — Distributed Systems and Reliable Workflows**.
 - **PostgreSQL — Logical Replication:** https://www.postgresql.org/docs/current/logical-replication.html
 - **Seth Gilbert and Nancy Lynch — Perspectives on the CAP Theorem:** https://dspace.mit.edu/entities/publication/dfcb6512-af44-4fc9-8e8b-1a8f28f1b53a
 
-
 ---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS430-L02  CONSISTENCY, REPLICATION & AVAILABILITY — INTERVIEW GLANCE CARD
+
+OPENING INCIDENT
+  POST writes primary → 201; immediate GET on async replica → 404
+  Both DBs healthy; different moments in history
+  Multiple copies cannot always change simultaneously
+
+WHY REPLICATE
+  Read capacity / HA promotion / geo latency / isolate analytics
+  Price = synchronization; replica ≠ free capacity (still replays WAL)
+
+POSTGRESQL PHYSICAL STREAMING
+  WAL → sender → network → receiver → write/flush → replay → visible
+  Received WAL ≠ yet query-visible; track with LSNs
+  Hot standby: read-only while replaying
+
+ASYNC VS SYNC
+  Async (default): fast commits; stale reads; failover may lose acked writes
+  RPO = data-loss tolerance; RTO = downtime tolerance
+  Sync waits for configured standby ack — needs synchronous_standby_names
+  synchronous_commit modes (conceptual):
+    local | remote_write | on (flush) | remote_apply | off
+  remote_apply: ack after replay on participating standby — not every replica
+  Sync trades write latency/availability for stronger replication guarantees
+
+CONSISTENCY SPECTRUM (not one slogan)
+  Read-your-writes   after my write, I see it
+  Monotonic reads    don't move backward across replicas
+  Consistent prefix  don't observe effects without causal priors
+  Linearizability    real-time atomic single-copy illusion
+  Linearizability ≠ transaction serializability
+  Eventual consistency: converge under delivery/progress assumptions —
+    not "always eventually fine despite permanent partitions"
+
+READ-AFTER-WRITE FIXES
+  A Read critical follow-ups from primary (often best SaaS default)
+  B Temporary primary pin (heuristic; lag can exceed window)
+  C Wait until replica replay LSN ≥ required; deadline + fallback
+
+REPLICA LIMITS
+  Replay uses CPU/IO; standby query conflicts with cleanup/replay
+  max_standby_streaming_delay / hot_standby_feedback trade lag vs bloat
+  Read replicas don't scale WRITES; primary still owns write + WAL
+
+FAILOVER
+  Promote lagging standby → missing previously acked txs (async)
+  Split-brain: old + new primary both accept writes after partition heal
+  Fencing: prevent former owner from authoritative writes
+  DNS flip alone ≠ complete failover; reconnect + reintegrate old primary
+
+QUORUM
+  Majority needed for leadership → overlapping majorities prevent dual leaders
+  3 voters: minority alone cannot claim authority
+  Quorum can stop progress to preserve safety; witness ≠ full DB copy
+
+CAP (USEFUL, OFTEN MISSTATED)
+  Formal: linearizable consistency + availability under partitions — impossible
+  "Pick 2 of 3" misleading; P not optional for multi-machine systems
+  Healthy network can often provide C+A; partition forces the hard choice
+  Not a permanent CA/AP product tattoo — reason per operation
+
+BUSINESS MATRIX (examples)
+  Hotel description / review count     often tolerate stale
+  Search availability                  brief stale OK; booking revalidates
+  New reservation details              read-your-writes desirable
+  Last room allocate / captured payment strong authoritative coordination
+  Availability ≠ lying 200 confirming unpaid bookings; prefer honest 503
+
+OPS
+  pg_stat_replication (sent/write/flush/replay + lag fields — interpret carefully)
+  Standby: pg_is_in_recovery, receive vs replay LSN; idle primary ≠ lag
+  Replication slots retain WAL for consumers — disconnected replica can fill disk
+  max_slot_wal_keep_size: limit retention ↔ may force rebuild
+  Physical = cluster standby; logical = publications/subscriptions (selective)
+  Logical ≠ free multi-primary; schema/conflict management still needed
+
+SENIOR LINE: every extra copy asks which version of reality a caller may see.
+```
 

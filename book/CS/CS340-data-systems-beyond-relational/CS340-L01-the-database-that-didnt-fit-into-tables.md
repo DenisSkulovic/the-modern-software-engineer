@@ -1481,3 +1481,93 @@ Finally, propose a simpler first version and explain what evidence would justify
 7. [Neo4j — Cypher Patterns](https://neo4j.com/docs/cypher-manual/current/patterns/) — Graph modeling and relationship traversal.
 8. [ClickHouse — What Is a Columnar Database?](https://clickhouse.com/resources/engineering/what-is-columnar-database) — Analytical workloads and column-oriented storage.
 9. Martin Kleppmann, *Designing Data-Intensive Applications* — A broader perspective on storage, replication, consistency, and distributed data systems.
+
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS340-L01  DATA SYSTEMS BEYOND RELATIONAL — INTERVIEW GLANCE CARD
+
+CORE QUESTION
+  What work must the data system do, and which guarantees must survive failure?
+  Fastest at WHAT, under WHICH constraints, preserving WHICH guarantees?
+  Earn complexity — don't collect databases like souvenirs
+
+FIVE COMPETING RESPONSIBILITIES (every DB prioritizes differently)
+  1 Data modeling     rows / docs / KV / graph / …
+  2 Access            point lookup vs scan vs search vs traverse
+  3 Consistency/tx    concurrency + replication visibility
+  4 Durability/recovery crash / corruption / infra failure
+  5 Scalability/ops   growth, traffic, operational cost
+
+RELATIONAL (PostgreSQL default foundation)
+  Relationships, keys, constraints, declarative SQL, planner, transactions
+  Not obsolete: jsonb, FTS, arrays, recursive/graph-ish SQL, analytics in SQL
+  Flexible attrs ≠ automatic Mongo migration — compare real workload
+  Start with coherent system of record; specialize when measured need
+
+DOCUMENT (MongoDB)
+  Document = unit often accessed together (BSON: nested / arrays)
+  Embed when co-lifecycle, bounded, rarely independent updates
+  Reference when unbounded growth, own lifecycle, subset queries (reviews!)
+  Atomicity strong within a document; multi-doc tx exist but model still matters
+  Flexible schema ≠ optional correctness — validate contracts
+
+KEY-VALUE
+  Known-key access; narrow interface; awkward ad-hoc queries without paths
+  Redis: structures (string/hash/set/zset/list/stream) — authoritative vs cache?
+    expiry, outage, persistence/replication config matter
+  DynamoDB: partition key (+ sort key); design for access patterns FIRST
+    bad PK → hotspots (e.g. all today's events on one key)
+
+SEARCH
+  Information retrieval + relevance — not equality lookup
+  Inverted index: term → document IDs (+ analysis, ranking, filters)
+  Search index usually DERIVED view; booking inventory authority stays elsewhere
+  Stale search hit → OK if booking API revalidates; sync/reconcile required
+
+GRAPH
+  Nodes + edges; multi-hop relationship queries natural
+  Graphs representable in SQL too; dedicated DB when traversal dominates
+  Highly connected nodes → combinatorial cost remains
+  Share-payment-token ≠ automatic Neo4j — depth/complexity decide
+
+ANALYTICAL (OLAP)
+  OLTP: many small txs / point ops
+  OLAP: scan, filter, group, aggregate large histories
+  Column-oriented: read needed columns; compression on similar values
+  Separate analytics when heavy scans fight customer-facing txs
+  Freshness, duplicates, schema evolution, pipeline failure = new obligations
+
+LABELS ARE MESSY
+  "NoSQL" / "not only SQL" spans wildly different systems
+  Logical model/interface ≠ physical/distributed architecture
+  SQL ≠ one storage layout; categories overlap
+  Consistency ≠ SQL vs NoSQL slogan — depends on product, op, replication,
+    isolation, read/write settings
+
+ARCHITECTURE RULES
+  Per-fact source of truth; caches/search/analytics are copies
+  Every derived store → sync, monitoring, reconciliation cost
+  Decide per operation: stale search OK; double-sold room not; lost payment not
+  Polyglot only when benefits outweigh ops + pipeline costs
+
+FIVE DECISION QUESTIONS
+  1 Dominant access patterns?
+  2 What must be correct together (atomicity / freshness)?
+  3 Growth, latency, throughput, hotspots?
+  4 Failure: reconstruct? rebuild? lag? which failures violate contract?
+  5 Operating cost (team, backups, security, replaceability)?
+
+LECTURE RECOMMENDATION (travel platform case)
+  Keep PostgreSQL as authoritative operational store
+  Redis only for concrete low-latency patterns
+  Evaluate search/analytics vs measurements
+  Resist extra document/graph DBs until advantages justify a boundary
+
+SENIOR LINE: choose by access patterns + correctness + failure + ops cost —
+             not fashion.
+```

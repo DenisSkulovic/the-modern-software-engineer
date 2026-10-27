@@ -920,3 +920,107 @@ The objective is to practice separating throughput from conversation latency, an
 3. [RFC 9002 — QUIC Loss Detection and Congestion Control](https://www.rfc-editor.org/rfc/rfc9002.html) — How QUIC handles loss and congestion.
 4. [Microsoft — Tracert](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/tracert) — Practical network-path investigation.
 
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS230-L02  NETWORKING FOR SOFTWARE ENGINEERS — INTERVIEW GLANCE CARD
+
+CORE CONTRADICTION
+  Network can move gigabytes fast yet make tiny API calls feel slow.
+  Separate “speed” into bandwidth vs latency (and more).
+
+BANDWIDTH vs LATENCY
+  Bandwidth   data rate (bits/s). 1 Gbps ≈ 125 MB/s theoretical
+  Latency     delay to deliver / complete an exchange
+  Tiny payload: serialization time often << RTT → Gbps upgrade won’t 10× a
+                180 ms 1 KB JSON response
+  Fiber ≈ 200,000 km/s → 4000 km ≈ 20 ms one-way (propagation floor)
+  Some latency is geography — code cannot erase it
+
+DELAY COMPONENTS
+  Propagation   distance
+  Transmission  put bits on the link
+  Processing    examine / forward
+  Queueing      wait in buffers
+
+RTT & DEPENDENCY GRAPHS
+  Request + response ≈ ≥ 1 RTT even if server is free
+  5 sequential APIs @ 100 ms RTT → ~500 ms network alone
+  Latency accumulates along sequential edges; bandwidth doesn’t remove them
+  Design: batch, parallelize, reuse connections, place critical state wisely
+
+PACKETS & ENDPOINTS
+  App bytes → TCP segments → IP packets → (Ethernet) frames
+  Common Ethernet MTU 1500 B payload; ~40 B IPv4+TCP headers → ~1460 B data
+  IP = network destination; port = transport endpoint at that host
+  TCP 5-tuple separates conversations; socket = OS abstraction
+  listen ≠ established connection; idle conns still cost resources
+
+TCP RELIABILITY — NOT FREE
+  IP best-effort: delay / drop / duplicate / reorder
+  Seq + ACK (+ SACK) → retransmit missing ranges; app sees ordered stream
+  Loss inference: ACK patterns + timers; isolated loss may wait on RTO
+  Tiny loss → outsized delay possible
+  TCP HoL: missing earlier bytes block later delivery to HTTP/2 even if
+           those bytes belong to another stream
+  HTTP/3/QUIC: independent streams remove THAT HoL form — not free reliability
+
+FLOW vs CONGESTION CONTROL
+  Flow control      receive window — protect the RECEIVER
+  Congestion ctrl   cwnd — protect the NETWORK PATH
+  Outstanding ≈ min(rwnd, cwnd)  (+ other constraints)
+  Slow start: grow from small in-flight; high RTT → slow wall-clock growth
+  Short transfer may finish before filling the pipe; long download can ramp
+  Signals: loss, ECN, delay…  CUBIC / BBR = different trade-offs
+  Fast link ≠ sender immediately uses full capacity
+
+BANDWIDTH–DELAY PRODUCT
+  BDP = Bandwidth × RTT
+  Example: 100 Mbps × 100 ms → ~1.25 MB in flight to fill the pipe
+  Throughput ≲ Window / RTT
+  64 KiB / 100 ms ≈ ~5 Mbps on a 100 Mbps path → window/RTT bound
+  High-BDP paths need large in-flight data for high throughput
+
+BUFFERBLOAT & JITTER
+  Useful buffers absorb bursts; oversized queues → high latency at full rate
+  Excellent throughput + terrible interactivity can coexist
+  Remedies class: SQM (FQ-CoDel, CAKE), fair queueing, shaping — not “more buffer”
+  Jitter = delay variation; averages hide tail pain for real-time AND web
+
+LOSS & LONG TAIL
+  0.5% loss × many packets → many recoveries; congestion → correlated bursts
+  Loss → retransmit + often rate reduction
+  Report p50/p95/p99 — not only mean
+  Fan-out: 20 independent calls, each 1% “slow” → ~18% chance ≥1 is slow
+  Microservices: cheap call ≠ cheap dependency graph
+
+DIAGNOSTICS (EVIDENCE, NOT VERDICTS)
+  ping     ICMP RTT / loss — ≠ HTTPS health; ICMP may be blocked/deprioritized
+  traceroute  hop list via TTL; hop RTT ≠ per-hop forward cost; * may be filter
+  Test-NetConnection / curl -v / curl -w timings
+    Compare DNS, connect, TLS, TTFB, total (cumulative fields)
+  Sequence: scope → client phases → server traces → network → dependencies
+  Browser timing ≠ app timer ≠ path between them
+
+ARCHITECTURE JUDGMENTS
+  Deploy closer: move what? Static→CDN; reads→caches; DB writes harder
+                 App near user useless if sync to distant state
+  Batch vs parallel: sequential RTT tax vs size/coupling/cacheability
+  Retries: backoff, jitter, budgets, idempotency — timeout ≠ “never happened”
+           Blind retry under congestion can amplify failure
+
+FIVE MENTAL MODELS
+  1. Bandwidth ≠ latency
+  2. Reliability machinery costs time
+  3. Shared finite path → queues / congestion
+  4. In-flight data (windows × RTT) can cap throughput
+  5. App shape multiplies network physics into product pain
+
+SENIOR LINE: design so the product doesn’t fight geography, RTT, and
+             congestion — measure conversations, not only pipe size.
+```
+

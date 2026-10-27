@@ -1305,6 +1305,84 @@ Continue in **SE240 — Browser and Frontend Engineering**.
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
 
----
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE240-L02  FRONTEND ARCHITECTURE BEYOND COMPONENTS — INTERVIEW GLANCE CARD
+
+OPENING FAILURE
+  Loyalty 10%         Same price calculated in many places → conflicting €370 / €333
+  Knowledge dup       Several modules believe they own the same rule
+  Bad “fix”         Giant useHotelPricing() still mixes stores, APIs, routes, notifications
+  Root question       Who is responsible for what?
+
+COMPONENTS ≠ ARCHITECTURE
+  Component tree      Visual composition
+  Architecture        Responsibilities + dependencies
+  Trap                Many components each coordinate the same business process independently
+
+COUPLING & COHESION
+  Coupling            How strongly modules depend; change propagation is the smell
+  Cohesion            Related work shares a meaningful purpose (e.g. booking-pricing/)
+  Change test         New cancellation policy → one identifiable area vs 30 scattered conditions
+
+FOUR RESPONSIBILITIES (not mandatory folders)
+  Presentation        What user sees; format/display — don't invent business meaning of data
+  Application         Orchestrate workflows (validate → submit → navigate)
+  Domain              Business rules as plain TS when possible; independent of Vue/Pinia/HTTP
+  Infrastructure      HTTP/API adapters; don't leak into pricing or card styling
+  Security note       Frontend domain = estimated UX; backend owns authoritative price
+
+FEATURE vs TECHNICAL FOLDERS
+  By type             components/, stores/, utils/ — hard to find a capability
+  By feature          features/hotel-search|reservations|payments + shared/
+  Vertical slice      Group by business capability
+  Folders alone fail  Cross-feature imports of each other's stores = still tightly coupled
+
+PUBLIC INTERFACES
+  Depend on           features/reservations public API (index.ts), not internalStore
+  Encapsulation       Internals changeable without forcing every consumer to change
+  Dependency direction  Avoid cycles Search↔Reservations↔Payments
+  Workflow owner      Explicit checkout (or similar) coordinates capabilities
+  shared/ trap        Don't dump business rules into shared/utils because two pages call them
+  Rule                Code reuse ≠ move business knowledge into a global dumping ground
+
+WHO OWNS WHAT
+  Composable          Reusable reactive behavior; new refs per call unless module-scoped share
+  Pinia               Shared client state across unrelated views (e.g. currency)
+  Default             Keep state as local as practical; share only as broadly as needed
+  Service / adapter   External operations (HTTP); suffix ≠ architecture
+  Plain functions     Best for non-reactive pure logic (nights, canCancel, discount math)
+
+FRONTEND MODEL vs BACKEND DTO
+  Anti-corruption     toHotel(dto) maps snake_case / external shape → internal Hotel
+  Trade-off           Elaborate mapping only when it insulates real change
+
+TESTABILITY
+  Fat component       Hard: mount + Pinia + HTTP + router + auth
+  Pure domain fn      Easy unit tests; design separates rule from infrastructure
+  DI light            Pass ReservationApi into workflow; inject where substitution matters
+
+HOW MUCH ARCHITECTURE?
+  Overengineering     Four layers per button click for a tiny app
+  Evolve              Prototype → growing features → mature SaaS boundaries
+  Quality metric      Cost of a predictable business change without collateral damage
+  Smell signals       Unrelated edits, duplicated rules, internal imports everywhere,
+                      half-app tests, cycles, unclear ownership
+
+INCREMENTAL REFACTOR
+  1 Source of truth   Backend authoritative pricing; clarify estimate vs quote vs confirmed
+  2 Find duplication  Don't extract blindly
+  3 Feature boundary  Stable public interface
+  4 Migrate gradually One consumer at a time
+  5 Enforce           Lint/import rules for meaningful boundaries only
+
+MENTAL MODEL
+  Cohesion · Coupling · Ownership · Boundaries · Dependency direction · Proportionality
+  Good architecture makes likely future changes reasonably easy.
+
+SENIOR LINE: Architecture starts with responsibilities—not folder names or Pinia vs X.
+```
 

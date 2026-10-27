@@ -1478,4 +1478,56 @@ The objective was never to memorize technologies—it was to understand why they
 
 ---
 
+---
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE490-L02  MODERN WEB PRODUCT — INTERVIEW GLANCE CARD
+
+START FROM CONSTRAINTS
+  Team/time/scale → modular monolith first (not 12 microservices)
+  Invariants ≠ SLOs: no oversell; tenant isolation; no duplicate pay on retry;
+  frontend never announces confirm without authoritative backend; search may stale
+
+ARCHITECTURE SKETCH
+  Vue CSR (+ static marketing) → CloudFront/S3 + same-origin /api → Node modular
+  Postgres authoritative; Redis cache/sessions/queue ≠ inventory truth
+  Workers for email etc.; payment provider via backend only
+
+DISCOVERY vs COMMIT
+  Discovery: cacheable reads (CDN, short search TTL)
+  Commit: transactional inventory claim + durable workflow
+  Quote ≠ hold ≠ confirmed booking — separate guarantees
+
+FRONTEND STATE OWNERSHIP
+  URL/router search params; server-state query cache keyed by inputs;
+  checkout as state machine incl. unknown (timeout ≠ failure)
+  Stale response must not overwrite newer search (query identity)
+
+RESERVATION / PAYMENT
+  Conditional inventory UPDATE in txn; multi-night atomic; Idempotency-Key
+  Hold → pay → finalize; webhooks authenticated + idempotent; success page ≠ proof
+  Hold expiry during pay → explicit reconcile/refund/void paths
+
+SECURITY / MULTI-TENANT
+  Backend authz (BOLA test); session cookie Secure/HttpOnly/SameSite; CSRF
+  Never expose payment secrets to Vue; no tenant trust from "hidden" UI
+
+DELIVERY / PERF
+  Versioned assets; keep old chunks; expand–migrate–contract schema
+  CWV: LCP/INP/CLS; SSR only when measured need; simplest rendering that works
+
+TEST / OBSERVE
+  Concurrent inventory; idempotency; authz; Playwright critical path; failure inject
+  Correlate requestId across layers; business metrics ≠ only HTTP 200
+
+SCALE INTERVIEW ANSWERS
+  Measure bottleneck first; don't microservices-by-default; cache ≠ authority;
+  multi-region writes hard; REST vs GraphQL by demonstrated need
+  Architecture = which complexity you postpone
+
+SENIOR LINE: clear responsibilities & guarantees beat impressive diagrams.
+```

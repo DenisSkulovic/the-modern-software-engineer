@@ -1322,3 +1322,82 @@ Why can money arithmetic go wrong with floating-point numbers? Why can a large i
 In **CS110-L02**, we'll examine bits, integers, floating-point values, text encodings, and time — and discover why "everything is numbers" is both true and dangerously incomplete.
 
 ---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS110-L01  WHAT IS COMPUTATION — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Computation     Well-defined ops on REPRESENTED info
+                  (may transform outputs AND stored state)
+  Layers          PROBLEM ("what?") → ALGORITHM ("how?") → PROGRAM ("on this machine")
+  Same problem    Many algorithms / implementations (Set, sort+scan, COUNT DISTINCT…)
+  Master trap     Code can run perfectly and still be wrong — wrong model / missing info
+
+THE MISSING-USERS PRINCIPLE
+  Mon:100, Tue:100  → exact 2-day unique CANNOT be computed
+  Why               Two worlds → same stored rows → different truths (100…200)
+  Sticky            If two realities share input but need different answers,
+                    no algorithm on that input always returns the correct answer
+  Bounds (days c_i) min = max(c_i)   max = sum(c_i)   mid values via partial overlap
+  Oral A            120/180/150 → min 180, max 450, 200 possible; need IDs/overlap info
+
+REPRESENTATION & ABSTRACTION
+  Abstraction       Deliberately discard detail for a purpose — useful ONLY vs questions
+  Many-to-one       Events → daily counts = irreversible / information-losing
+  Ask always        Which FUTURE questions become impossible after this summary?
+  Monitoring        Avg latency alone hides outliers (200ms all-OK vs one 10.1s spike)
+  Finance           Balance alone ≠ history (unauthorized withdrawal undetectable)
+  City / graphs     Road+intersection COUNTS ≠ connectivity; need which↔which
+  Reality ≠ model   Customer ≠ JSON; city ≠ graph; tx ≠ one DB row
+
+MODEL vs REALITY
+  Algorithm solves the MODEL; usefulness needs a faithful-enough model
+  Stale travel times → Dijkstra "correct on graph," wrong on roads
+  Feedback loop     Recommend A → everyone takes A → A congests → model outdated
+  Habit             What does this system believe? When do those beliefs go false?
+
+STATE
+  State             Past info retained because it may influence future behavior
+  Transition        (previousState, event) → newState
+  Unique users      Count alone insufficient; need membership (Set / unique table / …)
+  Idempotence       Same user twice → same set as once (∪ is idempotent)
+  API               Identical POST can succeed or fail — state changed (room free vs taken)
+  Model             (currentState, request) → (newState, response)
+  Determinism trap  Different responses ≠ nondeterminism if state/time/remote/rng differed
+                    Account for ALL relevant state before calling it "random"
+
+THREE KINDS OF HARD
+  ① Impossible from this data     missing information
+  ② Wrong / incomplete model      solves the wrong world
+  ③ Exact but too expensive       approximate / trade-offs (e.g. HyperLogLog sketches)
+  Exact set vs HLL vs daily counts — different guarantees; billing vs dashboard ≠ same bar
+  Possible ≠ practical ≠ exact
+
+AI / AGENTS
+  Tools returning Mon=100,Tue=100 still cannot invent overlap
+  Smarter models don't invent missing data; tools/representations decide what can be known
+  Wrong elegant model in seconds ≠ victory
+
+SIX-QUESTION CHECKLIST
+  1. What exactly are we trying to determine?
+  2. What information do we have?
+  3. How are we representing the problem?
+  4. What procedure produces the result?
+  5. What will the procedure cost?
+  6. What changes when it runs in reality?
+     (late events, crashes, duplicates, concurrency, definition drift)
+
+ORAL RECOVERY LINES
+  Why not sum DAU → WAU?   Overlap discarded; same 100 both days → sum 200, distinct 100
+  Traffic model            Distance / simplified time OK; live congestion ≠ full prediction
+                           Journey is FUTURE; recommendations change the world
+  Analytics redesign       Keep stable IDs / day sets or events; dedupe; late-arrival policy;
+                           privacy retention; sketches only if approx OK
+
+SENIOR LINE: define WHAT must be computed — and whether the data makes it possible —
+before asking HOW to compute it.
+```

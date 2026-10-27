@@ -1416,4 +1416,82 @@ When maintaining a mature system, ask:
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE330-L03  MAINTAINING / EVOLVING — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Maintenance = engineering change under accumulated constraints
+  Software “ages” via environment + entangled relationships
+  Essential complexity (problem) vs accidental (implementation)
+  Frameworks manage complexity; don't repeal domain rules
+
+TECHNICAL DEBT
+  Not “anything ugly” — future cost from design shortcuts
+  Principal = saved time now; interest = ongoing extra work/risk
+  Unused code → little interest; product hotspot → expensive
+  Intentional vs unintentional; debt ≠ ordinary maintenance
+
+ECONOMICS OF REFACTOR
+  V ≈ avoided work + avoided failures − implement − migration risk
+  Priority ∝ change frequency × cost of change × risk
+  Hotspots: complex + frequently modified (git history)
+  Don't polish dead files that never change
+
+REFACTORING
+  Change structure, preserve observable behavior (Fowler)
+  Feature / bugfix ≠ refactor conceptually
+  Small verifiable increments; establish tests first
+  Avoid mega-PR: ORM + FP + rename + events + DI together
+
+ARCHITECTURAL EROSION
+  Shortcuts around public APIs → ownership collapses
+  Fitness functions: enforceable import rules in CI
+  Structure alone ≠ correct business ownership via APIs
+
+LEGACY
+  Old ≠ bad; hard to understand/change/operate safely
+  Encodes edge cases & contracts — rewrite can revive old bugs
+  Characterization tests: document current behavior (≠ ideal)
+  Archaeology: callers, data, history, incidents, contracts
+
+REWRITE TEMPTATION
+  Underestimated: undiscovered behavior + moving target dual-system
+  Can delete essential rules with “cleanup”
+  Justify when tech/design blocks evolution AND incremental worse
+  Rewrite = large-scope migration, not escape from complexity
+
+STRANGLER FIG
+  Route selected capabilities to new impl incrementally
+  Feedback, smaller blast radius; stop when “good enough”
+  Hard part: data ownership — avoid permanent dual-write w/o reconcile
+
+DATABASE EVOLUTION
+  Expand → migrate/backfill → contract (compatible coexistence)
+  Idempotent, batched, monitored migrations
+  Intermediate dual-write = dangerous without ownership rules
+
+DEPENDENCY UPGRADES
+  Delay → one huge gap; separate compile/runtime/ops/security risks
+  Incremental; verify beyond “TypeScript compiles”
+  Build vs buy: total cost, differentiation, vendor risk
+
+DEPRECATION
+  Announce, dual-support, measure usage, then remove
+  Temporary adapters need exit plans or become permanent debt
+
+ADRs / TEAM
+  Preserve why; supersede when context changes
+  Capacity for high-value maintenance; boy scout with judgment
+  Quality serves product economics, not aesthetic contests
+
+SENIOR LINE: Reduce future cost/risk of change without paying more
+             for perfection than the business can justify.
+```
+
+---
+
 

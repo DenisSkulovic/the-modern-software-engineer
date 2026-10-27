@@ -1652,4 +1652,67 @@ The core catalogue is complete. Continue with planned electives (see `curriculum
 
 ---
 
+---
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE490-L05  PRODUCTION AGENTIC SAAS — INTERVIEW GLANCE CARD
+
+OPENING FAILURE (€320)
+  Auth ≠ capture; missing confirmation ≠ permanent failure; timeout + new op ID;
+  stale agent observations; refund against later-captured payment
+  Cause: probabilistic component coordinating business without authoritative
+  state, execution guarantees, control boundaries — not "need more agents"
+
+INTERPRETATION vs ENFORCEMENT
+  LLM: intent, language, explain policies (via RAG)
+  Deterministic: availability, prices, refund eligibility, payments, authz
+  Model extracts; app resolves dates/ownership and enforces thresholds
+
+ADR 001 — MODULAR MONOLITH + AI SUBSYSTEM
+  Conversation / AI layer (context, model gateway, tool registry) /
+  Domain services / Retrieval / durable ops + queue
+  Domain owns invariants; tools wrap domain — no parallel policy engine in prompt
+  No K8s just because LLMs exist
+
+ADR 002 — AGENTS SELECTIVELY
+  A single call: extract/summarize/explain
+  B known workflows: deterministic orchestration + LLM interpret/communicate
+  C open investigation: bounded read-only agent → propose, don't execute mutations
+  Multi-agent only with demonstrated need
+
+RAG vs LIVE STATE
+  RAG: policies, procedures, docs (version, tenant, effective dates, citations)
+  Not: live reservation/payment/balance — authoritative APIs
+  Citation IDs verified against retrieved set; RAG ≠ transactional policy engine
+
+TOOLS / SECURITY
+  Capability tools (get_*, prepare_*) — no execute_sql / free issue_refund
+  Allowlist → schema → auth principal → authz → preconditions → domain
+  Tenant isolation; data minimization; secure even if model is manipulated
+  MCP later for multi-host interoperability — not required for one app
+
+REFUND STATE MACHINE
+  PROPOSED→VALIDATED→AWAITING_APPROVAL→APPROVED→SUBMITTED→
+  SUCCEEDED|FAILED|UNKNOWN→RECONCILING
+  Outbox; at-least-once queue; claim op; provider idempotency + internal ledger
+  Never invent new refund from error/timeout
+
+MEMORY
+  Conversation + structured prefs + durable ops; stale memory ≠ current truth
+  Semantic LT memory only with observed need
+
+EVAL / OPS / COST
+  Intent, retrieval, tool choice, workflow fault-injection, trajectories
+  Correlate conv/agent/op IDs; cost per correct completed outcome
+  Roadmap: read-only → prepared ops + approval → durable exec → bounded agents
+
+REVIEW ANSWERS
+  pgvector first; RAG over fine-tune for changing policies; degrade without model
+  Biggest risk: model conclusions acquiring business authority unchecked
+
+SENIOR LINE: minimum uncertainty needed — not maximum agent autonomy.
+```

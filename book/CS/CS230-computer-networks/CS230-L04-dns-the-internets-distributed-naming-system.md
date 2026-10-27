@@ -930,3 +930,93 @@ The objective is to practice separating DNS resolution from the behavior of the 
 5. [RFC 4033 — DNS Security Introduction and Requirements](https://www.rfc-editor.org/rfc/rfc4033.html) — DNSSEC architecture and security goals.
 6. [RFC 8484 — DNS Queries over HTTPS](https://www.rfc-editor.org/rfc/rfc8484.html) — Encrypted DNS transport over HTTPS.
 7. [RFC 9460 — Service Binding and HTTPS Records](https://www.rfc-editor.org/rfc/rfc9460.html) — Modern DNS service binding and HTTPS connection information.
+
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS230-L04  DNS — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Hostname = stable identity in a global namespace — not "a machine"
+  Indirection: name stays; infrastructure (IP, LB, CDN, regions) changes
+  Many names → one IP; one name → many IPs / families / geo answers
+  DNS resolution ≠ TCP connect ≠ TLS auth ≠ app health ≠ reachability
+
+WHO ANSWERS?
+  Stub resolver     app/OS client; usually delegates hard work
+  Recursive resolver  "get me an answer" — may use ITERATIVE queries
+  Authoritative     publishes zone data; authority ≠ proof of healthy app
+  Also: browser DoH/cache, hosts file, VPN — dig ≠ always browser path
+  Connection reuse can skip a new lookup entirely
+
+HIERARCHY (COLD LOOKUP)
+  Recursive → Root (referral) → TLD (referral) → Authoritative (answer)
+  Referral = next authority, not final A/AAAA
+  Caching of answers AND delegations → most lookups aren't cold
+  NS delegation + glue: avoid circular "NS name inside own zone" bootstrap
+  Tree of delegated authority — not one global catalogue
+
+RECORD TYPES (TYPED QUESTIONS)
+  A / AAAA   IPv4 / IPv6 addresses (multi OK; ≠ managed LB + health)
+  CNAME      alias to another NAME — not an HTTP redirect; apex conflict
+             (SOA/NS); ALIAS/ANAME/flattening = provider mechanisms
+  NS / SOA   nameservers; zone admin + negative-caching role
+  MX / TXT   mail; verification / email auth text
+  CAA        authorized CAs for issuance (policy-dependent)
+  SRV        service endpoints (+ ports) when apps use them
+  No A ≠ nonexistent name — other types or deliberate no IPv4
+
+CACHING & MIGRATION ("PROPAGATION")
+  TTL = how long a caching resolver may reuse the answer
+  Lower TTL AT cutover does NOT rewrite already-cached copies
+  Prep: lower TTL early → wait for old caches to expire → cut over
+  Keep old destination up during overlap (blue-green via naming)
+  No single global DNS cache; independent expiries explain geo disagreement
+  DNS is coarse for instant % canary / second-scale rollback → use LB/proxy
+
+NEGATIVE CACHING
+  NXDOMAIN   name does not exist
+  NODATA     name exists; requested TYPE empty (e.g. AAAA yes, A no)
+  SERVFAIL   resolver/server couldn't complete (misc./DNSSEC/…)
+  Timeout    no usable response in time
+  Negative TTL from SOA-related rules + resolver policy — creating A later
+  doesn't erase already-cached NXDOMAIN
+
+TRAFFIC STEERING
+  Geo DNS may key off recursive (or ECS) — imperfect user location
+  Anycast: same IP → different facilities via routing
+  Happy Eyeballs–style dual-stack selection; broken AAAA path ≠ bad A records
+  DNS supplies candidates; routing decides the actual path
+
+SECURITY — THREE DIFFERENT DEFENSES
+  DNSSEC   authenticate DNS data (signatures/trust) — not encrypt queries;
+           not "admin entered right IP"
+  DoH/DoT  encrypt client↔chosen resolver — resolver still sees names;
+           not whole recursive↔authoritative path
+  TLS      authenticate intended hostname at endpoint — bad IP still fails
+           without valid cert for that name
+
+INCIDENT QUESTIONS
+  1. Which resolution path? (OS / DoH / VPN / hosts / reuse?)
+  2. What does THAT recursive return? (addrs, CNAME, RCODE, remaining TTL)
+  3. What do authoritatives publish? (dig +trace ≠ full client reproduction)
+  4. Connect separately: curl --resolve host:443:IP → isolate DNS vs HTTPS
+
+MULTI-A "LOAD BALANCER" MYTH
+  Multiple A ≠ health checks, even distribution, or instant withdrawal
+  Clients/resolvers cache, reorder, reuse connections
+
+FIVE QUESTIONS THAT RECOVER THE LECTURE
+  Who knows?     authoritative
+  Who finds out? recursive (iterative walk)
+  Who remembers? caches (resolver / OS / app)
+  Who expires?   TTL + policy
+  Who connects?  transport + TLS + app after the answer
+
+SENIOR LINE: DNS is delegated authorities + independent caches — tolerate
+             multiple generations of naming state during transitions.
+```

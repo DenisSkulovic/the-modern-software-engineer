@@ -1690,3 +1690,60 @@ Retrieval makes relevant evidence available; generation must still use that evid
    Security guidance addressing retrieval poisoning, authorization failures, and data exposure risks in embedding-based applications.  
    https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
 
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+AI310-L04  RAG — INTERVIEW GLANCE CARD
+
+WHAT RAG CHANGES
+  Parametric (weights) + non-parametric (external index) at inference
+  Good for private/changing/large/citeable knowledge
+  Does NOT prove docs true, retrieval right, or generation faithful
+
+TWO PIPELINES
+  Offline: parse → clean → chunk → embed → index (+ versions)
+  Online: auth → retrieve → rank → assemble context → generate → validate/cite
+  Quality constrained by every stage
+
+INGESTION / CHUNKING
+  Parse can destroy table meaning; preserve structure + provenance metadata
+  Fixed-size ± overlap vs structure-aware; parent-child (small index, big context)
+  Contextual enrichment careful (wrong enrichment → confident wrong)
+  Chunk = meaningful retrievable unit, not just token count
+
+INDEXING LIFECYCLE
+  Version docs; activate only after validate; retire old from ordinary search
+  Avoid partial versions; treat incomplete index as silent fact corruption
+
+QUERY / CONTEXT
+  Reformulate conversational needs carefully (don't invent entities)
+  Multi-query when one miss pattern shown; metadata from trusted scope
+  Assembly: authority, dates, dedupe, budget, source IDs — not dump top-k
+  Lost-in-the-middle: capacity ≠ utilization
+
+GROUNDED GENERATION / CITATIONS
+  Supported / unsupported extension / contradicted / appropriate uncertainty
+  Cite stable IDs from retrieved set; validate ID membership
+  Citation validity ≠ citation support (real cite can mis-attach claim)
+
+FRESHNESS / SECURITY
+  RAG current only if index lag meets contract; ops state → live systems
+  Applicability ≠ "newest" always; deletion must propagate
+  Retrieved text untrusted (injection); tenant isolate before model sees
+  Retrieval poisoning without explicit "ignore instructions"
+
+EVAL DIAGNOSIS
+  Corpus? Retrieved? Assembled? Generated? Cited support?
+  Evidence Recall@k vs context coverage; faithfulness; abstention
+  Oracle-context: give gold evidence → isolates generation vs retrieval
+
+WHEN NOT RAG
+  Direct DB for balances; whole short doc in context; search-only UX;
+  fine-tune for behavior not rapidly changing facts
+
+SENIOR LINE: finding the truth and telling the truth are separate jobs.
+```

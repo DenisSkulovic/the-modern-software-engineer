@@ -1287,6 +1287,79 @@ Continue in **SE310 — Web APIs, Identity, and Security**.
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
 
----
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE310-L02  AUTHENTICATION AND BROWSER SECURITY — INTERVIEW GLANCE CARD
+
+OPENING (BOLA / IDOR)
+  Valid session + HTTPS + auth middleware — GET /reservations/9822 still returns another's booking
+  Authn ≠ Authz        Who is it? vs May they do THIS on THIS resource?
+
+AUTHORIZATION
+  Constrain lookup     id + customerId from trusted server auth context — never client-supplied id alone
+  Multi-tenant         WHO + ORG + RESOURCE + ACTION + CONDITIONS
+  RBAC                 Permissions via roles
+  ABAC                 Actor/resource/action/context attributes
+  UI hide              Not authorization — backend must reject
+
+SESSIONS
+  Opaque ID            Server store (Redis/DB); revoke/expire centrally
+  Cookie attrs         Secure · HttpOnly · SameSite · Path; __Host- adds Secure+Path=/+no Domain
+  Trade-off            Shared session store for multi-instance apps
+
+JWT
+  header.payload.sig   Signed ≠ encrypted; don't put secrets in payload
+  Pros                 Validate without every-request central lookup
+  Revocation           Logout ≠ instant kill until expiry unless extra state/short TTL/refresh design
+  Validate fully       Signature + allowed alg + iss/aud/exp + purpose — not “decode and trust”
+
+COOKIES vs BEARER
+  Orthogonal dims      Session vs self-contained · Cookie vs Authorization · Storage choice
+  Cookie auth          Browser auto-send → CSRF risk; HttpOnly helps vs JS read
+  Bearer               Authorization: Bearer …; localStorage readable by XSS
+  BFF                  Browser session cookie → BFF holds API tokens; still need CSRF/session care
+
+SAME-ORIGIN POLICY
+  Origin               scheme + host + port
+  Limits               Cross-origin JS reading responses without permission
+  Does NOT stop        Many cross-origin sends (forms, images, navigation)
+
+CORS
+  ACAO                 Permission for browser JS to read cross-origin response
+  Preflight            OPTIONS for some non-simple requests — ≠ authentication
+  Credentials          credentials:include + specific origin + Allow-Credentials; not *
+  Myth bust            CORS ≠ API auth — curl/backends ignore it
+
+CSRF
+  Abuse                Auto-attached cookies perform state change; attacker may not need response body
+  CORS ≠ CSRF fix      Form POST can succeed without readable CORS
+  Defenses             CSRF token · SameSite · Origin/Referer checks · custom headers · no unsafe GET
+  SameSite ≠ origin    app.example vs api.example = different origins, often same site
+
+XSS
+  Untrusted → code     In your origin; can act as user / read JS-visible data
+  HttpOnly             Blocks document.cookie read; script can still call APIs with cookies attached
+  Vue {{ }}            Text escape; v-html / innerHTML = HTML interpretation — sanitize if needed
+  Contexts differ      HTML text vs attr vs URL vs JS — one “escape” fn isn't universal
+  CSP                  Defense in depth — not substitute for safe rendering
+
+OAUTH 2.0
+  Delegated authz      Access without sharing passwords; scopes limit
+  Roles                Resource owner · client · authorization server · resource server
+  Auth Code + PKCE     Verifier/challenge binds code redemption; required for public clients (BCP)
+
+OIDC
+  Identity layer       ID token (JWT) for authn event to relying client
+  ID ≠ access token    Different purposes/audiences — don't swap casually
+  Still need           App-level authz after federated login
+
+ARCHITECTURE REMINDER
+  Authn · Authz · sessions/tokens · TLS · SOP · CORS · CSRF · XSS · OAuth · OIDC
+  None substitutes for another.
+
+SENIOR LINE: Security isn't proving who someone is—it's ensuring every action crosses only allowed boundaries.
+```
 

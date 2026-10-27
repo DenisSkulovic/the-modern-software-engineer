@@ -1231,4 +1231,63 @@ Continue in **SE490 — Architecture and Systems Design Studio**.
 
 ---
 
+---
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE490-L04  ARCHITECTURE REVIEW — INTERVIEW GLANCE CARD
+
+METHOD (repeatable)
+  Business constraints → structure/ownership → evidence (incidents/metrics)
+  → rank risk → smallest effective fix → measure → reassess
+  Opinions → testable hypotheses; tech is means, not the outcome
+
+MERCURY FINDINGS → PRIORITY
+  Critical  Inconsistent tenant authz (BOLA) — immediate
+  Critical  Duplicate invoices (read-before-write, no UNIQUE)
+  High      Schema/deploy coupling; connection starvation; untested restore
+  Medium    Tracing; Redis shared cache+queue; large services
+  None      "Lack of Kubernetes" without demonstrated harm
+
+KNOWN vs CREDIBLE vs PREFERENCE
+  Correctness failures & data exposure first; then operational risks;
+  then architectural fashion without evidence
+
+FIX PATTERNS
+  Authz: AuthorizedContext; scope by tenantId; audit all paths; RLS defense
+  Finance: UNIQUE on business key; outbox; concurrent integration tests
+  Deploy: migrations not on Lambda startup; expand–migrate–contract;
+          release record (API/worker/schema/config); smoke on business outcomes
+  Connections: no external I/O inside txn; aggregate concurrency budget;
+               RDS Proxy helps multiplexing ≠ query capacity
+  Recovery: define RTO/RPO; restore drill; Redis cache vs durable jobs
+  Observability: pool wait, booking success, oldest job — not CPU vanity
+
+MODULARITY WITHOUT MICROSERVICES
+  Domain modules + clear ownership; adapters not speculative frameworks
+  Moving BookingService into a folder ≠ solving coupling
+
+K8S / REWRITE
+  Postpone unless evidence; ECS/Fargate only for measured ops pain
+  Six-week roadmap: security → financial races → connections → deploy →
+  recovery → targeted refactor
+
+COMMUNICATE TO MANAGEMENT
+  Platform viable; risks concrete; targeted work vs rewrite fashion;
+  make uncertainty explicit (what needs measurement)
+
+WORKSHOP ANSWERS
+  CPU 75%: wait events, queries, locks before buy capacity
+  Reporting load: isolate workers/replicas before new DB+service
+  Presigned URLs: object authz is a release requirement
+  Rollback: check schema/status compatibility; data not auto-reversed
+  Fancy diagram interview: ask constraints before praise/condemn
+
+MENTAL MODEL: business → structure → evidence → risk → intervention →
+  economics → verification
+
+SENIOR LINE: right decisions for the system that exists — not max sophistication.
+```

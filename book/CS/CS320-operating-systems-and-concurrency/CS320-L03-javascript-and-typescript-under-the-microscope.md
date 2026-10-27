@@ -1235,3 +1235,72 @@ How would you validate the input properly?
 **Experiment D — Async iteration.** `"Finished"` appears before the asynchronous callbacks finish. `forEach()` doesn't await the promises returned by async callbacks. Sequential processing uses `for...of` with `await`. Concurrent processing uses an appropriate promise-composition mechanism such as `Promise.all()`, with explicit concurrency limits when necessary.
 
 **Experiment E — Runtime type assertions.** The assertion doesn't convert `"42"` into a number. The runtime value remains a string. Calling `toFixed()` throws. A correct solution validates the external value and either rejects it or performs an explicitly permitted conversion.
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS320-L03  JS/TS UNDER THE MICROSCOPE — INTERVIEW GLANCE CARD
+
+TRUTHINESS / DEFAULTS
+  Falsy: false, 0, -0, 0n, "", null, undefined, NaN (else truthy)
+  [] {} "false" "0" are truthy
+  ||  uses truthiness → 0||15 → 15 (erases legitimate zero/false/"")
+  ??  only null/undefined → 0??15 → 0
+  ?. stops on nullish left; does NOT protect later ops or wrong types
+
+MISSING vs NULL vs UNDEFINED
+  Absent prop ≠ { phone: undefined } (hasOwn / in differ; in includes inherited)
+  JSON.stringify drops undefined → both may become "{}" (info loss)
+  PATCH contract: absent=unchanged; null=clear; ""=validate/reject per rules
+  exactOptionalPropertyTypes: optional ≠ automatically | undefined
+  Partial<Entity> ≠ safe update API — model permitted fields/intentions
+
+EQUALITY / IDENTITY
+  Objects: === is identity, not structural equality
+  Set/Map keys: SameValueZero (NaN≈NaN; 0≈-0); domain dedupe → key by id Map
+  === no coerce; NaN===NaN false; Object.is(NaN,NaN) true; Object.is(0,-0) false
+
+COPY / OWNERSHIP
+  { ...obj } shallow — nested refs shared → draft mutates original
+  structuredClone: deep for supported data; no functions; cost for huge graphs
+  Immutable path updates / structural sharing: share only if treated immutable
+  Identity + ownership + mutation policy = architecture
+
+this / CLASSES / PROTOTYPES
+  Ordinary method this = call-site receiver; extract send → this undefined (strict)
+  Closure = lexical env; this ≠ that — bind / wrapper / lexical arrow field
+  Arrow: lexical this; no own arguments; not for constructors the same way
+  class methods typically on .prototype; lookup walks chain
+  hasOwn ≠ in; instanceof / pollution awareness
+
+ASYNC ARRAYS / ERRORS
+  forEach ignores returned promises → “Finished” too early; unhandled rejects risk
+  Sequential: for…of + await
+  Concurrent: Promise.all(map…) — rejection ≠ cancel siblings; bound capacity
+  allSettled: per-outcome; still unbounded unless you limit
+  return promise inside try ≠ catch later rejection; return await can matter
+  Don’t map every failure → null (not_found ≠ outage); model result unions
+  finally: cleanup on leave try; not crash/kill proof
+
+MODULES
+  ESM live bindings; importer can’t reassign export
+  Cycles allowed; TDZ/access before init → ReferenceError
+  CJS require vs ESM import — know your project’s system
+  Module singleton ≠ distributed singleton (multi-process)
+
+TYPESCRIPT TOOLING
+  Narrowing (typeof, discriminants); exhaustiveness via never + default
+  : Type vs as Type vs satisfies Type (check without widening inference)
+  None validate external JSON
+  strictNullChecks; noUncheckedIndexedAccess (index → T|undefined); !
+  removes warning only
+
+CORRECTNESS STACK (none replaces the rest)
+  TS · runtime schema · domain rules · auth · DB constraints · transactions
+  · external guarantees · tests/monitoring
+
+SENIOR LINE: syntactic fluency ≠ knowing what the language guarantees —
+             design for real values, timing, and failure.
+```

@@ -1877,3 +1877,72 @@ After running it, explain the behavior in terms of reachability rather than simp
 That's the level of understanding we're aiming for.
 
 > ✓ Lab complete — retain, measure, clear, interpret
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS220-L02  MEMORY — INTERVIEW GLANCE CARD
+
+CORE PARADOX
+  GC working + memory climbing = reachable junk (reachable ≠ useful)
+  GC reclaims unreachable objects — not “business-useless” ones
+  Auto memory mgmt changes WHAT you decide (reachability/cleanup), not WHETHER
+
+STACK vs HEAP (model, not hard JS placement rule)
+  Call stack   LIFO frames; return path; stack overflow ≠ out of RAM
+  Deep recursion → RangeError; iterate / explicit array stack for depth budget
+  Heap         objects can outlive creators while reachable
+  Binding ≠ object   aliases share one object; mutation ≠ reassignment
+    customerB.name = …  mutates shared object
+    customerB = {…}     rebinds; old object unaffected
+
+REACHABILITY
+  Roots → follow refs → mark live → sweep unmarked (mark & sweep model)
+  Cycles OK for tracing GC if no root path (≠ simple refcount)
+  Useful×Reachable matrix:
+    yes/yes keep · no/yes “leak” to you · yes/no bug · no/no GC’s job
+
+CLASSIC RETENTION LEAKS
+  Unbounded Map/cache     never leaves; growth ∝ unique keys, not request count
+  Closures                capture whole report → keep dataset; capture IDs only
+  EventEmitter / listeners  on without off; sessions stay alive
+  Timers                  setInterval without clearInterval
+  Queues backlog          arrival > drain — may not be “leak”; still OOM risk
+  Cleanup ownership       register ⇒ unregister; GC ≠ cancel timers/sockets
+
+CACHE CONTROLS (each helps / can miss)
+  TTL · max entries · LRU · explicit invalidate
+  Entry count bound ≠ memory bound (huge variable values; other refs; Buffers)
+
+GENERATIONAL GC (V8 idea)
+  Young nursery collected often; survivors → old generation
+  GC trades memory / CPU / pause — “memory went up” ≠ diagnosis yet
+  Sawtooth normal; rising floor after GC → investigate retained baseline
+
+METRICS (Node process.memoryUsage)
+  heapUsed     JS managed live-ish
+  heapTotal    V8 heap capacity
+  rss          whole process resident (heap + native + stacks + code…)
+  external / arrayBuffers   Buffers etc. — watch these for file downloads
+  Trap: raise only V8 heap limit inside small container → still OOM
+  Process footprint ⊃ JS heap
+
+DIAGNOSIS LOOP
+  1 pattern over time  2 which metric  3 reproduce  4 heap snapshot paths
+  Snapshots answer who retains — you judge if they should
+  Retained size: tiny callback can pin huge graph
+  Snapshot cost/privacy: prefer staging; can OOM production near limit
+
+WeakMap
+  Weak keys: presence as key alone doesn’t keep object alive
+  No enumerate; no string ID keys; not a TTL/capacity cache API
+  WeakRef / FinalizationRegistry ≠ reliable resource lifecycle API
+
+PERFORMANCE ANGLE
+  Batch/stream vs load-all → peak memory; allocation rate → GC pressure
+  Measure before object-pooling folklore
+
+SENIOR LINE: who still holds a reference — and should they?
+```

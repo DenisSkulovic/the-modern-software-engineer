@@ -1372,4 +1372,87 @@ Continue in **SE330 — Software Architecture and Evolution**.
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE330-L02  ARCHITECTURE PATTERNS — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Patterns = tools for complexity, not sophistication trophies
+  Approaches answer different questions; often combinable
+  Principle ≠ adopt every ceremony of the named style
+
+PATTERN → CENTRAL QUESTION
+  Layered            Which technical responsibility where?
+  Vertical slices    What changes together for a feature?
+  Hexagonal          Business avoid depending on infrastructure?
+  Clean Architecture Dependency direction toward policy?
+  DDD                Business concepts & boundaries?
+  Event-driven       How communicate about changes?
+  Microservices      Independently deploy/operate?
+
+LAYERED
+  Controller → service → repository → DB
+  Good default small/medium; fails when layers ≠ ownership
+  Anemic CRUD services or god-services
+  Closed vs relaxed layering — don't force useless hops
+
+VERTICAL SLICES
+  Feature folders (create/cancel/get-details)
+  Locality of change; CQRS-lite: reads ≠ write stack
+  Don't duplicate domain invariants across slices
+  Feature orchestration + shared domain rules
+
+HEXAGONAL (PORTS & ADAPTERS)
+  App core; driving adapters (HTTP, workers, CLI);
+  driven adapters (PG, Stripe, email)
+  Port = interaction contract; adapter = technology glue
+  App owns interface; infra conforms (source dependency invert)
+  Earn cost when delivery/integration volatility hurts reuse/test
+  Not “12 interfaces for 3 SQL queries”
+
+CLEAN ARCHITECTURE
+  Dependencies point inward to domain/use cases
+  Overlaps hexagonal; don't implement both as frameworks
+  DI ≠ Clean: injected DataSource still wrong dependency
+  Ceremony optional; protect policy from volatile mechanisms
+
+DDD
+  Ubiquitous language; ambiguous words → missing distinctions
+  Bounded context: consistent model/vocab (logical, not auto µsvc)
+  Aggregate: consistency boundary + meaningful operations
+  Not every related table one giant aggregate
+  Context map / anti-corruption layer for integrations
+  Strength = accurate business representation
+
+MODULAR MONOLITH
+  Modules + public API; forbid internal entity imports
+  Enforce via lint/arch tests + review
+  Avoid distributed costs until ops/org need them
+
+EVENT-DRIVEN
+  Facts (SubscriptionActivated) ≠ commands (SendEmail)
+  Loose producer/consumer coupling; async scale
+  Costs: dual-write publish, duplicates, order, schema
+  Domain events ≠ integration events ≠ event sourcing
+  Don't hide mandatory coordination behind vague events
+
+COMBINE SELECTIVELY
+  Modular monolith + slices + DDD + ports for volatile deps
+  + async for noncritical consequences + light layering
+  Change architecture on evidence (scale/ownership/reg), not vanity
+
+WARNING SIGNS
+  Trivial abstraction parade; growing utils; shared entities everywhere
+  Cross-team thrash; event spaghetti; one-impl interfaces;
+  central orchestrator for every feature
+
+SENIOR LINE: Choose patterns for the problems they solve;
+             adopt only as much as the system needs.
+```
+
+---
+
 

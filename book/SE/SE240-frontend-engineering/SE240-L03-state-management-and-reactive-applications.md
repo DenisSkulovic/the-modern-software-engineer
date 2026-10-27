@@ -1288,6 +1288,74 @@ Continue in **SE240 — Browser and Frontend Engineering**.
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
 
----
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE240-L03  STATE MANAGEMENT AND REACTIVE APPLICATIONS — INTERVIEW GLANCE CARD
+
+CENTRAL PROBLEM
+  Reactive ≠ correct  Vue updates every var; understanding of reality can still be inconsistent
+  Reactivity answers  When data changes, how does UI update?
+  State mgmt answers  What exists, who owns it, when trustworthy, what if sources disagree?
+
+VUE REACTIVITY
+  Dependency track    Computed tracks accessed refs; invalidate on change; cache until deps change
+  ref()               Reactive container (.value)
+  reactive()          Proxy object; destructuring primitives can lose reactivity → toRefs()
+  Derived rule        Store smallest independent facts; compute the rest (computed, not watchers)
+  Computed ≠ async    Don't put fetch in computed; use watchers / query libs for side effects
+
+KINDS OF STATE
+  Local UI            Dropdown open → component
+  Navigation          City/dates/filters → often URL/router (bookmark, share, back, reload)
+  Shared client       Currency → Pinia / shared store
+  Derived             Sorted results → computed
+  Server state        Availability → backend authority; local = snapshot (goes stale)
+  Workflow            Booking pending/failed/confirmed → feature operation owner
+
+SERVER STATE
+  Freshness policy    Countries long; search shorter; commit needs authoritative validation
+  Frontend role       Present accurately/conveniently
+  Backend role        Enforce which transitions are permitted
+  Polling ≠ guarantee Even 100 ms ago can be wrong after a concurrent booking
+
+ASYNC RACES
+  Out-of-order        Older Berlin response overwrites newer Hamburg UI
+  Latest-wins         Monotonic requestId; ignore stale completions
+  Abort               AbortController + watcher onCleanup; active flag after abort
+  Caveat              Abort ≠ server rollback / business undo
+
+WORKFLOW MODELING
+  Avoid               isLoading ∧ isSuccessful ∧ hasError booleans (impossible combos)
+  Prefer              Discriminated union / state machine: idle|submitting|confirmed|failed|unknown
+  unknown             Timeout after possible commit → reconcile via attempt/idempotency id
+
+OPTIMISTIC UPDATES
+  Pattern             Update UI → request → rollback on failure
+  OK                  Low-consequence (favorites)
+  Not OK              Announce confirmed €2k reservation / payment before authority
+  Distinction         Optimistic feedback ≠ optimistic business truth
+  Concurrent risk     Overlapping mutations can make naive rollback wrong
+
+SERVER-STATE LIBS (e.g. TanStack Query)
+  Pinia               Client-owned shared state
+  Query lib           Cache, staleTime, keys, dedupe, invalidation, races
+  queryKey            Must include every param that changes the result
+  staleTime           Client policy — NOT distributed correctness
+  invalidateQueries   Marks stale / refetch active — not global multi-client sync
+  Small apps          May not need a query library
+
+MULTI-TAB
+  Separate runtimes   Pinia/in-memory cache not shared across tabs
+  Tools               Refetch on focus, polling, WS/SSE, BroadcastChannel
+  Real-time needs     Ordering, reconnect, missed events, recover authoritative state
+
+SAFER BOOKING
+  Snapshot ≠ bookable Final decision = backend concurrency
+  Stale availability  Must not overwrite active reservation workflow
+
+SENIOR LINE: Reactivity syncs UI to local state. Architecture + protocols sync that to reality.
+```
 

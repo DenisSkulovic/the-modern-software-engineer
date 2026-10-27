@@ -1225,4 +1225,87 @@ Continue in **SE330 — Software Architecture and Evolution**.
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE330-L01  SOFTWARE ARCHITECTURE — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Functionally correct ≠ structurally healthy
+  Architecture = important structural decisions shaping capability,
+  behavior, and cost of change — not just box diagrams
+  Lifetime cost ≈ initial + Σ changes + operate + failure
+  Fit structure to requirements & plausible evolution
+
+REQUIREMENTS BEFORE CODE
+  Functional: what the system does
+  Quality attributes: performance, availability, reliability, security,
+  scalability, maintainability, testability, deployability, operability, cost
+  Attributes conflict → informed compromises
+  Vague “fast/maintainable” → measurable scenarios
+  Constraints (deadline, team, residency, budget, skills) bind options
+  Requirement ≠ preferred implementation (“must use K8s”)
+
+COUPLING
+  Extent one part depends on another; some unavoidable
+  Structural: direct imports of Stripe/entities/email
+  Data: shared ownership of same column meaning (CONFIRMED?)
+  Temporal: forced execution order (email before booking commit)
+  Behavioral: clean interface, undocumented semantics
+  Evidence: co-change history — genuine vs accidental dependency
+
+COHESION
+  Do responsibilities inside a module belong together?
+  CommonUtils grab-bag vs CancellationPolicy cluster
+  Organize by change reasons / ownership, not only tech layers
+  Ownership in behavior, not filenames
+
+DEPENDENCY DIRECTION
+  Policy shouldn't import Stripe/TypeORM/AWS/Express by default
+  Depend on ports (ReservationRepository, PaymentGateway);
+  adapters implement → Dependency Inversion
+  Interface ≠ erase real provider semantic differences
+  Abstraction cost: files, indirection, false interchangeability
+  Boundary when it protects policy / volatility / tests / ownership
+
+MODULARITY
+  Contain change: reservations / payments / billing / notifications
+  Boundaries ≠ walls; contracts express business intent
+  Don't expose other modules' persistence internals
+  Logical boundaries vs deployment boundaries
+  Modular monolith before premature microservices
+  Extracting coupled module → distributed coupled system
+
+QUALITY TACTICS
+  Mechanism for a measurable requirement, with costs
+  (cache→staleness; queue→async ops; replicas→coord cost…)
+  Optimize where the bottleneck is (supplier 6s ≠ rewrite Go for 20ms)
+
+REVERSIBILITY
+  Cheap/limited → decide fast; expensive+uncertain → prototype/options
+  Preserve options ≠ implement imaginary providers
+  YAGNI: skip speculative features; keep design malleable
+
+ABSTRACTION DEBT
+  Premature / wrong similarity / leaky interfaces
+  Limited duplication may beat forced unification
+
+ORGANIZATION
+  Conway: teams ↔ structure; architecture sets coordination cost
+  ADRs: context / decision / consequences / status
+  C4 for communication zoom levels
+
+CONTINUOUS ARCHITECTURE
+  Erosion: convenient shortcuts accumulate
+  Fitness functions: enforceable import rules / budgets
+  Review risks: ops, failures, change hotspots, ambiguous ownership
+
+SENIOR LINE: Good architecture contains important changes and failures
+             without more complexity than the problem requires.
+```
+
+---
+
 

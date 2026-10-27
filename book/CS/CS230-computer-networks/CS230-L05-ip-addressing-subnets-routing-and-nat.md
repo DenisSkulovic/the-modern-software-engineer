@@ -1743,3 +1743,106 @@ The goal is not to memorize AWS resource names. It is to derive a working networ
 9. [RFC 8201 — Path MTU Discovery for IPv6](https://www.rfc-editor.org/rfc/rfc8201) — Discovering usable packet sizes across IPv6 paths.
 10. [AWS — VPC Route Tables](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Route_Tables.html) — Practical cloud routing configuration.
 11. [AWS — Example Routing Options](https://docs.aws.amazon.com/vpc/latest/userguide/route-table-options.html) — Internet gateways, NAT gateways, and route targets.
+
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS230-L05  IP / SUBNETS / ROUTING / NAT — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  IP address = logical address of an interface/endpoint — not a passport ID
+  Address → destination; routing → how to get there
+  Reachability needs: forwarding path + permissions + working RETURN path
+
+IPv4 BASICS
+  32-bit; dotted octets 0–255; ~4.29B numerical space (specials + scarcity)
+  Private + NAT + IPv6 exist largely because of that scarcity
+
+SUBNETS & CIDR
+  prefix/N = N leading network bits; host bits = 32−N
+  Addresses in prefix = 2^(32−N)   /24→256  /26→64  /30→4  /32→1 host
+  Mask 255.255.255.0 ≡ /24; AND address with mask → network prefix
+  Same prefix → often direct local delivery; else → router/next hop
+  Conventional /24: network + broadcast reserved → 254 usable hosts
+  Subnets = boundaries for routing/segmentation — NOT automatic security
+
+ROUTING TABLE
+  Connected prefixes, next-hop routes, default 0.0.0.0/0 (matches all)
+  Longest-prefix match wins (more specific > default)
+  Destination vs next hop: gateway forwards toward ultimate IP
+  DHCP often supplies address, mask, gateway, DNS (wrong GW vs wrong DNS
+  = different failures with same "internet broken" UX)
+
+LINK LAYER vs IP
+  MAC: local frame delivery to NEXT hop — not remote server's MAC across net
+  ARP (IPv4): "who has IP X?" → MAC; cache in neighbor/ARP table
+  Each hop: new L2 framing; IP destination usually retained (NAT rewrites)
+
+INTERNET ROUTING
+  Not Google Maps — policy, peering, failures, traffic engineering
+  AS = administrative domain; BGP exchanges prefix reachability + policy
+  Control plane: learn/maintain routes
+  Data plane: forward packets from installed entries
+  IPv4 TTL / IPv6 Hop Limit: decrement; 0 → drop (+ ICMP Time Exceeded)
+  Traceroute uses hop limits — evidence about path, not perfect timing movie
+
+PRIVATE IPv4 (RFC 1918)
+  10.0.0.0/8
+  172.16.0.0/12  (172.16–172.31)
+  192.168.0.0/16
+  Reusable inside orgs; no ordinary global public routing
+  Routable inside VPC/VPN — not "unroutable physics"
+
+NAT / NAPT (PAT)
+  Private src rewritten to public IP (+ often src port)
+  Translation STATE maps return traffic to internal endpoint
+  Many clients share few public IPv4s via distinct mapped ports
+  Stateful limits: table size, port exhaustion, UDP idle expiry
+  Unsolicited inbound usually fails without mapping — effect ≠ full firewall
+  DNAT / port forward: rewrite dest to internal host — still need public
+  reachability, correct listen bind, firewalls both ways
+  localhost trap: listen 127.0.0.1 ≠ accept LAN/Wi-Fi arrivals
+  CGNAT: ISP NAT above you; WAN may be 100.64.0.0/10 — home forward insufficient
+
+NAT ≠ FIREWALL ≠ ROUTE
+  Route:     where next?
+  Firewall:  is it permitted? (SG stateful; NACL often subnet + stateless)
+  NAT:       rewrite addresses/ports + keep mapping
+
+CLOUD SKETCH (AWS-STYLE)
+  "Public subnet" ≈ route to Internet Gateway — not "addresses look public"
+  Private subnet: no direct IGW IPv4 route; egress via NAT GW (+ IGW upstream)
+  Public LB → private targets; clients need no route to 10.x containers
+  L7 LB ≠ NAT: host/path/headers/health; backend sees LB as TCP peer
+  Client IP: X-Forwarded-For only if you TRUST the proxy chain
+  Incident pattern: healthy app + missing private→NAT default = payment timeout
+
+IPv6
+  128-bit; hex groups; /64 common for LANs
+  Global unicast | link-local fe80:: (not forwarded) | ULA fc00::/7 (fd…)
+  Loopback ::1  (≈ 127.0.0.1)
+  Global addr + firewall can replace conservation NAT — NAT ≠ security
+  Neighbor Discovery (ICMPv6) replaces ARP; RA / SLAAC / DHCPv6
+  Blocking ICMPv6 can break IPv6 operation (not "just ping")
+  Dual-stack: test A and AAAA paths independently
+
+MTU / PMTUD
+  Link MTU limits (Ethernet often 1500); tunnels shrink effective payload
+  Path MTU Discovery; IPv6 routers don't fragment in transit → Packet Too Big
+  Black hole: oversized drops + ICMP filtered → handshake OK, large body stalls
+
+DIAGNOSIS LADDER
+  1. Intended destination? (DNS)
+  2. Usable route / interface?
+  3. Next hop reachable (L2 / cloud target)?
+  4. Middleboxes: SG/NACL/NAT/return path / asymmetry?
+  5. Service listening + TLS + HTTP semantics?
+  Ask: at which BOUNDARY did expected communication stop?
+
+SENIOR LINE: reachable = path + permission + return. DNS OK while routing
+             broken; route OK while filter blocks; TCP OK while TLS fails.
+```

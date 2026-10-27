@@ -1670,3 +1670,90 @@ These official PostgreSQL references provide authoritative explanations and exam
 - **Indexes and ORDER BY:** https://www.postgresql.org/docs/current/indexes-ordering.html
 - **Planner Statistics:** https://www.postgresql.org/docs/current/planner-stats.html
 - **LIMIT and OFFSET:** https://www.postgresql.org/docs/current/queries-limit.html
+
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS330-L02  SQL AND QUERY PERFORMANCE — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  SQL names the RESULT; the planner names the ALGORITHM
+  Identical SQL can be 250× slower when data volume / plan change
+  Pipeline: parse → rewrite → plan (seq / index / bitmap …) → execute
+  Optimizer uses estimates; wrong estimates → wrong plan
+
+HEAP AND ACCESS METHODS
+  Heap = primary row storage in pages (~8 KiB); not sorted by logical column
+  Seq scan   read pages in order; efficient when much of table needed
+  Index scan navigate B-tree → heap TIDs; may scatter-read many pages
+  Seq ≠ always bad; index ≠ always good — depends on how much data you need
+
+SELECTIVITY
+  Fraction of rows matching a predicate
+  Highly selective → index often wins; ~70–90%+ match → seq scan often cheaper
+  Boolean / low-cardinality indexes rarely help majority filters
+  Partial indexes target the useful minority (e.g. unpaid, confirmed)
+
+COMPOSITE / PARTIAL / COVERING INDEXES
+  Heuristic: equality columns first, then range / ORDER BY keys
+  Leading column often critical (hotel_id then check_in DESC, id DESC)
+  (check_in, hotel_id) ≠ (hotel_id, check_in) for hotel-equality workloads
+  Tie-breaker id in ORDER BY → deterministic pagination
+  Partial: WHERE status = 'confirmed' — smaller; planner must prove predicate
+    (generic $1 plans may miss partial indexes)
+  INCLUDE (cols) → covering / index-only scan payload (not search keys)
+  Index-only still needs visibility map; Heap Fetches may be nonzero
+
+EXPLAIN VS EXPLAIN ANALYZE
+  EXPLAIN         expected plan / costs / row estimates (cost ≠ milliseconds)
+  ANALYZE        actually runs; actual time, rows, loops
+  BUFFERS        shared hit vs read (OS cache may still serve "read")
+  Read plans bottom-up; chase large estimated-vs-actual gaps
+  ANALYZE on writes mutates data; even reads cost production resources
+  Loops × rows: cheap inner node × 10k iterations = expensive
+
+WHY PLANS GO WRONG
+  Stale statistics → ANALYZE / autovacuum; not a cure for missing indexes
+  Correlated columns → CREATE STATISTICS (dependencies, mcv) + ANALYZE
+  Independence assumption underestimates joined predicates
+
+JOINS
+  Nested loop  great for small outer + indexed inner; deadly if outer huge
+  Hash join    build hash on equality; may spill if work_mem exceeded
+  Merge join   both inputs ordered by join key
+  Join order matters; cardinality errors poison join choice
+
+ORM TRAPS
+  N+1: 1 page query + N lookups — multiplicity hurts even if each is "fast"
+  Fix: join, IN-batch, or ID page then batched associations
+  Row explosion: careless multi 1:N joins multiply result rows
+  ORM convenience ≠ free relational algebra
+
+SORTING AND PAGINATION
+  LIMIT 25 ≠ only 25 rows examined without ordered index support
+  Matching composite index can early-stop after LIMIT
+  Deep OFFSET still walks skipped qualifying rows
+  Keyset / cursor: (check_in, id) < (cursor…) + matching index
+  Include unique tie-breaker; mixed NULL/sort dirs need careful predicates
+  Pagination = access pattern, not just UI chrome
+
+INDEX COSTS
+  Every index: storage, insert/update/delete, WAL, cache pressure
+  HOT updates blocked when indexed columns change
+  Indexes follow measured workloads — not "index every WHERE column"
+
+DIAGNOSIS SEQUENCE
+  1 Is the DB actually slow? (vs pool / app / external)
+  2 Capture real SQL + params
+  3 EXPLAIN (ANALYZE, BUFFERS) — estimates vs actuals
+  4 Data distribution / selectivity / stats freshness
+  5 Smallest evidence-backed fix (index, rewrite, N+1, keyset, …)
+  6 Verify under realistic volume; watch write regressions
+
+SENIOR LINE: What work did PostgreSQL decide was necessary —
+             and was that decision appropriate for the actual data?
+```

@@ -1597,3 +1597,86 @@ Write or speak a short diagnosis covering:
 
 **Time zones.** On the stated date, Vilnius moves its clocks backward. The two local 03:30 times correspond to different UTC instants. The occurrence with offset +03:00 happens first. The time-zone identifier provides the applicable civil-time rules; the offset identifies the difference from UTC for a particular occurrence.
 
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS110-L02  REPRESENTATION — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Theme             Representation ≠ reality (billing / names / dates share one culprit)
+  Bits              Carry info; MEANING needs an interpretation scheme (encoding)
+  Same 01000001     65 | 'A' | color | bitmask | fragment — scheme decides
+  n bits → 2ⁿ patterns; fixed width = finite distinct values
+
+INTEGERS
+  Unsigned 8-bit    0…255
+  Two's complement  same adder for +/− ; 8-bit: 127+1 → −128 (wrap overflow)
+  Overflow          wrap / trap / check / bigints — language-dependent
+  JS number         NOT fixed-width int; safe ints only ≤ Number.MAX_SAFE_INTEGER
+                    (9007199254740991 ≈ 2⁵³−1)
+
+FLOATING-POINT (IEEE 754 binary64)
+  Layout            sign | exponent | significand (~53 bits precision; ~15–17 decimal digits)
+  Why 0.1+0.2≠0.3   1/10 not finite binary fraction (like 1/3 in decimal); add rounded approx
+  Finite binary OK  denominators that are powers of 2 (0.125, 0.25, 0.375)
+  Money trap        Float not designed for exact decimal money
+  Prefer            integer minor units (cents) + currency; or decimal types + rounding policy
+  Complications     ≠2 decimal places; FX; % fees; legislated rounding
+  When float OK     physics, graphics, latency estimates, many stats — IF error budget known
+
+IDENTIFIERS ≠ QUANTITIES
+  JSON number ID past MAX_SAFE_INTEGER → silent corruption (…993 → …992)
+  Phone / postal / account ID → identity (string / careful BigInt), not arithmetic quantity
+  BigInt            exact; JSON.stringify throws by default → serialize as decimal string
+  Sticky            Looking numeric ≠ floating-point number is the right type
+
+TEXT / UNICODE
+  ASCII             128 codes — not the world
+  Layers            grapheme (what user sees) ≠ code points ≠ UTF-16 units (.length) ≠ bytes
+  Examples          "😀".length → 2 (surrogate pair); "🇱🇹".length → 4 (2 RI × 2 units)
+                    UTF-8 flag ≈ 8 bytes; Intl.Segmenter grapheme → 1
+  Amélie trap       U+00E9 vs e+U+0301 → display same, === false until normalize (NFC)
+  Normalize ≠ all   case, culture, lookalikes, auth vs search vs display still differ
+  "20 characters"   ambiguous: bytes? units? code points? graphemes?
+
+TIME — THREE CONCEPTS
+  Instant           point on global timeline (…Z / Unix ms); JS Date = instant
+  Calendar date     2026-10-25 — NOT an instant; hotel check-in / birthday semantics
+  Local + zone      "03:30 Vilnius" may be AMBIGUOUS (DST fall-back: two UTC instants)
+  2026-10-25 LT     +03 → 00:30Z first; +02 → 01:30Z second
+  Offset ≠ zone     UTC+02 vs Europe/Vilnius (civil rules over dates; schedules can drift)
+  Rules of thumb    events→UTC instant; stays/birthdays→date; appointments→local+zone;
+                    durations: elapsed hours ≠ "same local tomorrow"
+  Trap              date→Date→other TZ → Oct 25 becomes Oct 24
+
+SERIALIZATION
+  encode/decode     must preserve MEANING (not object identity)
+  JSON drops        undefined omitted; NaN/Infinity → null; BigInt needs explicit handling
+  Cross-service     id as string; amount as exact decimal text + currency; checkIn as date-only
+  Careless path     JS number ID + float money + Date for calendar → silent wrongness
+
+COMPRESSION / HASH
+  Lossless          smaller, recoverable exactly
+  Lossy (JPEG…)     discard selected info — not identical after
+  SHA-256 hash      fingerprint; pigeonhole → many docs → same 256 bits; NOT reversible
+  ≠ encryption / lossless compression
+
+FOUR QUESTIONS AT EVERY BOUNDARY
+  1. What does this value mean?        (id / money / date / instant / …)
+  2. How is it represented?
+  3. What guarantees does that give?   (exactness, range, order, reversibility…)
+  4. What could be lost on the next hop?
+
+ORAL RECOVERY
+  Money design      minor units + currency; decimal scale/rounding; FX precision; contract
+  Dangerous JSON    ID range? exact money+currency? time kind/zone? name normalize policy? nulls?
+  AI + two balances Cannot prove withdrawal — deposits cancel, fees, adjustments; need ledger
+
+SENIOR LINE: choose representations for the GUARANTEES the problem needs —
+not for whichever type is convenient.
+```
+

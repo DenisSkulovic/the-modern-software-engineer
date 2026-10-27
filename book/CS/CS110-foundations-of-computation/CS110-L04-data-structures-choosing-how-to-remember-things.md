@@ -1982,3 +1982,113 @@ This final question is the most interesting one.
 It illustrates why real systems often require combinations of data structures rather than isolated textbook examples.
 
 > ✓ Lab complete — scheduler thought experiments done
+
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS110-L04  DATA STRUCTURES — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Central Q         Organize info so the OPERATIONS we care about are efficient
+  Hotel hook        Same reservations; different pains = different access patterns
+  Exact key / multi / range / priority-next / connectivity — no one structure wins all
+  Master sticky     Identify frequent ops + required guarantees BEFORE naming a structure
+  Investment sticky Structure spends memory/maintenance to make particular futures cheaper
+
+ARRAYS
+  Address math      A + i×s → O(1) indexed access (classical contiguous model)
+  Strengths         sequential scan, locality/cache, small collections, typed arrays,
+                    foundation for heaps
+  Weak              insert/delete middle → shift → O(n)
+  Append            amortized O(1) (occasional grow+copy expensive; rare if geometric growth)
+  JS note           engines vary; idea still essential for typed/low-level arrays
+
+LINKED LISTS
+  Node              value + next (doubly: also prev)
+  Insert after known node → O(1) pointer updates; NO shift of millions
+  Trap sticky       O(1) only if starting info already available
+                    "insert at index 500k" still O(n) to FIND the node
+  Cost              pointer overhead, scattered memory, cache misses
+  When useful       frequent local insert/remove WITH node refs; some caches (LRU)
+  vs array          array = index+locality; list = local surgery
+
+HASH TABLES
+  Pipeline          key → hash → bucket; then verify actual key (hash ≠ unique ID)
+  Collision         inevitable (pigeonhole); chaining or probing
+  Resize            when crowded; expensive occasionally → amortized insert cost
+  Expected          lookup/insert/delete expected O(1) if load/collisions controlled
+  Worst             can degrade toward O(n); hostile keys; memory; resize spikes
+  JS                Map / Set — efficient lookup; object keys by IDENTITY not structure
+                    map.set(a,"…"); map.get(b) → undefined if a≠b objects same fields
+  Sticky            Hash = exact keys. NOT a range scanner (checkout Nov 1–7)
+
+TREES / B-TREES
+  BST               left < node < right; each compare excludes a branch
+  Unbalanced stick  sorted inserts → linked-list shape → search O(n)
+  Balanced          AVL / red-black → O(log n) search/insert/delete (structure maintained)
+  Sorted array      great search (~20 comps / 1M); painful frequent insert/delete shifts
+  DB B-tree         fat pages, high fan-out, shallow → fewer I/O hops; equality + ranges
+  Postgres          default general-purpose index = B-tree
+  Index costs       storage, write amplification, unused indexes waste; workload-driven
+  Optimizer sticky  index ≠ automatic guarantee (selectivity, stats, costs)
+
+HEAPS / PRIORITY QUEUES
+  Min-heap          parent ≤ children; root = next; NOT fully sorted
+  Ops               peek O(1); insert / extract-min O(log n) (sift up/down)
+  Array layout      left 2i+1, right 2i+2, parent ⌊(i−1)/2⌋ — no per-node objects
+  FIFO vs priority  arrival order ≠ urgency/deadline
+  Weak              arbitrary find-by-ID — need extra map (then consistency)
+
+GRAPHS
+  Vertices + edges  undirected / directed / weighted — modeling choices
+  Adjacency list    Map node → neighbors; cheap "who touches A?"
+  BFS               layers by edge distance; FIFO queue → fewest hops (unweighted)
+  DFS               stack/recursion; reachability/cycles/components/topo — NOT shortest hops
+  Implementation    queue[head++] not Array.shift (shift is O(n) per dequeue)
+  Structures coop   adj Map + queue + visited Set + previous Map (path rebuild)
+  Weighted          fewest edges ≠ fastest; Dijkstra + priority queue (nonneg weights)
+  Sparse social     adj list; matrix 10M×10M absurd; BFS/DFS O(V+E)
+
+LRU CACHE = COMBINATION
+  Map id→node + doubly linked list (LRU…MRU): find + reorder/evict expected O(1)
+  JS shortcut       Map insertion order: delete+set = move to newest; keys().next = oldest
+  Sticky            Best structure is often a carefully chosen COMBINATION
+  Prod notes        concurrency, memory, TTL, undefined vs missing
+
+MANY INDEXES, ONE DATASET
+  ID Map + customer index + date B-tree + job PQ + transport graph
+  Indexes often keys+refs, not second authoritative copy
+  Stale trap        update record, forget date index → two truths
+  Consistency       transactional / async / TTL — depends on consequences
+                    marketing stale OK; payment/auth stale dangerous
+  Sticky            Optimize R/W deliberately; price multi-representation consistency
+
+COMPLEXITY FLAVORS (don't swap casually)
+  Worst-case        upper bound over inputs of size n
+  Expected          average under hashing/probability model ≠ "guaranteed"
+  Amortized         cheap on average across a SEQUENCE; one op can still be expensive
+                    (dynamic-array append)
+
+SELECTION CHEAT (typical; understand WHY)
+  Dyn array   index O(1); search O(n); append amort O(1); mid insert/del O(n)
+  Linked list search O(n); insert/remove O(1) with known node refs
+  Hash map    lookup/insert/remove expected O(1)
+  Bal. tree   lookup/insert/remove O(log n) + order/ranges
+  Bin. heap   peek O(1); insert/remove-root O(log n)
+  Mechanisms  array calculates; list follows; hash transforms; tree excludes;
+              heap keeps just-enough order; graph stores relationships
+
+ORAL RECOVERY
+  Indexes           PK for ID; B-tree for dates/email equality+order; don't hash every column;
+                    gather QPS/plans/selectivity first
+  Notifications     PQ by time + urgency model; ID index for cancel; validate on dequeue
+  Cache lies        often consistency, not wrong structure — invalidate/write-through/
+                    TTL/versions; stricter if access-control
+
+SENIOR LINE: operations first — then pick (or combine) structures whose
+strengths match those operations and whose consistency cost you accept.
+```

@@ -1860,3 +1860,97 @@ Upfront preprocessing costs matter.
 
 The theoretically superior approach isn't guaranteed to win on every input.
 
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS110-L03  COST OF COMPUTATION — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Correct ≠ scalable     Complexity = how resource needs GROW with problem size
+  City hook              Everyone×everyone nearby → ~n²; 120k ≈ 14.4B comparisons/round
+                         Low CPU% can still mean the critical work is absurd / serial
+  Master sticky          Before speeding an op up, ask whether it must be performed at all
+
+GROWTH CLASSES (n = input size; asymptotic story, not a stopwatch)
+  O(1)       cost bounded independent of n (array index under usual model)
+  O(log n)   binary search / balanced trees — ×1000 data ≈ +~10 steps
+  O(n)       linear scan; worst case inspect all
+  O(n log n) efficient comparison sorts territory
+  O(n²)      nested all-pairs; 10× n → ~100× work
+  Trap       "nested loops ⇒ quadratic" is a clue, not a law — measure actual work
+  Θ vs O     Big O upper bound; Θ = tight; interviews often say O informally for growth
+
+CONSTANTS BEAT ASYMPTOTICS (SMALL n)
+  1000n vs n²            n=10,100: n² wins; n=1k tie; n=10k: linear wins
+  Lesson                 Same O-class algos can differ hugely; O(n²) can beat O(n log n) small
+
+MACHINE LAYER (same Big O, different wall clock)
+  Hierarchy              registers → caches → RAM → SSD/disk
+  Spatial locality       contiguous array traversal cache-friendly; linked list pointer-chasing
+  JS extras              object layouts, GC, shapes, typed arrays (Float64Array), JIT
+  Also ignore by Big O   constants, allocations, GC, branch prediction, syscalls, I/O, network
+
+WAITING IS PERFORMANCE
+  response time ≈ computation + waiting + overhead
+  N+1 queries            1 customer list + N invoice finds; 100×~100ms ≈ 10s; CPU idle
+  Fix                    batch / join / window / precompute — reduce round trips
+  Sticky                 Optimize the expensive DEPENDENCY, not nearby busywork
+  Parallelize trap       1000 simultaneous queries may crush the DB
+
+INDEXES / STRUCTURE CHANGE THE ALGORITHM
+  Micro-opt              compare squared distance — cheaper compare, SAME billion compares
+  Grid / spatial index   ignore far cells; uniform → ~linear; crowd festival → can → n² again
+  Index cost             memory, maintain on update, complexity; not free
+  Sticky                 Index spends resources so future searches skip irrelevant work
+  Set vs includes        m lookups × n scan = O(m×n) (~2B); Set then has → expected O(n+m)
+  Set always?            Tiny inventory / one lookup — build Set may lose; sorted + binary alt
+  Sticky                 Match structure to the operations you actually perform
+
+TIME vs SPACE
+  hasDuplicate Set       expected O(n) time, O(n) extra space (all distinct)
+  Sort then neighbors    space/time depend on sort + in-place options
+  Already sorted stream  O(1) aux — remember previous only
+  Trade-offs             memory→time (index/cache/Set); time→memory; approx→both (Bloom…)
+
+JUDGMENT SCENARIOS
+  A: 8 configs           linear scan fine
+  B: millions×millions   change algorithm / index
+  C: slow API O(n log n) maybe N+1 / sync / network — measure first
+  Measure                latency, CPU profile, query count/time, RTT, alloc/GC,
+                         event-loop delay, cache hits, locks/queues
+
+35% CPU MYSTERY
+  One busy critical thread on 8 logical CPUs → ~12.5% overall; rest idle
+  Parallelism ≠ magic    dependencies / serial stages / sync / memory latency
+  GPU low                may wait on slow simulation; low GPU ≠ CPU bound automatically
+  Sticky                 Low overall CPU% can still mean stuck on one critical path
+
+INTERVIEW EDGE — CLARIFY BEFORE CODE
+  Size? Fit memory? Sorted? Any vs all duplicates? Stream vs static?
+  Extra memory OK? Exact required?
+  Comfort topics         traverse/search, hash membership, sort+binary search,
+                         nested compares, recursion basics, time↔space,
+                         DB indexes, repeated network ops, avg vs worst case
+  Bloom filters          approx membership; false-positive trade-off (mentioned)
+
+ORAL RECOVERY
+  Aging API              O(n) email scan; 5k×50k ≈ 250M compares/day; hash helps;
+                         Postgres INDEX + UNIQUE constraint (concurrency: two passes check)
+  Billion match          1e5×1e5 = 1e10; hash + O(n) memory; case policy; join/external sort
+  Idle CPU 6s            measure: profile, event-loop, query counts, traces;
+                         more servers ≠ fix one serial request; Rust ≠ fix network waits
+  Top-10 products        count O(n)/O(k); sort all O(k log k) vs heap top-10 O(k log 10);
+                         DB agg / cache / incremental if QPS high or streaming
+
+LAB SPARK
+  includes overlap vs Set — growth differs; early hit can make slow path win;
+  input distribution + preprocessing cost matter
+
+SENIOR LINE: eliminate unnecessary work; then make remaining work scale —
+measure the critical path before rewriting.
+```
+

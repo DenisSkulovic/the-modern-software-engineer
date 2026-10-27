@@ -1735,3 +1735,62 @@ The objective is to practice explaining not merely what you changed, but why you
 12. [OpenTelemetry — Documentation](https://opentelemetry.io/docs/) — Instrumentation, distributed tracing, and telemetry.
 13. [Linux — tcpdump Manual](https://www.tcpdump.org/manpages/tcpdump.1.html) — Capturing and filtering network packets.
 14. [MDN — HTTP Status Codes](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status) — Practical reference for HTTP response semantics.
+
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS230-L09  NETWORK FORENSICS — INTERVIEW GLANCE CARD
+
+METHOD
+  Observation ≠ hypothesis ≠ diagnosis
+  Good investigation reduces uncertainty; activity (restart / raise timeout /
+               disable TLS verify / clear Redis) ≠ explanation
+  Think boundaries, not product names: DNS → connect → TLS → intermediary →
+               backend received? → response returned?
+  Controlled comparisons: network / AF / fresh vs reuse / CDN vs origin / env
+  Scope first → earliest divergence → discriminating test → mechanism →
+               proportionate mitigation
+
+CASE PATTERNS (taught)
+  Fast handler / slow client     event-loop / queue before timer; LB wait; stage ≠ whole
+  Split DNS after cutover        authoritative new ≠ resolver/client caches; TTL leftover;
+                                 browser DoH / conn reuse ≠ dig; stale DNS → TLS/timeout look
+  Small OK / large stall         Path MTU black hole (VPN overhead + dropped ICMP PTB);
+                                 some packets ≠ all sizes; raise HTTP timeout won't deliver
+  Intermittent 504 / no Node log which component authored 504; upstream connect timeout;
+                                 one bad target (silent drop) + LB spread
+  Idle first fail / next OK      stale pooled conn vs intermediary idle close (L06);
+                                 instrument fresh vs reuse; idempotency for side effects
+  Chrome OK / Node TLS fail      same host? SNI? trust store? missing intermediate
+  Wrong private data / 200 / no backend log   shared cache key ignored auth identity (L08)
+
+TOOL LIMITS
+  Browser DevTools   client view; SW/browser cache may skip network; timing defs matter
+  curl               controlled phases (namelookup/connect/appconnect/starttransfer);
+                     reuse/proxy/redirects skew; one OK ≠ load health
+  dig/nslookup       may ≠ app/browser resolver path; compare auth vs recursive vs used
+  ping/traceroute    ICMP ≠ TCP:443; filtered hops ≠ app drop; not automatic bottleneck ID
+  tcpdump/Wireshark  location-bound; sender retransmit ≠ where lost; offload artifacts;
+                     encrypted payload not free; authorize + protect captures
+  Distributed traces incomplete if start late / cache hit / proxy drops context
+
+FOUR TRAPS
+  Average hides tail; correlation ≠ causation; cross-host clocks mislead;
+  mitigation (restart) ≠ root cause
+
+INCIDENT WRITE-UP
+  Impact → observations → hypotheses (incl. rejected) → discriminating evidence →
+  resolution + prevention matched to mechanism
+
+DECISION FRAME
+  Scope → boundary → separating test → mechanism detail → risk-proportionate fix
+  Read-only retry ≠ payment uncertainty; cert fail ≠ disable verify;
+  MTU hole ≠ raise timeout; blocked route ≠ restart app
+
+SENIOR LINE: "What did we expect next, which observation shows it didn't,
+             and what evidence would explain why?"
+```

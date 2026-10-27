@@ -1356,3 +1356,60 @@ Continue in **AI310 — Language Models and Retrieval Engineering**.
    An alternative implementation of schema-constrained generation and its limitations.  
    https://ai.google.dev/gemini-api/docs/structured-output
 
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+AI310-L02  ENGINEERING AROUND LLMS — INTERVIEW GLANCE CARD
+
+MODEL ≠ APPLICATION
+  Same model, different surrounding system → different product quality
+  Three successes: transport / contract(structure) / semantic(task)
+
+PIPELINE
+  Auth → load state → construct context → model gateway → validate structure
+  → validate business meaning → action
+  Gateway centralizes contracts/failures/config/obs — thin module OK
+
+CONTEXT CONSTRUCTION
+  Supply facts model lacks; roles: trusted instructions / verified facts /
+  untrusted user&docs (injection risk)
+  Authority from app code + trusted data — not commanding sentences
+  Relevant ≠ abundant; don't fill the whole window for sport
+
+PROMPTS = INTERFACES
+  Task + inputs + constraints + output contract; few-shot for conventions
+  Separate interpret intent from authorize/execute
+  Version prompts (intent-v1…); treat as executable config
+
+STRUCTURED OUTPUTS
+  Prompt JSON < JSON mode < schema-constrained decoding
+  Valid schema ≠ correct meaning (€100 vs 1000 trap)
+  Handle refused / incomplete / invalid / provider failure distinctly
+
+MODEL SELECTION / ROUTING
+  Capability × latency × cost × context × features on YOUR task distro
+  Don't LLM exact DB facts; route by known operation; escalate on observable fail
+  Schema fail ≠ wrong semantics (won't catch silent misread)
+
+TOKENS / LATENCY
+  Cost ≈ input×rate + output×rate; scale to volume; long history bugs explode cost
+  Budget instructions/history/retrieval/output; TTFT vs complete; stream text,
+  buffer+validate structured before side effects
+  Measure full pipeline p95/p99
+
+FAILURES
+  Rate limits, backoff+jitter, honor Retry-After; timeout ≠ remote never ran
+  Graceful degrade: deterministic path / queue / human / disable AI feature
+  Cache: response key includes model/prompt/context; prefix cache ≠ answer cache
+  Pin/version models; trace model+prompt+schema versions
+
+OBS + QUALITY
+  Tokens, latency, retries, validation; availability ≠ correct classification rate
+  Cost per successful task; eval semantic quality (→ AI410-L06)
+
+SENIOR LINE: model supplies capability; engineering supplies contracts & evidence.
+```

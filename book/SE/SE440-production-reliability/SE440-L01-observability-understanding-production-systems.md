@@ -1655,4 +1655,79 @@ Continue in **SE440 — Production Reliability and Quality Engineering**.
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE440-L01  OBSERVABILITY — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Accurate metrics can still fail to explain behavior
+  Monitoring = selected conditions; observability = infer internals
+  Symptom (p99) → explanation (wait for DB conn 9.5s, query 31ms)
+
+THREE SIGNALS
+  Logs     What events / context?
+  Metrics  How often / how severe?
+  Traces   Where did time go across the path?
+  Move between them; complementary
+
+LOGS
+  Structured JSON + request_id/trace_id/version/operation
+  Levels consistent; business rejection ≠ ERROR spam
+  Cost + privacy: don't log tokens/PII/payload dumps
+
+CORRELATION
+  Propagate request_id across services
+  AsyncLocalStorage for in-process; explicit across queue/HTTP
+  Request ID ≠ distributed trace ID
+
+METRICS
+  Counter (rate via Δ) · Gauge (level) · Histogram (distribution)
+  Average hides tails; two services same mean, different pain
+
+PERCENTILES
+  p50/p95/p99 positions in distribution
+  Don't average instance p99s — combine histograms
+  Tiny samples → unstable percentiles; segment by route/version
+
+RED / USE / GOLDEN
+  RED: Rate, Errors, Duration (service)
+  USE: Utilization, Saturation, Errors (resources)
+  Golden: latency, traffic, errors, saturation
+
+TRACING
+  Trace = operation; span = unit of work; parent links
+  Critical path ≠ sum of concurrent child durations
+  Missing span gap = uninstrumented wait (pool, lock, event loop)
+  W3C traceparent; inject/extract across HTTP; queue metadata/links
+  Correlation ≠ causation if parenting wrong
+
+OPENTELEMETRY
+  API/SDK/OTLP/Collector → backends
+  Auto-instr: tech ops; manual spans for business steps
+  Load instrumentation before app modules
+  IDs on spans OK; high-cardinality IDs as metric labels = danger
+
+INVESTIGATION PATTERN
+  Segment which route/population → slow trace → pool USE →
+  who holds connections (txn open during supplier HTTP) → fix lifetime
+
+ALERTS
+  Page on user impact / burn, not every CPU blip
+  Alert fatigue kills detection; SLO/error-budget alerts later (L02)
+  Dashboards diagnose; alerts demand action
+
+TELEMETRY COST / SAFETY
+  Cardinality explosion (user_id labels)
+  Head vs tail sampling; async export; don't block requests
+  Redact secrets; monitor dropped telemetry
+
+SENIOR LINE: Good observability makes unfamiliar failures
+             investigable—not merely familiar graphs visible.
+```
+
+---
+
 

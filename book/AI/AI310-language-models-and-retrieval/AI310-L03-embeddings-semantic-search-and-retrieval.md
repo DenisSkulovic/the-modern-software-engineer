@@ -1431,3 +1431,58 @@ Continue in **AI310 — Language Models and Retrieval Engineering**.
    An influential paper on combining rankings from different retrieval systems.  
    https://doi.org/10.1145/1571941.1572114
 
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+AI310-L03  EMBEDDINGS & RETRIEVAL — INTERVIEW GLANCE CARD
+
+SEARCH = RANKING
+  Relevant = useful for information need (≠ string match)
+  Stages: candidate retrieve → rank → filter (tenant/date) → optional rerank
+
+EMBEDDINGS
+  Passage/query → vector; contrastive train (hard negatives)
+  Retrieval-oriented ≠ paraphrase/similarity model; follow query/doc conventions
+  Similar geometry can link true & false / allowed & prohibited claims
+  Embedding ≠ compressed verified facts
+
+SIMILARITY
+  L2 / dot / cosine; for unit vectors: same ranking (up to ties/precision)
+  Score ≠ probability of relevance; thresholds need calibration per model/data
+
+SCALE
+  Exact: O(ND) scan; ANN (HNSW, IVFFlat): speed vs missed neighbors
+  HNSW: hierarchical graphs; M / ef_construction / ef_search trade-offs
+  IVFFlat: cluster lists; lower build/memory; needs representative data
+  B-trees don't preserve NN in high-D
+
+PGVECTOR
+  vector(d) must match model; same dim ≠ same space
+  <=> cosine distance; ORDER ASC; 1−dist = similarity display
+  Tenant filter AUTHORITATIVE; ANN + selective filter can starve results
+  Iterative HNSW / higher ef_search / partition / exact after filter
+  Model upgrade = re-embed + reindex migration
+
+LEXICAL STILL WINS
+  Exact IDs/error codes/SKU; inverted index; TF-IDF intuition; BM25 saturation
+  Postgres FTS (tsvector/GIN) ≠ BM25 algorithm but useful baseline
+
+HYBRID + RERANK
+  Lexical + dense → merge (RRF: Σ 1/(k+rank)); no raw-score mixing
+  Bi-encoder retrieve; cross-encoder rerank small candidate set
+  Reranker cannot invent missing candidates — need recall first
+
+METRICS
+  Precision@k / Recall@k / MRR / NDCG (graded)
+  ANN recall ≠ relevance recall (faithful wrong geometry possible)
+
+TRAPS
+  Negation/numbers; metadata eligibility; near-dupes; multilingual; stale embeds;
+  NN always returns something — may need abstain
+
+SENIOR LINE: nearest vector useful only if geometry matches the information need.
+```

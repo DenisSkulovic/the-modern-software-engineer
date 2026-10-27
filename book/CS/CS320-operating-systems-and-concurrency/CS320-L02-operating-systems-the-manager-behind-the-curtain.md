@@ -1522,3 +1522,75 @@ Now consider:
 - Does the reported available parallelism guarantee that one JavaScript function can use that many cores?
 
 This experiment connects our operating-system knowledge directly to the Node.js runtime.
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS320-L02  OPERATING SYSTEMS — INTERVIEW GLANCE CARD
+
+WHY AN OS
+  Manage hardware + abstractions (files, sockets, processes, virtual memory)
+  Kernel (privileged) ≠ whole distro (userspace tools/libs/services)
+  Linux = kernel; usable OS = kernel + userspace
+
+PROCESS vs THREAD
+  Process: PID, VA space, FDs, env, cwd, credentials — isolation unit
+  Same program twice = separate state (in-memory sessions don’t share across LB)
+  Threads: share process address space → sync needed; can use multiple cores
+  Scheduler: running / runnable / blocked; context switch not free
+  Low overall CPU % can hide one saturated serial thread
+
+VIRTUAL MEMORY
+  Apps use virtual addresses; OS maps → physical pages (isolation, flexibility)
+  Page tables + TLB; demand paging; minor vs major faults
+  Large VA ≠ equal RSS; scarce RAM → reclaim / swap → thrash before “OOM”
+  Allocated / committed / resident — related, not identical (↔ Node heapUsed≠rss)
+
+CGROUPS & CONTAINERS
+  memory.max / memory.current: container limit ≠ host free RAM
+  Exit 137 = 128+SIGKILL — often OOM; prove with OOMKilled / memory.events
+  Raising V8 heap inside 512MB cgroup can worsen pressure (Buffers, stacks, …)
+  --cpus="0.5": quota/throttle over time; host idle ≠ container free CPU
+  Inspect cpu.max / cpu.stat for throttling
+
+NAMESPACES (what you SEE)
+  PID, net, mount, UTS, IPC, user — same kernel, different views
+  Container ≠ full VM (usually shares host kernel); Docker Desktop/Win → Linux VM/WSL2
+  Isolation = mechanisms+config, not magic from “Docker”
+
+NETWORK / localhost TRAP
+  127.0.0.1 inside container = container loopback, not host
+  listen(3000,"127.0.0.1") may miss published-port path
+  listen(…,"0.0.0.0") = IPv4 wildcard in that netns; publish host ports deliberately
+  -p 127.0.0.1:8080:3000 restricts host-side exposure
+
+FILESYSTEM / DURABILITY
+  Path ≠ file identity (inode/dir entry idea); page cache may serve reads
+  write API success ≠ durable crash commit (DBs need careful flush/log)
+  Container writable layer dies with container → uploads vanish on replace
+  Persist via volumes / bind mounts / NFS / S3 / DB — match data lifetime
+
+SYSTEM CALLS & FDs
+  User mode ↔ kernel mode via syscalls (open/read/socket/…)
+  FD: small int for files, sockets, pipes, ttys — 0/1/2 stdin/out/err
+  EMFILE: too many open FDs (sockets count!); raising ulimit ≠ fix a leak
+  ss -ltnp: see bind address/port; ulimit -n /proc/PID/{limits,fd}
+
+SIGNALS & PID 1
+  SIGTERM request orderly stop; SIGINT interrupt; SIGKILL uncatchable force
+  Graceful: stop new work → drain → release → exit before grace → else SIGKILL
+  Exec-form CMD ["node","…"] as PID 1 vs shell-form signal forwarding issues
+  Graceful shutdown ≠ idempotent payments (still need durable state / keys)
+
+TOOLKIT HINTS
+  ps/top · /proc · free -h · cgroup memory.* · docker stats/inspect/logs · systemctl
+
+FOUR INCIDENT PATTERN
+  Host RAM ≠ container RAM · Host CPUs ≠ quota · localhost ≠ published path
+  Writable layer ≠ durable storage
+
+SENIOR LINE: a program runs in an environment with resources, limits, views,
+             and lifecycle rules — those rules are part of behavior.
+```

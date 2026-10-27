@@ -1593,4 +1593,73 @@ A production release is a coordinated transition across several kinds of state:
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE340-L04  CI/CD & IaC — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Green pipeline ≠ correct production system
+  Build success ≠ artifact identity ≠ safe deployment ≠ verified behavior
+  Intermediate coexistence (v1+v2 vs shared DB) is the hard case
+
+CI / CD / DEPLOY
+  CI: frequent integrate + automate verify (practice + pipeline)
+  Continuous delivery: always releasable; may need human approve
+  Continuous deployment: auto to prod when gates pass
+  Stages: source → build/test → artifact → registry → deploy → verify
+
+ARTIFACTS
+  Build once, promote same digest staging→prod
+  Tags mutable; digest (@sha256) stronger identity
+  Reproducible build ≠ immutable artifact (related goals)
+  Provenance: commit, workflow, deps
+
+CONFIG vs ARTIFACT
+  Artifact + env config + infra = running system
+  Validate config at startup; secrets not in images
+  Secrets Manager/SSM + IAM + rotation/refresh on rotate
+
+DB MIGRATIONS (EXPAND / MIGRATE / CONTRACT)
+  Add nullable/compatible first; dual-understand code; backfill batched
+  Enforce constraints when writers ready; drop old only after consumers gone
+  Rolling deploy: old writers must survive expanded schema
+  CREATE INDEX CONCURRENTLY caveats; one migration owner (not every task)
+  Migration = production operation
+
+DEPLOY STRATEGIES
+  All-at-once · Rolling (coexistence) · Blue-green · Canary
+  Cover workers/queues/schema, not only HTTP
+  Feature flags: deploy ≠ release; limit flag combinatorial debt
+  Flag can't hide startup queries of missing columns
+
+ROLLBACK
+  Code / config / data recovery are different
+  Rollback image ≠ undo payments / schema / messages
+  Prefer forward-compatible migrations; ask “is old version still safe?”
+
+IaC / TERRAFORM
+  Desired config + state + provider reality → plan → apply
+  Remote state + lock; state can hold secrets
+  Drift: console/autoscaler vs Terraform ownership conflict
+  Separate app pipeline from infra pipeline; inspect -/ + replaces
+
+PIPELINE SECURITY
+  Separate verify / publish / deploy roles; OIDC short-lived creds
+  Pin actions to SHAs; least privilege; protect environments
+  Pipeline is a privileged production changer
+
+PRODUCTION VERIFY
+  Infra healthy ≠ business healthy
+  Infra + technical + business + comparative (canary) signals
+  Explicit success thresholds + failure response (rollback/flag/pause)
+
+SENIOR LINE: Safe deploy preserves correctness through every
+             intermediate state—not only the final version alone.
+```
+
+---
+
 

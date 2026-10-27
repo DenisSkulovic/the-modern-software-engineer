@@ -1768,3 +1768,86 @@ A senior-level diagnosis should narrow the failure to a particular protocol boun
 8. [RFC 7301 — TLS ALPN](https://www.rfc-editor.org/rfc/rfc7301.html) — Application protocol negotiation within TLS.
 9. [MDN — TLS](https://developer.mozilla.org/en-US/docs/Web/Security/Transport_Layer_Security) — Practical browser-oriented TLS security overview.
 10. [OpenSSL s_client Documentation](https://docs.openssl.org/master/man1/openssl-s_client/) — Inspecting TLS handshakes, certificate chains, and negotiated parameters.
+
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS230-L07  TLS / TRUST — INTERVIEW GLANCE CARD
+
+THREE PROPERTIES (+ what TLS is NOT)
+  Confidentiality   observers without keys can't read protected app data
+  Authentication    peer is who you intended (hostname / identity under trust model)
+  Integrity         unauthorized modification of protected records detected (AEAD)
+  ≠ Authorization   authenticated API ≠ permission to act (app / SE310)
+  Encryption alone without auth → private conversation with an ATTACKER
+  rejectUnauthorized:false = discard identity verification — not a "compat fix"
+
+CRYPTO LAYERS
+  Symmetric / AEAD   bulk traffic (AES-GCM, ChaCha20-Poly1305); key+nonce rules;
+                     use TLS libraries — don't DIY primitives
+  Public-key pair    public shareable; private secret; encryption ≠ signatures ≠
+                     key agreement (different ops)
+  TLS 1.3            NO RSA key transport for ordinary setup; DH key agreement +
+                     separate authentication; cert pubkey ≠ "encrypt whole HTTP"
+  Digital signature  prove private-key possession without revealing key;
+                     binds auth to handshake context (CertificateVerify)
+
+DIFFIE-HELLMAN + FORWARD SECRECY
+  Exchange public values; both derive shared secret; passive observer can't
+  Without authentication → MITM: attacker runs DH with each side
+  Ephemeral DH (TLS 1.3) → forward secrecy: later steal of cert auth key alone
+                     should NOT decrypt earlier recorded sessions
+  Limits: stolen session/resumption secrets, live endpoint compromise differ;
+          stolen cert key still enables FUTURE impersonation until stopped
+
+CERTIFICATES / PKI
+  X.509 cert         signed statement: identity + pubkey + validity + uses/constraints
+  CA + trust store   client trusts selected roots (OS/browser/runtime may differ)
+  Chain              leaf ← intermediate(s) ← trusted root; validate path + policy
+  Root self-signed   trust = inclusion as trust anchor — not the self-signature math
+  Hostname / SAN     intended name must match SAN; valid www ≠ payments
+  Wildcard *.ex.com  one label (api.ex.com); not nested internal.api…; not apex ex.com
+  Validity / clock   expired or client clock wrong → reject
+  Key usage          CA vs server auth constraints matter; signed key ≠ any purpose
+  Missing intermediate → Chrome OK / Node fail (cached/fetch vs presented chain)
+  ACME               automate issue/renew; issue ≠ every endpoint serving new cert
+  Revocation         CRL / OCSP — imperfect/global; shorter certs shrink exposure window
+  CT                 public logs → visibility of issuance; not sole prevention
+
+TLS 1.3 HANDSHAKE (over TCP; ~+1 RTT full)
+  ClientHello   suites/groups/key share; SNI (hostname → cert pick; historically
+                visible; ECH can hide); ALPN (e.g. h2 / http/1.1)
+  ServerHello   select params + key share → derive via HKDF key schedule
+  Then (often encrypted): EncryptedExtensions, Certificate, CertificateVerify,
+                Finished; client validates chain/identity/sig/Finished; client Finished
+  Cert alone insufficient — must prove private key; bind to handshake
+  Record layer  AEAD app records after; sizes/timing/addrs/SNI/DNS still leakable
+
+PROTECTION BOUNDARIES
+  TLS = one connection's endpoints — CDN terminate → separate hop to origin
+  Hop-by-hop re-encrypt ≠ uninterrupted end-to-end; terminator sees plaintext
+  Passthrough   keeps client↔backend TLS; intermediary loses L7 inspect/cache
+  Padlock       hostname auth under PKI — not honesty, vuln-free app, or all hops
+
+mTLS
+  Client cert both ways → transport identity; still need app authorization
+  Internal PKI = lifecycle (issue/rotate/protect keys) — broken rotation = outage
+
+RESUMPTION / 0-RTT
+  PSK / tickets → cheaper new connection ≠ connection reuse
+  0-RTT early data → lower latency + REPLAY risk; side-effect ops unsafe without
+                     protocol restrictions + defenses
+
+DIAGNOSE (don't disable verify)
+  Trust-chain / hostname+SNI / version+ciphers (prefer 1.3; 1.0/1.1 deprecated)
+  Compare: intended host | SNI sent | SANs on presented cert
+  Corporate intercept = enterprise root — unexpected CA deserves investigation
+  Dev: configure trust anchor; keep identity checks meaningful
+
+SENIOR LINE: encryption without authenticated identity ≠ trust;
+             secure hop ≠ what endpoints may do with the data.
+```

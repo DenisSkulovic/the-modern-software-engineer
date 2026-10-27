@@ -1716,3 +1716,70 @@ This experiment illustrates the difference between a compile-time restriction an
 **Experiment D — Readonly.** TypeScript's `readonly` expresses a static restriction on assignments through the checked type. It doesn't automatically freeze the object at runtime, and JavaScript code, unsafe assertions, or other aliases can still mutate an ordinary object. `Object.freeze()` provides runtime protection against certain property modifications, but it is shallow and has its own semantics. The distinction is between the compiler's model and runtime enforcement.
 
 > ✓ Lab complete — static claims versus runtime behavior checked
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS220-L01  PROGRAMMING LANGUAGES & ABSTRACTION — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Language = syntax + semantics + implementation
+  Syntax        what programs may look like
+  Semantics     what valid programs mean (JS: "5"+2 → "52"; "5"-2 → 3)
+  Implementation compiler/interpreter/VM that preserves observable meaning
+  Spec ≠ one engine   ECMAScript vs V8 / SpiderMonkey / JSC
+
+PIPELINE (four representations of one program)
+  Source → Checked (types) → Emitted (JS, most types gone) → Executed (engine/CPU)
+  Type erasure: interfaces / annotations disappear; enums may emit runtime JS
+  Node type-stripping ≠ type checking (separate operations)
+  Compiled vs interpreted: spectrum — often bytecode + interpret + JIT hot paths
+
+STATIC TYPES vs RUNTIME VALUES
+  Static typing     analyze declared/inferred types before run
+  Dynamic typing    JS values have runtime types (typeof…)
+  as SomeType       compiler hint — NOT validation / conversion
+  any               opt out of checking; unknown → must narrow first
+  Trust boundary    external JSON → unknown → parse/validate → domain type
+  Shared TS interface across FE/BE ≠ business validity (dates, positive guests)
+
+DOMAIN MODELING
+  Optional blob     many invalid combos (success + no id, …)
+  Discriminated union   status keys distinct shapes; narrowing in switch
+  Goal              make invalid states hard to represent
+  Structural typing Customer ≈ Employee if same required members
+  type Alias = string   still assignable across names
+  Branded types     string & { __brand: … } — compile-time only; not security
+  Generics          preserve input↔output relationships (≠ any[])
+  Brand sparingly   where mix-ups matter (CustomerId vs ReservationId)
+
+CLOSURES
+  Function + retained lexical environment (bindings may outlive creator)
+  Capture bindings, not necessarily snapshots (live vs extracted primitive)
+  var loop          one shared i → [3,3,3]; let per-iteration → [0,1,2]
+  Memory            long-lived callbacks retain reachable graphs (→ L02)
+
+PARADIGMS (tools, not religions)
+  Imperative explicit steps   Declarative what-not-how
+  Functional pure + controlled effects   OOP state+behavior together
+
+ABSTRACTION TRAPS
+  Leaky abstraction   ORM hides N+1 / lazy loads; types hide untrusted JSON
+  Abstraction budget  complexity must buy more than it costs
+  Separate            pure domain calc ↔ external side effects
+  Layers of correctness: compiler, runtime validation, DB constraints, transactions
+
+SENIOR CHECKLIST AT A BOUNDARY
+  Trusted? Need validation? Deterministic? Mutates external state?
+  Errors? Static vs runtime guarantees? Need coordination/transactions?
+
+TRAP LINES
+  "TypeScript approved" ≠ partner sent a number
+  as / any / readonly ≠ runtime enforcement (Object.freeze is shallow)
+  Fixing race in one process ≠ multi-instance inventory (→ CS320)
+
+SENIOR LINE: know what the source claims, what static analysis can prove,
+             what the runtime executes, and what the real system still must enforce.
+```

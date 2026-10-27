@@ -1526,3 +1526,54 @@ Security requires treating model inputs and outputs according to their trust lev
    A current production checklist covering model configuration, latency, caching, rate limits, safety, and reliable deployment.  
    https://developers.openai.com/api/docs/guides/deployment-checklist
 
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+AI410-L07  SECURITY / RELIABILITY / ECONOMICS — INTERVIEW GLANCE CARD
+
+FUNDAMENTAL BOUNDARY
+  Model interprets/proposes; trusted software enforces guarantees
+  Never rely on the model to enforce what software can enforce directly
+
+PROMPT INJECTION
+  Direct (user) vs indirect (retrieved docs/tools/web)
+  Defenses: instruction hierarchy; structured extract; tool restrict;
+  app authz; approvals; adversarial eval
+  Even if model manipulated → prevent unauthorized consequences
+
+EXCESSIVE AGENCY / OUTPUT TRUST
+  Least privilege; contextual authz; prepared ops + approvals
+  Model output = untrusted input; schema helps, not enough
+  Avoid generic execution tools
+
+RETRIEVAL / MEMORY / PRIVACY
+  Poisoned knowledge/memory; supply chain
+  Access before expose; minimize; retention with providers; tenant isolate
+
+RELIABILITY
+  AI doesn't erase distributed failure; multi-step = multi failure points
+  Degrade without model; separate reasoning from durable operation state
+  Idempotency; checkpoints; reconcile UNKNOWN; no blind replay
+
+LIMITS / BACKPRESSURE
+  Steps/tools/tokens/concurrency/spend; when overloaded, don't amplify retries
+  Retry storms worsen rate limits
+
+ECONOMICS
+  Cost per successful task (verified outcomes)
+  Hidden: retries, tools, logs, human fix, wrong automation damage
+  Route models by task; prompt cache; hard spend/runtime budgets
+
+OBS / DEPLOY
+  Trace IDs across conv/tools/ops; semantic + infra metrics; privacy in logs
+  Version prompts/models/tools as software; canary; rollback compatible state
+
+CHECKLIST THEMES
+  Security / reliability / economics / observability-deployment readiness
+
+SENIOR LINE: useful under real security, reliability, and economic constraints.
+```

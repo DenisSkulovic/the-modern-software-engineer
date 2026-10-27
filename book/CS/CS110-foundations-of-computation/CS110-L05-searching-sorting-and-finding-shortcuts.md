@@ -1768,3 +1768,94 @@ Observe how the growth changes.
 Avoid pushing naive recursion to unnecessarily large values.
 
 Its execution time grows rapidly.
+
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS110-L05  SEARCH / SORT / SHORTCUTS — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Theme             Don't search where the answer cannot be
+  Berlin trap       Greedy cheapest next edge → €100; Kaunas €45; direct €80
+  Sticky            Local optimum ≠ global optimum
+  Master sticky     Good algorithms use problem knowledge to AVOID searching
+
+BINARY SEARCH
+  Needs             Sorted order (or equivalent structure) so a compare eliminates a region
+  Scale             ~10 / 1k; ~20 / 1M; ~30 / 1B; ~40 / 1T logical steps
+  lowerBound        first index ≥ target (or length); interval [left, right)
+  Invariant sticky  Each step preserves conditions that make the final answer valid
+  Bug traps         off-by-one bounds; infinite loop; wrong branch; wrong duplicate bound;
+                    existence vs insertion point; midpoint overflow → left+⌊(r−l)/2⌋
+  On the answer     Monotonic feasibility (capacity X works ⇒ X+1 works) → search threshold
+  Sticky            Hard to solve, easy to check? Look for a monotonic threshold
+  Range query       find start+end bounds O(log n) each; emit k matches → O(log n + k)
+                    O(log n) locate ≠ O(log n) return 10k rows
+
+SORTING
+  Pays upfront      so later search/range can skip work
+  Bubble            neighbor swaps; worst O(n²)
+  Merge sort        divide / conquer / combine; O(n) work × O(log n) levels = O(n log n)
+                    needs O(n) aux for typical array merge
+  Recursion needs   base case + progress toward base; JS finite call stack
+  Comparison LB     n! orderings; decision tree → Ω(n log n) comparisons worst case
+  Beat n log n?     Only with EXTRA structure: counting sort O(n+k), radix — not universal
+  Sticky            More knowledge about input → dramatically easier
+  JS sort traps     default string compare: [1,10,2]; use (a,b)=>a−b; sort mutates;
+                    toSorted copies; modern ECMAScript stable sort
+
+GREEDY
+  Definition        Commit to locally attractive choice without full reconsider
+  Works             Unweighted interval scheduling: earliest-finishing available (exchange arg)
+  Fails             Weighted meetings (A+B €20 vs long C €100); railway cheapest edge
+  Sticky            Ask what PROPERTY extends local choices to a global optimum
+                    else = heuristic, not proven optimal
+
+GRAPH SEARCH (match tool ↔ objective)
+  BFS               fewest edges; unweighted / equal weights — NOT ticket cost
+  DFS               reachability, cycles, components, topo, backtracking — not shortest
+  Dijkstra          min total cost; nonnegative weights; pick smallest TENTATIVE FROM START
+                    ≠ naive cheapest outgoing edge
+  Neg weights       Dijkstra argument fails; Bellman–Ford (and neg cycles undefine SP)
+  Real planner      schedules, connections, availability — define objective first
+
+MEMOIZATION / DP
+  Sticky            Solve smaller problems, store answers, reuse for overlapping subproblems
+  fib naive         exponential recompute; memo Map → O(n) time / O(n) mem;
+                    iterative can keep last two
+  Eng cousins       caches, incremental aggregates, compiled templates, avoid repeat queries
+                    (validity/consistency still matter)
+
+SIX PATTERNS TOOLKIT
+  1 Hash lookup           dedupe, joins, caches, matching
+  2 Sort + binary search  ranges, thresholds, indexed lookups
+  3 Two pointers / window  sequences, substrings, bounded windows
+  4 Divide & conquer      sort, search, recursive structure
+  5 Greedy                when correctness conditions hold
+  6 Graph search + DP     routing, deps, planning, optimization
+
+SLIDING WINDOW
+  Fixed window move → newSum = oldSum − outgoing + incoming → O(n) over array
+  Cousins           moving averages, rate limits, rolling metrics
+
+WORKLOAD TRAP (elegant ≠ always faster)
+  One membership    linear O(n) beats sort+binary O(n log n)
+  Many lookups      amortize sort OR build Set (expected O(1) each)
+  Prefer Set vs sort depends on exact membership vs need for order/ranges/memory
+  Sticky            Worth paying upfront to make future ops cheaper? (indexes, caches)
+
+ORAL RECOVERY
+  Sorted date range binary bounds + O(k) emit; frequent inserts → shifting array pain
+  Interviewer trap  sort-first for one query = waste; many queries → preprocess;
+                    Set vs sort by workload
+  Weighted schedule earliest-finish maximizes COUNT not revenue; DP on include/skip
+  Build deps        directed graph; rebuild-once; cycle = active-in-path vs finished
+                    simple visited Set insufficient (shared D via B and C ≠ cycle)
+
+SENIOR LINE: define the objective and assumptions; then pick the shortcut that
+discards impossible regions — or prove greed / Dijkstra / DP are entitled to theirs.
+```

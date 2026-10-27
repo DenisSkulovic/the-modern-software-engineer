@@ -1279,3 +1279,81 @@ Continue in **SE320 — Backend Services and Asynchronous Processing**.
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE320-L02  CACHING — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Faster copy of data held elsewhere → can be stale
+  Two representations (Redis vs PostgreSQL) can disagree
+  Cache ≠ authority for commitments (book / pay / allocate)
+
+WHY IT WORKS
+  Temporal + spatial locality; uneven request popularity
+  Benefit often = avoid repeated work, not Redis magic
+  Hit rate cuts DB load; stampedes still possible on miss bursts
+
+WHERE TO CACHE
+  In-process Map/LRU   fastest; per-instance; unbounded Map = leak
+  Shared Redis         multi-instance share; still ≠ DB consistency
+  CDN/HTTP             shareable public; not auto for tenant APIs
+  Start: expensive repeated work → smallest layer that helps
+
+CACHE-ASIDE (lazy)
+  GET cache → hit return / miss DB → SET with TTL → return
+  DB authoritative; cache opportunistic
+
+INVALIDATION / FRESHNESS
+  TTL (EX N): bounds entry lifetime ≠ “facts ≤ N old”
+  Update DB then DEL usually better than invalidate-first
+  Delayed-reader race: miss → load OLD → writer updates+DEL
+                     → reader SETs OLD after invalidation
+  Stronger: versioned keys / CAS / verify generation; or skip cache
+  for strict current-state ops
+
+WRITE STRATEGIES
+  Cache-aside + invalidate  simple; stale + misses   [default SaaS]
+  Write-through          warm cache; dual-write races
+  Write-behind           low write latency; durability risk
+  Term = update strategy, not distributed atomicity
+
+SEARCH ≠ INVENTORY
+  Cached availability OK for display if booking revalidates
+  Authoritative allocation in transactional DB
+  Cached price for browse; final quote authoritative
+
+STAMPEDE / DOGPILE
+  Popular key expires → many concurrent rebuilds → DB spike
+  Mitigations: in-process single-flight; Redis NX lease;
+               TTL jitter; stale-while-revalidate (noncritical)
+  Lease = coordination, not proof against stale publish
+
+REDIS MEMORY
+  Expiration = freshness; eviction = memory (allkeys-lru etc.)
+  NEVER share allkeys-lru Redis for cache + BullMQ durable jobs
+  Separate instances/policies for disposable vs essential state
+
+KEYS = DATA MODEL
+  Encode all result dimensions (dates, guests, currency, channel…)
+  Schema version prefix (v2:…); watch key explosion
+  Tenant scope in key; cache hit NEVER bypasses authZ
+
+NEGATIVE CACHING
+  Cache absence briefly; shorter TTL; distinguish miss vs cached-null
+  Create-after-negative → stale “not found” until expire/invalidate
+
+OPS
+  Redis down: bounded fallback (don't stampede DB)
+  Metrics: hit/miss, latency dists, memory, evictions, hot keys,
+           business disagreement rate (search vs book)
+  Hit rate alone can hide expensive misses
+
+SENIOR LINE: Cache by staleness tolerance; enforce commitments
+             at the authoritative state boundary.
+```
+
+---
+

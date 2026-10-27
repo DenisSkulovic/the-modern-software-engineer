@@ -1544,3 +1544,48 @@ Continue in **AI410 — Agentic AI Systems and Production Engineering**.
    Security-oriented material examining persistent-memory poisoning and the risk of malicious information surviving across agent sessions.  
    https://owasp.org/projects/agent-memory-guard
 
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+AI410-L03  MEMORY / CONTEXT / STATE — INTERVIEW GLANCE CARD
+
+FOUR "MEMORIES"
+  Model context | conversation history | persistent memory | workflow state
+  Not interchangeable; transcript mention ≠ refund happened
+  Storage / retrieval / context construction = three jobs
+
+CONTEXT = WORKSPACE
+  Finite budget; context engineering selects what stays active
+  Raw tool dumps → external store; keep conclusions + IDs
+  Context window ≠ entire database
+
+SHORT vs LONG TERM
+  Short: ongoing task constraints (dates, thresholds)
+  Long: facts, experiences, preferences — complement DB, don't reinvent
+  Explicit prefs → structured customer fields (not only vectors)
+
+WHAT / HOW TO REMEMBER
+  Prefer durable structured records for business facts
+  Retrieve with relevance + provenance; don't promote guesses to truth
+  Compaction: summarize carefully; keep structured state + raw evidence
+  Eval compaction by task continuation, not prose elegance
+
+STALE / CONTRADICTORY
+  Accurate historical memory can yield wrong "current" answers
+  Re-query authoritative systems; memory explains history ≠ present
+  Poisoned memory stays untrusted; provenance + tool authz
+
+DURABLE EXECUTION STATE
+  Checkpoint where execution stopped; reconcile unknown side effects
+  Missing success checkpoint ≠ operation failed
+
+SECURITY / PRIVACY
+  Tenant isolate memories; deletion; don't log everything
+  Eval: recall usefulness, staleness handling, authz, recovery
+
+SENIOR LINE: memory preserves information; state preserves execution; neither = truth.
+```

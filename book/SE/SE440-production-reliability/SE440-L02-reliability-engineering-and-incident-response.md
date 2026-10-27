@@ -1543,4 +1543,78 @@ Continue in **SE440 — Production Reliability and Quality Engineering**.
 
 ---
 
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+SE440-L02  RELIABILITY / INCIDENTS — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  Redundancy can still fail if recovery behavior amplifies the fault
+  Reliability = correct intended function over time/conditions
+  Availability = accessible when needed (can be available but wrong)
+  Durability = keep acknowledged data — distinct from A/R
+  Prefer request-based success ratios over naïve “up/down minutes”
+
+REDUNDANCY LIMITS
+  Independence assumption fails on shared DB/config/artifact/cred/region
+  Failure domains: process → host → AZ → region → shared DB/deploy
+  Serial deps: A_end ≈ Π A_i when all required → adding hops hurts
+  Redundancy valuable when it removes a shared failure mode
+
+PREVENT / CONTAIN / RECOVER
+  Tests, timeouts, breakers, bulkheads, degrade, failover, backups, runbooks
+  One mechanism ≠ all categories (backup ≠ availability)
+
+SLI / SLO / SLA
+  SLI = measured indicator (success ratio, latency fraction…)
+  SLO = target over window; define eligible/success carefully
+  SLA = contractual; often looser than internal SLO headroom
+  Error budget = allowed failure fraction (e.g. 0.1% of requests)
+  Burn rate = current_error / budget_rate → prioritize stability vs change
+
+GRACEFUL DEGRADATION
+  Optional deps fail → reduced UX; critical inventory can't invent stock
+  Timeouts bound wait; timeout ≠ remote undone (payments uncertain)
+  Cascade deadlines: overall budget > sum of layer timeouts
+
+BREAKERS / BULKHEADS / RETRIES
+  Circuit: closed → open (fail fast) → half-open trials
+  Bulkhead: isolate concurrency pools so one supplier can't starve all
+  Retry storms amplify load; backoff+jitter, budgets, idempotency
+  Recovery traffic must not out-damage the original failure
+
+HEALTH CHECKS
+  Liveness (restart stuck) ≠ readiness (take traffic) ≠ startup
+  Don't restart every task because shared DB SELECT 1 failed
+  Shared-dep failure ≠ local process death
+
+RTO / RPO
+  RTO = time to restore service; RPO = max acceptable data-loss gap
+  Fast restore with large gap ≠ meet both; component-specific targets
+
+BACKUPS ≠ RECOVERY
+  Completing / retaining / restoring / protecting / reconciling matter
+  Replication can propagate DELETE; ≠ historical backup
+  PITR often new instance; test restoration drills
+  Untested backup = recoverability hypothesis
+
+CAPACITY
+  N+1: survive one unit loss under peak + warmup lag
+  Failure creates extra work (retries, cache miss, reconnect storms)
+
+INCIDENTS / POSTMORTEMS
+  Roles: commander · technical · communications
+  Stabilize impact before perfect root cause; preserve evidence
+  Blameless ≠ no accountability; trigger ≠ only contributing factors
+  Few high-leverage follow-ups > 40 unfinished tasks
+  Runbooks + chaos/fault injection practice assumptions
+
+SENIOR LINE: Reliable systems contain failures, keep important work
+             correct, and recover predictably—not “never fail.”
+```
+
+---
+
 

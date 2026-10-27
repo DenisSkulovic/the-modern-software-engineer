@@ -1760,3 +1760,79 @@ The objective is to reason about physical mechanisms without confusing a storage
 8. [RocksDB — Write-Ahead Log](https://github.com/facebook/rocksdb/wiki/Write-Ahead-Log-%28WAL%29) — Logging and recoverability in an LSM-based engine.
 9. [SQLite — Write-Ahead Logging](https://www.sqlite.org/wal.html) — An accessible comparison of logging, concurrency, checkpoints, and durability.
 10. Martin Kleppmann, *Designing Data-Intensive Applications* — Storage engines, indexing, logs, and distributed-system trade-offs.
+
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS340-L02  INSIDE A STORAGE ENGINE — INTERVIEW GLANCE CARD
+
+CORE TENSION
+  Memory fast / volatile; disk durable / slower
+  Separate: logical change | in-memory representation | durable recovery info
+  Fast foreground write often = deferred background physical work
+
+PAGES AND BUFFER POOL
+  Fixed-size pages (~8 KiB PG) — unit of I/O, cache, modification
+  Dirty page = in-memory changes not yet on durable data page
+  Buffer pool / cache: hit vs miss; OS page cache may still serve "miss"
+  Hot working set ≪ total DB size → RAM fit matters more than disk size
+  Locality: random vs sequential access shapes I/O cost
+
+WRITE-AHEAD LOG (WAL)
+  Append recoverable change records BEFORE relying on data-page durability
+  Commit can succeed while dirty pages remain in RAM
+  Write-ahead rule: log for a modification durable before that page is
+  fsync/sync ≠ OS write; durability spans app/DB/OS/device config
+  Group commit amortizes sync cost across txs
+  Checkpoint advances recoverable persistent state; ≠ every commit
+  Deferred work must still happen — checkpoints/compaction create I/O
+
+CRASH RECOVERY
+  Replay from checkpoint + subsequent WAL (redo); distinguish committed vs not
+  Torn page: partial page write; PG full_page_writes protect (WAL volume cost)
+  WAL ≠ transaction system; both cooperate for durability + visibility
+
+B-TREE FAMILY
+  High branching factor → shallow trees; pages hold many keys
+  B+ style: internal navigate; leaves hold entries / references
+  Point lookup + ordered range scans natural
+  Writes: leaf insert; full page → split / parent updates
+  One logical write may touch heap + many indexes (HOT when eligible)
+  Excellent mixed R/W; not free under random write + many indexes
+
+LSM TREES
+  Memtable (ordered in-memory) + WAL for durability policy
+  Flush → immutable SSTables; new writes go to newer structures
+  Read path: memtable → immutable memtables → SST levels (newest first)
+  Bloom filter: definite ABSENCE or maybe present (false positives OK)
+  Missing-key lookups can be expensive without filters
+  Compaction merges sorted files, drops obsolete versions → write amp
+  Amplification triad: read / write / space — improve one, worsen another
+
+COMPACTION DEBT (INCIDENT PATTERN)
+  Sustained ingest > flush+compact capacity → file backlog
+  Engine may stall/slow writes (backpressure) — not always a "bug"
+  Measure: flush rates, SST counts, stall counters, storage IOPS vs latency
+  More RAM absorbs bursts; cannot invent sustainable throughput
+  Burst capacity ≠ sustained throughput — long benchmarks matter
+
+B-TREE VS LSM — WORKLOAD, NOT ACRONYM
+  B-tree: frequent lookups, moderate updates, range queries (classic OLTP)
+  LSM: heavy write ingest, append/immutable-file friendly patterns
+  SSDs change magnitude of random I/O trade-off — still measure
+  Product ≠ engine: MongoDB docs + WiredTiger B-trees; RocksDB LSM;
+    PG heap + B-tree indexes — model layer ≠ storage layer
+
+THREE DIFFERENT PROMISES
+  Local durability     survives local crash under configured sync
+  Replicated durability enough independent copies / sync policy
+  Backup / PITR        recover earlier state; replication can copy deletes
+  "Acknowledged write" depends on sync_commit / write concern / topology
+  Async replica promote → may lose primary-acked txs (failover gap)
+
+SENIOR LINE: a fast write may be small foreground work + large background bill.
+```
