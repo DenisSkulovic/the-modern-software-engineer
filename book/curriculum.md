@@ -42,7 +42,7 @@ Library/content state — not whether you have studied the lecture. See [`STATUS
 
 Lecture IDs look like `CS330-L03`. Electives use the same scheme (they are courses with `type: planned` or `elective`, not a separate numbering universe).
 
-## Core courses (15 · 60 lectures)
+## Core courses (15 · 66 lectures)
 
 ### CS — Computer Science
 
@@ -70,13 +70,19 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (they are cours
 
 #### CS230 — Computer Networks and Web Protocols
 
-200-level · 3 lectures · course status `complete` · `CS/CS230-computer-networks/`
+200-level · 9 lectures · course status `in_progress` · `CS/CS230-computer-networks/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
 | `CS230-L01` | The Journey of a Web Request | `manuscript` | `2.0.0` | `WEB201-S01` |
 | `CS230-L02` | Networking for Software Engineers | `manuscript` | `2.0.0` | `WEB201-S02` |
 | `CS230-L03` | HTTP: The Protocol That Runs the Web | `manuscript` | `2.0.0` | `WEB201-S03` |
+| `CS230-L04` | DNS: The Internet's Distributed Naming System | `manuscript` | `2.0.0` | `` |
+| `CS230-L05` | IP Addressing, Subnets, Routing, and NAT | `stub` | `2.0.0` | `` |
+| `CS230-L06` | The Life of a Network Connection | `stub` | `2.0.0` | `` |
+| `CS230-L07` | TLS and the Architecture of Trust | `stub` | `2.0.0` | `` |
+| `CS230-L08` | Proxies, Load Balancers, and Modern Web Transport | `stub` | `2.0.0` | `` |
+| `CS230-L09` | Network Forensics for Software Engineers | `stub` | `2.0.0` | `` |
 
 #### CS320 — Operating Systems, Concurrency, and Runtimes
 

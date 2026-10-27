@@ -1,0 +1,22 @@
+---
+description: Keep curriculum.yaml, lecture stubs, and catalogue tools in sync when adding lectures
+globs: book/curriculum.yaml,book/**/*-L*.md,book/tools/**
+alwaysApply: false
+---
+
+# Curriculum catalogue maintenance
+
+When adding or expanding lectures:
+
+1. Create the `.md` under the course `dir` with matching frontmatter (`id`, `prev`/`next`, `manuscript`, `edition`)
+2. Register it in `book/curriculum.yaml` (same indentation as siblings)
+3. Point the previous lecture’s `next:` at the new id; clear false “end of course” copy
+4. Prefer `manuscript: stub` until content exists; flip to `manuscript` when the full lecture lands
+5. Regenerate with `python book/tools/curriculum_render.py` and check with `curriculum_validate.py`
+6. Optional: `sync_manuscript_meta.py --frontmatter-only` to align frontmatter fields
+
+## Do not
+
+- Hardcode expected lecture counts in tools — the catalogue grows
+- Run `curriculum_migrate.py` for brand-new lectures (legacy 60-lecture migration helper)
+- Invent course or lecture IDs outside the yaml/manifest scheme

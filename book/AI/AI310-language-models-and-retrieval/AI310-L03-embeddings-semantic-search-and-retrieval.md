@@ -12,6 +12,7 @@ next: AI310-L04
 
 
 
+
 # AI310 — Language Models and Retrieval Engineering
 ## Lecture 03: Embeddings, Semantic Search, and Retrieval
 

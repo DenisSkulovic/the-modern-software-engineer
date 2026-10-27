@@ -41,8 +41,6 @@ def validate(strict_body: bool = True) -> int:
     warnings: list[str] = []
 
     core_n = core_lecture_count(manifest)
-    if core_n != 60:
-        errors.append(f"Expected 60 core lectures in manifest, found {core_n}")
 
     seen_ids: set[str] = set()
     seen_legacy: set[str] = set()

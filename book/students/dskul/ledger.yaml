@@ -155,6 +155,78 @@ lectures:
     next_encore: null
     encore_interval_days: null
     notes: ''
+  CS230-L04:
+    course: CS230
+    title: "DNS: The Internet's Distributed Naming System"
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS230-L05:
+    course: CS230
+    title: IP Addressing, Subnets, Routing, and NAT
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS230-L06:
+    course: CS230
+    title: The Life of a Network Connection
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS230-L07:
+    course: CS230
+    title: TLS and the Architecture of Trust
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS230-L08:
+    course: CS230
+    title: Proxies, Load Balancers, and Modern Web Transport
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS230-L09:
+    course: CS230
+    title: Network Forensics for Software Engineers
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
   CS320-L01:
     course: CS320
     title: Concurrency, Parallelism, and Asynchrony

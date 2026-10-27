@@ -77,7 +77,8 @@ def main() -> None:
     core = [c for c in m["courses"] if c.get("type") == "core"]
     planned = [c for c in m["courses"] if c.get("type") == "planned"]
 
-    lines.append("## Core courses (15 · 60 lectures)\n")
+    core_lecture_n = sum(len(c.get("lectures") or []) for c in core)
+    lines.append(f"## Core courses ({len(core)} · {core_lecture_n} lectures)\n")
     by_disc: dict[str, list] = {"CS": [], "SE": [], "AI": []}
     for c in core:
         by_disc.setdefault(c["discipline"], []).append(c)

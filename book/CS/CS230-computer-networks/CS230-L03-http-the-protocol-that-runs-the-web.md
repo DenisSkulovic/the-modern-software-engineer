@@ -7,8 +7,9 @@ manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: [WEB201-S03]
 prev: CS230-L02
-next: null
+next: CS230-L04
 ---
+
 
 
 
@@ -54,11 +55,13 @@ The application developers simply made assumptions that the protocol never promi
 
 To understand these incidents, we need to examine HTTP not merely as a way to send JSON, but as a contract governing how clients, servers, browsers, and intermediaries communicate.
 
+By the end of this lecture, you should be able to explain what HTTP methods promise, what status codes actually report, how caching and conditional requests work, and where application guarantees still have to be built on top of the protocol.
+
 ---
 
 # 2. HTTP Is a Language, Not a Transportation System
 
-In our previous sessions, we followed a request through DNS, IP routing, TCP, TLS, and the browser. Let's establish where HTTP fits.
+In our previous lectures, we followed a request through DNS, IP routing, TCP, TLS, and the browser. Let's establish where HTTP fits.
 
 Imagine sending a letter internationally. The postal system handles transportation.
 
@@ -228,18 +231,19 @@ Price = €250
 
 Not idempotent. The distinction is independent of whether an operation modifies state.
 
-An operation can change state and still be idempotent. In HTTP, the standard methods have these general properties:
+An operation can change state and still be idempotent. In HTTP, the standard methods have these general properties.
 
-| Method | Safe? | Idempotent? | Typical purpose |
-|---|---|---|---|
-| GET | Yes | Yes | Retrieve a representation |
-| HEAD | Yes | Yes | Retrieve response metadata without content |
-| POST | No | Not guaranteed | Submit data or request processing |
-| PUT | No | Yes | Create or replace resource state at a target URI |
-| PATCH | No | Not guaranteed | Apply partial modifications |
-| DELETE | No | Yes | Remove a resource |
+**GET** is safe and idempotent: it retrieves a representation.
 
-Notice that DELETE is idempotent. Deleting the same resource twice should have the same intended final effect as deleting it once: the resource is gone.
+**HEAD** is likewise safe and idempotent: it retrieves response metadata without the content body.
+
+**POST** is neither safe nor guaranteed idempotent: it submits data or requests processing.
+
+**PUT** is not safe, but it is idempotent: it creates or replaces the resource state at a target URI.
+
+**PATCH** is not safe and not guaranteed idempotent: it applies partial modifications.
+
+**DELETE** is not safe, but it is idempotent: it removes a resource. Deleting the same resource twice should have the same intended final effect as deleting it once — the resource is gone.
 
 That doesn't require identical responses. The first deletion might return `204 No Content`.
 
@@ -305,15 +309,7 @@ It's an application-level guarantee built on top of HTTP. The important lesson:
 
 # 4. Status Codes: The Server's Account of What Happened
 
-A status code tells the client how the server handled the request. HTTP organizes status codes into five families:
-
-| Family | Meaning |
-|---|---|
-| 1xx | Informational |
-| 2xx | Successful |
-| 3xx | Redirection |
-| 4xx | Client error |
-| 5xx | Server error |
+A status code tells the client how the server handled the request. HTTP organizes status codes into five families: informational responses in the 1xx range, successful outcomes in 2xx, redirections in 3xx, client errors in 4xx, and server errors in 5xx.
 
 The numbers are familiar to every web developer. The interesting part is knowing which outcome each code actually represents.
 
@@ -363,24 +359,15 @@ Of course, the job can subsequently fail. The application needs a way to report 
 
 ## 4.2 Understanding important failure codes
 
-Consider these scenarios:
+A few status codes appear constantly in API design, and their distinctions matter.
 
-| Status | Typical situation |
-|---|---|
-| 400 | Malformed or invalid request |
-| 401 | Missing or unacceptable authentication credentials |
-| 403 | Request understood but access forbidden |
-| 404 | Target resource not found |
-| 409 | Conflict with current resource state |
-| 412 | HTTP request precondition failed |
-| 422 | Validly structured content cannot be processed as instructed |
-| 429 | Too many requests |
-| 500 | Unexpected server-side failure |
-| 502 | Gateway received an invalid upstream response |
-| 503 | Service temporarily unavailable |
-| 504 | Gateway did not receive a timely upstream response |
+**400** usually means the request was malformed or invalid. **401** relates to missing or unacceptable authentication credentials. **403** means the request was understood, but access is forbidden. **404** means the target resource was not found.
 
-Don't treat the table as an exhaustive mapping from every business error to one mandatory HTTP code. Some situations admit reasonable design choices.
+**409** signals a conflict with the current resource state. **412** means an HTTP request precondition failed — a more specific contract than a general conflict. **422** indicates that validly structured content cannot be processed as instructed. **429** means too many requests.
+
+On the server side, **500** is an unexpected failure. **502** means a gateway received an invalid upstream response. **503** means the service is temporarily unavailable. **504** means a gateway did not receive a timely upstream response.
+
+Don't treat these as an exhaustive mapping from every business error to one mandatory HTTP code. Some situations admit reasonable design choices.
 
 But certain distinctions are meaningful. For example, `401` and `403` aren't interchangeable.
 
@@ -610,14 +597,17 @@ A request might stop at any suitable layer. This is why backend logs alone canno
 
 Some of the most important cache directives are notoriously easy to misinterpret.
 
-| Directive | Practical meaning |
-|---|---|
-| `max-age=300` | Response is fresh for approximately five minutes |
-| `public` | Allows shared caches to store the response, subject to other rules |
-| `private` | Prevents shared caching of the full response; private caches may store it |
-| `no-cache` | Stored response must be validated before reuse |
-| `no-store` | Conforming caches must not store the response |
-| `s-maxage=300` | Specifies freshness for shared caches, overriding relevant general freshness settings |
+**`max-age=300`** means the response is fresh for approximately five minutes.
+
+**`public`** allows shared caches to store the response, subject to other rules.
+
+**`private`** prevents shared caching of the full response, though private caches may still store it.
+
+**`no-cache`** means a stored response must be validated before reuse.
+
+**`no-store`** means conforming caches must not store the response.
+
+**`s-maxage=300`** specifies freshness for shared caches, overriding relevant general freshness settings.
 
 The most misleading name here is `no-cache`. It does **not** mean "do not store this response."
 
@@ -954,7 +944,7 @@ This improves connection utilization, but TCP-level packet loss can still interf
 
 Runs over QUIC, which provides independently managed streams and integrates TLS-based security. It avoids TCP's connection-wide ordered-byte-stream bottleneck.
 
-Here's the useful abstraction:
+Here's the useful abstraction: HTTP semantics — methods, statuses, headers, and caching — sit above the transport machinery. HTTP/1.1 and HTTP/2 commonly ride TCP with TLS, while HTTP/3 rides QUIC over UDP.
 
 ```text
                 HTTP Semantics
@@ -981,14 +971,7 @@ Let's combine the ideas into one practical example. You're designing an API for 
 
 It needs to support searching for rooms, retrieving individual hotel details, creating reservations, and modifying bookings. A reasonable starting point might be:
 
-| Operation | Method | Endpoint |
-|---|---|---|
-| Search hotels | GET | `/api/hotels?city=Berlin` |
-| Get hotel details | GET | `/api/hotels/4812` |
-| Create reservation | POST | `/api/reservations` |
-| Get reservation | GET | `/api/reservations/9821` |
-| Replace editable reservation details | PUT | `/api/reservations/9821` |
-| Cancel reservation | POST | `/api/reservations/9821/cancel` |
+Search hotels with **GET** `/api/hotels?city=Berlin`. Retrieve hotel details with **GET** `/api/hotels/4812`. Create a reservation with **POST** `/api/reservations`. Fetch one with **GET** `/api/reservations/9821`. Replace editable reservation details with **PUT** `/api/reservations/9821`. Cancel with **POST** `/api/reservations/9821/cancel`.
 
 Why use POST for cancellation rather than simply DELETE? Because cancellation is often a business operation, not literal resource deletion.
 
@@ -1063,80 +1046,11 @@ That's the difference between designing an endpoint that merely works under norm
 
 ---
 
-# 12. Practical Lab: Make HTTP Reveal Its Machinery
+# 12. The Oral Examination
 
-You can investigate these mechanisms using your browser and terminal. No elaborate environment is required.
+We now have enough knowledge to examine HTTP like an engineer rather than merely recognize its vocabulary.
 
-## Experiment A — Inspect response headers
-
-Open a terminal and execute:
-
-```bash
-curl -I https://developer.mozilla.org/
-```
-
-On Windows PowerShell, use `curl.exe` if needed. Examine the response headers.
-
-Look for:
-
-```text
-content-type
-cache-control
-etag
-last-modified
-vary
-content-encoding
-```
-
-Not every response includes all of them. Try a second website.
-
-Compare their cache policies. Can you explain why an HTML document might use different caching rules from a versioned JavaScript asset?
-
-## Experiment B — Find a real 304
-
-Open Chrome DevTools. Visit a familiar website.
-
-In the Network panel, select a static resource. Inspect its caching headers and any validator such as `ETag`.
-
-Reload the page under conditions that cause the browser to validate the cached resource. If you observe `304 Not Modified`, inspect the request headers.
-
-Do you see `If-None-Match` or `If-Modified-Since`?
-
-Remember that Chrome's DevTools can itself influence caching behavior, and a normal reload doesn't guarantee exactly which caching path the browser will take.
-
-## Experiment C — Inspect a request's actual HTTP version
-
-Enable the Protocol column in Chrome's Network panel. Observe whether resources use HTTP/2 or HTTP/3.
-
-Then consider:
-
-If a request uses HTTP/3, does that change the meaning of its `ETag`, `Cache-Control`, or `404` response? It shouldn't.
-
-The HTTP semantics remain consistent even though the message transport differs.
-
-## Experiment D — Design your own idempotent operation
-
-Imagine an endpoint:
-
-```http
-POST /api/wallet/4812/add-credit
-
-{
-  "amount": 20
-}
-```
-
-Now imagine that the response is lost. What happens if the client retries?
-
-Design a revised API that can safely tolerate the same logical operation being submitted more than once.
-
-Consider whether you'd use a client-supplied operation identifier, an idempotency key, or an alternative resource-oriented design.
-
----
-
-# 13. Engineering and Interview Challenges
-
-Attempt these before reading the discussion.
+Before reading the solutions, try answering these questions out loud. Imagine that a senior engineer is interviewing you and will challenge any hand-waving.
 
 ### Challenge 1 — The Misleading Cache Directive
 
@@ -1176,9 +1090,9 @@ Which HTTP response would you choose, and how would the frontend discover when t
 
 ---
 
-# 14. Solutions and Discussion
+# 13. Solutions and Discussion
 
-**Challenge 1**
+### Solution 1 — Misleading cache directive
 
 No.
 
@@ -1190,7 +1104,7 @@ Adding `private` can make the intended restriction on shared caching explicit, a
 
 These headers are not substitutes for access control, transport security, or careful handling of sensitive data elsewhere in the system.
 
-**Challenge 2**
+### Solution 2 — Duplicate reservation
 
 Not blindly. The timeout doesn't prove that the reservation wasn't created.
 
@@ -1198,13 +1112,13 @@ The client needs an application-level guarantee such as an idempotency key or a 
 
 Without such a mechanism, retrying could create duplicates.
 
-**Challenge 3**
+### Solution 3 — Mysterious 304
 
 The browser already has the response body in its cache. The `304` validates that stored representation, allowing it to be reused without retransmitting the body.
 
 A `304` isn't a replacement for the original representation. Without an appropriate stored response, the client would need to obtain the content through another suitable request.
 
-**Challenge 4**
+### Solution 4 — Two administrators
 
 Not automatically. One approach is to return an ETag with the fetched representation.
 
@@ -1212,7 +1126,7 @@ Updates then include `If-Match` with the version originally retrieved. If the re
 
 The frontend can then offer a conflict-resolution flow. A more sophisticated application might merge independent changes, but that requires explicit domain logic rather than silently overwriting data.
 
-**Challenge 5**
+### Solution 5 — API status semantics
 
 `202 Accepted` is an appropriate response for asynchronous processing.
 
@@ -1222,53 +1136,130 @@ The important distinction is that accepting the request isn't the same as comple
 
 ---
 
-# 15. What You Should Remember
+# 14. The Mental Model Worth Keeping
 
-HTTP isn't merely a protocol for transmitting JSON. It's a carefully developed system of semantics that allows independently implemented software to cooperate: methods communicate intent, status codes communicate outcomes, headers describe representations and caching rules, and conditional requests can save bandwidth or help prevent concurrent-update conflicts. Those semantics remain broadly consistent across HTTP/1.1, HTTP/2, and HTTP/3 despite different transports.
+HTTP is a **language of intent and outcomes**, not merely a way to ship JSON.
 
-The most important senior-level lesson is that **correct API design requires understanding what the protocol guarantees, what it merely permits, and what your application must enforce itself**. A POST is not exactly-once business execution; a 200 does not mean an asynchronous workflow finished; an ETag only prevents lost updates if the precondition is enforced atomically; a CDN must not cache arbitrary responses merely because caching is fast.
+Its major responsibilities can be remembered through five questions:
+
+- **What are you asking?** Methods communicate intended operations, including safety and idempotency assumptions.
+- **What happened?** Status codes report the HTTP outcome; response bodies should enrich that report, not contradict it.
+- **How is the representation described?** Headers negotiate format, language, encoding, authentication, and caching policy.
+- **May this answer be reused?** Freshness, validation, variation, and shared-versus-private rules decide whether caches help or harm.
+- **What must the application still guarantee?** Exactly-once business effects, atomic concurrency checks, and privacy boundaries are not free gifts from the protocol.
+
+Those semantics remain broadly consistent across HTTP/1.1, HTTP/2, and HTTP/3 despite different transports.
+
+The senior-level lesson is that **correct API design requires understanding what the protocol guarantees, what it merely permits, and what your application must enforce itself**.
+
+A POST is not exactly-once business execution. A 200 does not mean an asynchronous workflow finished. An ETag only prevents lost updates if the precondition is enforced atomically. A CDN must not cache arbitrary responses merely because caching is fast.
 
 HTTP gives you a powerful vocabulary and useful contracts. You still have to build a correct system around them.
 
 ---
 
-# 16. Next Session — Inside the Browser
+# 15. Next Lecture — DNS: The Internet's Distributed Naming System
 
-We've followed network packets, studied HTTP, and examined how servers deliver responses. But we've deliberately neglected the machinery on the other side of the connection.
+We've learned what HTTP asks servers to do and how its semantics help clients and servers cooperate.
 
-The browser. Imagine a Vue application displaying a list of 5,000 hotels.
+But one crucial part of the journey deserves a much closer investigation: how does the client discover the destination in the first place?
 
-You update one reactive property. The browser becomes unresponsive for half a second.
+In **CS230-L04**, we'll examine DNS as a distributed naming system, investigate its hierarchy of authority and caches, and discover why changing one record can produce dramatically different behavior across the internet.
 
-Why? Did Vue perform too much work?
-
-Did JavaScript block the main thread? Did the browser recalculate layout for thousands of elements?
-
-Did it repaint the screen unnecessarily? Or did an innocent-looking DOM modification trigger a cascade of expensive rendering operations?
-
-In **SE240-L01 — Inside the Browser**, we'll follow HTML, CSS, and JavaScript through the browser's internal execution and rendering machinery.
-
-We'll investigate how pixels appear on screen, why certain DOM operations are expensive, how browsers schedule work, and why seemingly tiny frontend changes can produce surprisingly large performance problems.
+The question is no longer simply what DNS returns. It's who supplied that answer, when they learned it, and whether the information is still valid.
 
 ---
 
+## Optional Practical Lab — Make HTTP Reveal Its Machinery
+
+*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet and technical references.*
+
+You can investigate these mechanisms using your browser and terminal. No elaborate environment is required.
+
+### Lab A — Inspect response headers
+
+Open a terminal and execute:
+
+```bash
+curl -I https://developer.mozilla.org/
+```
+
+On Windows PowerShell, use `curl.exe` if needed. Examine the response headers.
+
+Look for:
+
+```text
+content-type
+cache-control
+etag
+last-modified
+vary
+content-encoding
+```
+
+Not every response includes all of them. Try a second website.
+
+Compare their cache policies. Can you explain why an HTML document might use different caching rules from a versioned JavaScript asset?
+
+### Lab B — Find a real 304
+
+Open Chrome DevTools. Visit a familiar website.
+
+In the Network panel, select a static resource. Inspect its caching headers and any validator such as `ETag`.
+
+Reload the page under conditions that cause the browser to validate the cached resource. If you observe `304 Not Modified`, inspect the request headers.
+
+Do you see `If-None-Match` or `If-Modified-Since`?
+
+Remember that Chrome's DevTools can itself influence caching behavior, and a normal reload doesn't guarantee exactly which caching path the browser will take.
+
+### Lab C — Inspect a request's actual HTTP version
+
+Enable the Protocol column in Chrome's Network panel. Observe whether resources use HTTP/2 or HTTP/3.
+
+Then consider:
+
+If a request uses HTTP/3, does that change the meaning of its `ETag`, `Cache-Control`, or `404` response? It shouldn't.
+
+The HTTP semantics remain consistent even though the message transport differs.
+
+### Lab D — Design your own idempotent operation
+
+Imagine an endpoint:
+
+```http
+POST /api/wallet/4812/add-credit
+
+{
+  "amount": 20
+}
+```
+
+Now imagine that the response is lost. What happens if the client retries?
+
+Design a revised API that can safely tolerate the same logical operation being submitted more than once.
+
+Consider whether you'd use a client-supplied operation identifier, an idempotency key, or an alternative resource-oriented design.
+
+### Lab E — Explain your observations
+
+Write or speak a short diagnosis covering:
+
+1. Which cache and content headers you observed.
+2. Whether a `304` involved validators such as `If-None-Match`.
+3. Which HTTP version carried the request.
+4. How your idempotent wallet design prevents duplicate credits.
+5. What the protocol guaranteed versus what the application still had to enforce.
+
+The objective is to practice separating HTTP semantics from the browser tooling used to observe them.
 
 ---
 
-## End of CS230
-
-**CS230 — Computer Networks and Web Protocols** is complete. See the recommended study order in `README.md` for natural next courses.
-
-## Further Reading — Optional References
+## Further Reading — Optional Technical References
 
 1. [RFC 9110 — HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110.html) — Methods, status codes, representation metadata, and conditional requests.
 2. [RFC 9111 — HTTP Caching](https://www.rfc-editor.org/rfc/rfc9111.html) — Cache storage, freshness, validation, and directives.
 3. [RFC 9457 — Problem Details for HTTP APIs](https://www.rfc-editor.org/rfc/rfc9457.html) — Standardized error-response representations.
 4. [MDN — HTTP Overview](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Overview) — Practical reference for HTTP fundamentals.
 5. [MDN — HTTP Caching](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching) — Browser and intermediary caching behavior.
-
----
-
-
----
 

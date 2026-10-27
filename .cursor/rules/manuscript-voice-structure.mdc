@@ -1,0 +1,34 @@
+---
+description: Voice-first lecture architecture — spoken path, oral exam, mental model, screen lab after
+globs: book/**/*-L*.md
+alwaysApply: false
+---
+
+# Manuscript structure (voice-first)
+
+Working standard for new and rewritten lectures (exemplars: `CS230-L03`, `CS230-L04`). Optimize for continuous voice listening **and** on-screen reading. Do not alter YAML frontmatter, IDs, or curriculum wiring unless asked.
+
+## Spoken path (in order)
+
+1. Hook / case study → concepts with short paragraphs and bold takeaway lines
+2. **The Oral Examination** — challenges answered *out loud* before solutions
+3. **Solutions and Discussion**
+4. **The Mental Model Worth Keeping** — few durable questions or distinctions
+5. **Next Lecture — …** — in-course transition (not a dead “end of course” if more lectures exist)
+6. **Optional Practical Lab** — begins only after: *The spoken lecture ends here…*
+7. **Further Reading** — optional references
+
+Train both skills: listening creates familiarity; oral challenges create interview retrieval.
+
+## Speakable formatting
+
+- Prefer short spoken enumerations and bold term lead-ins over dense markdown tables in the spoken path
+- ASCII diagrams and code are fine when a preceding sentence states what they show
+- Keep HTTP/shell samples; don’t turn the lecture into a slide deck
+- Separate **resolution / protocol semantics** from **connectivity / tooling** when the topic invites that confusion
+
+## Anti-patterns
+
+- Labs, DevTools steps, or long command worksheets inside the spoken spine
+- “End of course” footers while later lectures exist in the same course
+- Hand-wavy challenges with no expectation to speak a full explanation

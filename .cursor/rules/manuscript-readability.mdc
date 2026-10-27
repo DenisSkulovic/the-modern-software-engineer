@@ -1,38 +1,38 @@
 ---
-description: Keep book lecture manuscripts readable, paced, and enjoyable without rewriting substance
+description: Keep lecture manuscripts paced and enjoyable without rewriting substance
 globs: book/**/*-L*.md
 alwaysApply: false
 ---
 
-# Manuscript readability (lectures)
+# Manuscript readability (pacing)
 
-When editing lecture manuscripts (`book/**/*-L*.md`), prioritize attention retention and pacing. Do **not** rewrite educational prose, change technical meaning, strip exercises/solutions, or alter YAML frontmatter unless the user asks.
+When editing lecture manuscripts (`book/**/*-L*.md`), improve attention retention. Do **not** rewrite educational meaning, strip exercises/solutions, or change YAML unless asked.
+
+Follow **manuscript-voice-structure** for overall architecture. This rule covers pacing aids that stay compatible with voice listening.
 
 ## Goal
 
-Long chapters should feel like walking museum rooms, not a wall of text. Add scaffolding; keep the curriculum content.
+Long chapters should feel guided, not intimidating. Scaffold; don’t gut the curriculum.
 
-## Standard pacing kit
+## Compatible pacing kit
 
-Apply (or preserve) this pattern when improving a lecture:
+Use when a lecture is dense or the user asks for a readability pass:
 
-1. **How to read** — short intro + `ROOM MAP` ASCII box + optional theme table
-2. **Sticky notes** — blockquotes (`> **Sticky note #N**`) for core insights only; sparse, not every paragraph
-3. **Visuals where prose is dense** — compact comparison tables, small ASCII diagrams (flows, layers, timelines, before/after)
-4. **Room checkpoints** — after major sections: ``✓ Room N complete — …``
-5. **Pocket card** — one concise summary box near the end, before the “Next” transition
+1. Sparse **sticky notes** (`> **Sticky note #N**`) for core insights — not every subsection
+2. Small ASCII diagrams or before/after strips where prose is hard to hold
+3. Optional room-map / checkpoints / pocket card on older museum-style chapters — don’t force onto new voice-first drafts
+4. Prefer **spoken enumerations** over large comparison tables in the listening path; tables belong in labs or rare skim aids
 
 ## Editing rules
 
-- Prefer inserts (diagrams, tables, callouts, checkpoints) over rewrites
-- Keep code samples, labs, challenges, and solution discussions intact
-- Match the lecture’s existing voice; don’t add emoji clutter or gimmicky filler
-- One job per visual: illustrate a single idea the surrounding text already teaches
-- If restructuring folders/IDs happened, update paths via curriculum — don’t invent course IDs
+- Prefer inserts (callouts, diagrams, checkpoints) over rewrites
+- Match the lecture’s existing voice; no emoji clutter or gimmicky filler
+- One job per visual: clarify one idea the surrounding text already teaches
+- Keep screen-heavy labs *after* the spoken lecture ends
 
 ## Anti-patterns
 
-- Turning the lecture into a slide deck or deleting paragraphs “for brevity”
-- Cards/callouts on every subsection (noise > help)
+- Slide-decking or deleting paragraphs “for brevity”
+- Callouts/tables on every subsection (noise > help)
 - Decorative ASCII that doesn’t clarify the concept
 - Changing `id` / `prev` / `next` / `legacy_ids` without an explicit request

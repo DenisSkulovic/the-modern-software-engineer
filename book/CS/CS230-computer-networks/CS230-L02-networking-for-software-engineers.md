@@ -12,6 +12,7 @@ next: CS230-L03
 
 
 
+
 # CS230 — Computer Networks and Web Protocols
 
 ## Lecture 02: Networking for Software Engineers
@@ -59,6 +60,8 @@ Yet a sequence of small, dependent API requests against the same server feels sl
 **The network can transfer enormous quantities of information while remaining frustratingly slow at completing conversations.**
 
 This apparent contradiction sits at the heart of network engineering. To understand it, we need to separate several properties that everyday language tends to lump together under the word *speed*.
+
+By the end of this lecture, you should be able to explain bandwidth versus latency, why TCP reliability and congestion control cost time, how windows and RTT limit throughput, and why application dependency graphs turn network physics into product pain.
 
 ---
 
@@ -114,12 +117,13 @@ If the response takes 200 milliseconds, upgrading the bandwidth from 100 Mbps to
 
 A network exchange experiences several different forms of delay.
 
-| Delay | What causes it? |
-|---|---|
-| Propagation | Signals traveling through physical distance |
-| Transmission | Putting the packet's bits onto the link |
-| Processing | Network equipment examining and forwarding packets |
-| Queueing | Packets waiting because a link or device is busy |
+**Propagation delay** comes from signals traveling through physical distance.
+
+**Transmission delay** is the time spent putting the packet's bits onto the link.
+
+**Processing delay** is network equipment examining and forwarding packets.
+
+**Queueing delay** is packets waiting because a link or device is busy.
 
 Propagation is especially interesting.
 
@@ -907,55 +911,11 @@ For now, keep the principle:
 
 ---
 
-# 12. Practical Investigation — An Evening with Your Own Network
+# 12. The Oral Examination
 
-Here's a compact experiment you can perform on your PC. It requires no infrastructure setup.
+We now have enough knowledge to examine networking like an engineer rather than merely recognize its vocabulary.
 
-### Part A — Measure idle latency
-
-Open a terminal and run a series of pings to a reachable destination. On Windows:
-
-```powershell
-ping -n 30 1.1.1.1
-```
-
-Record the minimum, average, and maximum RTT.
-
-This is a connectivity test to a public resolver address, not a guarantee of comparable performance to your application server.
-
-### Part B — Measure latency under load
-
-Start a substantial upload or an upload-capable speed test. While the upload is running, repeat the ping test and compare the results.
-
-If latency increases dramatically, you may be observing queueing delay somewhere along the active path. The experiment alone doesn't prove bufferbloat or identify which device is responsible, but it gives you a useful clue.
-
-Avoid performing this test while someone else depends on your connection for an important call.
-
-### Part C — Compare distant destinations
-
-Choose a few reachable public destinations in different regions. Use ping, curl, or application-level timing tools as appropriate, and look for the relationship between geography and RTT.
-
-Remember that CDN services may route you to nearby infrastructure even when a company's headquarters are far away.
-
-### Part D — Inspect a real web application
-
-Open Chrome DevTools.
-
-Find a page that initiates several API requests. Determine whether those requests execute sequentially or overlap.
-
-Ask yourself:
-
-If the RTT doubled, which operations would become slower?
-
-Would the application suffer approximately one additional RTT? Or would several dependent requests compound the delay?
-
-That question connects this networking lecture directly to frontend architecture.
-
----
-
-# 13. Engineering and Interview Challenges
-
-Try reasoning through these before reading the solutions.
+Before reading the solutions, try answering these questions out loud. Imagine that a senior engineer is interviewing you and will challenge any hand-waving.
 
 ### Challenge 1 — The 100 Mbps Trap
 
@@ -997,9 +957,9 @@ Can it safely assume the payment failed? What must the architecture do to handle
 
 ---
 
-# 14. Solutions and Discussion
+# 13. Solutions and Discussion
 
-**Challenge 1**
+### Solution 1 — The 100 Mbps trap
 
 No.
 
@@ -1007,7 +967,7 @@ The serialization time of a 1 KB response is already extremely small at 100 Mbps
 
 I would inspect browser or curl timings and compare them with server-side measurements before purchasing additional bandwidth.
 
-**Challenge 2**
+### Solution 2 — The window limitation
 
 Using:
 
@@ -1025,13 +985,13 @@ we obtain:
 
 The sender would be limited to approximately 13.1 Mbps under this simplified window-bound model, even if the network could support far more. Additional bandwidth alone would not resolve that limitation.
 
-**Challenge 3**
+### Solution 3 — The mysterious upload
 
 Bufferbloat or excessive queueing on a saturated link is a plausible explanation. The large upload fills queues, delaying latency-sensitive traffic.
 
 Appropriate remedies could include Smart Queue Management, fair queueing, traffic shaping, or reducing sustained uplink saturation. Merely adding larger buffers could make latency worse.
 
-**Challenge 4**
+### Solution 4 — The distributed dashboard
 
 Each sequential operation costs approximately:
 
@@ -1053,7 +1013,7 @@ If the requests are independent and can run concurrently, the elapsed time may a
 
 Actual results depend on resource contention, scheduling, service behavior, and network conditions. This illustrates why the shape of a dependency graph can be more important than the performance of an individual service.
 
-**Challenge 5**
+### Solution 5 — The payment timeout
 
 No.
 
@@ -1063,7 +1023,7 @@ A reliable payment workflow needs mechanisms such as idempotency keys, durable t
 
 ---
 
-# 15. The Mental Model Worth Keeping
+# 14. The Mental Model Worth Keeping
 
 There are five ideas that should fundamentally change how you think about networks.
 
@@ -1081,7 +1041,7 @@ For a senior software engineer, understanding networking isn't about configuring
 
 ---
 
-# 16. Next Session — HTTP: The Protocol That Runs the Web
+# 15. Next Lecture — HTTP: The Protocol That Runs the Web
 
 Now that we understand the machinery transporting application data, it's time to investigate the protocol that gives those bytes meaning. Consider a simple request:
 
@@ -1101,22 +1061,70 @@ In **CS230-L03**, we'll investigate HTTP as an engineering protocol rather than 
 
 ---
 
+## Optional Practical Lab — An Evening with Your Own Network
+
+*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet and technical references.*
+
+Here's a compact experiment you can perform on your PC. It requires no infrastructure setup.
+
+### Lab A — Measure idle latency
+
+Open a terminal and run a series of pings to a reachable destination. On Windows:
+
+```powershell
+ping -n 30 1.1.1.1
+```
+
+Record the minimum, average, and maximum RTT.
+
+This is a connectivity test to a public resolver address, not a guarantee of comparable performance to your application server.
+
+### Lab B — Measure latency under load
+
+Start a substantial upload or an upload-capable speed test. While the upload is running, repeat the ping test and compare the results.
+
+If latency increases dramatically, you may be observing queueing delay somewhere along the active path. The experiment alone doesn't prove bufferbloat or identify which device is responsible, but it gives you a useful clue.
+
+Avoid performing this test while someone else depends on your connection for an important call.
+
+### Lab C — Compare distant destinations
+
+Choose a few reachable public destinations in different regions. Use ping, curl, or application-level timing tools as appropriate, and look for the relationship between geography and RTT.
+
+Remember that CDN services may route you to nearby infrastructure even when a company's headquarters are far away.
+
+### Lab D — Inspect a real web application
+
+Open Chrome DevTools.
+
+Find a page that initiates several API requests. Determine whether those requests execute sequentially or overlap.
+
+Ask yourself:
+
+If the RTT doubled, which operations would become slower?
+
+Would the application suffer approximately one additional RTT? Or would several dependent requests compound the delay?
+
+That question connects this networking lecture directly to frontend architecture.
+
+### Lab E — Explain your observations
+
+Write or speak a short diagnosis covering:
+
+1. Idle RTT versus RTT under upload load.
+2. How geography related to measured delay.
+3. Whether the web app's API calls were sequential or concurrent.
+4. What would happen if RTT doubled for that dependency graph.
+5. Whether bandwidth alone would have fixed the pain you observed.
+
+The objective is to practice separating throughput from conversation latency, and network physics from application shape.
 
 ---
 
-## Next Lecture — CS230-L03: HTTP: The Protocol That Runs the Web
-
-Continue in **CS230 — Computer Networks and Web Protocols**.
-
-## Further Reading — Optional References
+## Further Reading — Optional Technical References
 
 1. [RFC 9293 — Transmission Control Protocol](https://www.rfc-editor.org/rfc/rfc9293.html) — TCP fundamentals, sequencing, acknowledgments, and flow control.
 2. [RFC 9438 — CUBIC](https://www.rfc-editor.org/rfc/rfc9438.html) — Modern TCP congestion control on high-speed networks.
 3. [RFC 9002 — QUIC Loss Detection and Congestion Control](https://www.rfc-editor.org/rfc/rfc9002.html) — How QUIC handles loss and congestion.
 4. [Microsoft — Tracert](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/tracert) — Practical network-path investigation.
-
----
-
-
----
 

@@ -12,6 +12,7 @@ next: CS220-L02
 
 
 
+
 # CS220 — Programming Languages, Memory, and Execution
 ## Lecture 01: Programming Languages and Abstraction
 

@@ -12,6 +12,7 @@ next: null
 
 
 
+
 # SE240 — Browser and Frontend Engineering
 
 ## Lecture 06: Testing and Reliability in the Frontend

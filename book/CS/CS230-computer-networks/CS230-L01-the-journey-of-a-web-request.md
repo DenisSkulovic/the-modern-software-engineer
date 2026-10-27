@@ -12,6 +12,7 @@ next: CS230-L02
 
 
 
+
 # CS230 — Computer Networks and Web Protocols
 
 ## Lecture 01: The Journey of a Web Request
@@ -43,6 +44,8 @@ A useful question to carry through this lecture:
 **At what point does the browser actually need your application server?**
 
 It might need it immediately, eventually, several times, or not at all.
+
+By the end of this lecture, you should be able to narrate a full page load as a sequence of responsibilities — naming, routing, transport, security, HTTP, edge caches, application work, and browser rendering — and locate which boundary owns a mysterious delay.
 
 ---
 
@@ -160,11 +163,7 @@ The root doesn't know our hotel app; it refers to `.com`. The TLD refers to `exa
 
 ## 4.3 DNS records: Not every answer is an address
 
-| Record | Purpose |
-|---|---|
-| `A` | Name → IPv4 address |
-| `AAAA` | Name → IPv6 address |
-| `CNAME` | Alias to another name |
+An **A** record maps a name to an IPv4 address. An **AAAA** record maps a name to an IPv6 address. A **CNAME** record is an alias pointing to another name.
 
 ```text
 stays.example.com
@@ -439,14 +438,7 @@ Cache-Control: private, no-cache
 
 ## 11.1 The status code
 
-| Status | Meaning |
-|---|---|
-| `200` | Success |
-| `301` / `302` | Permanent / temporary redirect |
-| `304` | Cached representation still valid |
-| `401` / `403` | Auth required / forbidden |
-| `404` | Not found |
-| `500` / `503` | Server error / unavailable |
+A few codes appear constantly on this journey. **200** means success. **301** and **302** are permanent and temporary redirects. **304** means a cached representation is still valid. **401** and **403** cover authentication required and forbidden access. **404** means not found. **500** and **503** cover server error and temporary unavailability.
 
 Redirects matter for performance. `http://stays.example.com` → `301` to HTTPS may require another exchange and possibly another connection setup. With HSTS, browsers that already know the policy may upgrade to HTTPS without the insecure request first. A redirect isn't a harmless config line — it can add a sequential step.
 
@@ -578,13 +570,7 @@ Binary framing and multiplexed streams interleaved on one TCP connection — a s
 
 HTTP/3 uses **QUIC** (commonly over UDP) with its own secure, reliable features and independently managed streams. Loss on one stream need not block delivery on others. TLS 1.3 is integrated; resumption can be more efficient (0-RTT early data exists, with replay considerations — not automatically safe for arbitrary state-changing operations).
 
-| Characteristic | HTTP/1.1 | HTTP/2 | HTTP/3 |
-|---|---|---|---|
-| Common HTTPS transport | TCP | TCP | QUIC over UDP |
-| Multiplexed streams | No native equivalent | Yes | Yes |
-| TCP HOL blocking | Applies | Across streams | Avoided by independent QUIC streams |
-| Secure transport | TLS | TLS | TLS in QUIC |
-| Connection reuse | Yes | Yes | Yes |
+Put briefly: HTTP/1.1 and HTTP/2 commonly ride TCP with TLS, while HTTP/3 rides QUIC over UDP. HTTP/1.1 has no native multiplexed streams; HTTP/2 and HTTP/3 do. TCP head-of-line blocking applies to HTTP/1.1 and can stall multiple HTTP/2 streams after loss, whereas independent QUIC streams avoid that form of blocking. All three reuse connections; only the transport underneath changes.
 
 HTTP/3 should not always beat HTTP/2. Network conditions, implementations, intermediaries, and UDP restrictions (fallback to TCP-based HTTP) all matter. Modern HTTP evolution isn't only cleverer headers — it's how numerous independent exchanges share transport.
 
@@ -621,11 +607,165 @@ The diagram's value isn't that every navigation hits every box — it identifies
 
 ---
 
-# 16. Practical Investigation: Watch the Browser Do It
+# 16. A Production Investigation: The Mystery Revisited
+
+Observations that seemed contradictory are now clues:
+
+1. Backend ≈ 43 ms  
+2. Page sometimes several seconds  
+3. Reload much faster  
+4. Some content offline  
+5. Some loads leave no backend logs  
+
+## 16.1 Why the first visit is slow
+
+HTML arrives reasonably quickly. Large JS bundle → startup → only then fetch hotel data. Third-party resources too. Critical path:
+
+```text
+HTML → download JS → execute startup → fetch results → render
+```
+
+Bundles larger than needed; expensive modules on the initial path; too much synchronous init; API starts late. The 43 ms timer was never the right explanation for a four-second load.
+
+## 16.2 Why the second visit is faster
+
+Cached static resources, available DNS, reused connections, possibly less repeated browser work, retained state or data. Fewer initialization costs. No miracle.
+
+## 16.3 Why the backend sometimes sees nothing
+
+CDN satisfies static assets; client-side routing skips new HTML; service worker may handle fetches locally. No app-server log ≠ no meaningful browser work — work happened elsewhere.
+
+## 16.4 Why the website works partially offline
+
+Service worker serves the shell; some data already present; live availability may fail. Partially functional, nothing magical — enough local resources to reconstruct part of the experience.
+
+## 16.5 The real architectural lesson
+
+"The JS bundle was too large" is incomplete. The deeper issue was a poorly understood **critical path** — important work depended on downloading and executing that bundle before useful results.
+
+Improvements might include: code-split nonessential modules; avoid expensive init on the critical path; render useful content earlier; start essential fetches sooner; cut sequential dependencies; cache static assets well; profile JS execution, not only transfer; consider different rendering/data-loading strategies.
+
+These don't all solve the same problem — bytes, CPU, round trips, earlier work, concurrency, or what the user sees while waiting. Decide based on which part of the journey actually owns the delay.
+
+---
+
+# 17. The Oral Examination
+
+We now have enough knowledge to examine a page load like an engineer rather than merely recognize its vocabulary.
+
+Before reading the solutions, try answering these questions out loud. Imagine that a senior engineer is interviewing you and will challenge any hand-waving.
+
+### Challenge 1 — The Empty Server Logs
+
+Frontend at `https://app.example.com`. User clicks between pages normally; Node.js logs show no matching requests. Logging failure? Give at least three legitimate explanations.
+
+### Challenge 2 — The Geographical Performance Mystery
+
+App servers in Frankfurt. Germany median document TTFB 120 ms; Australia 410 ms; app processing ≈ 35 ms for both. What accounts for the difference? Would more CPU necessarily fix it? What architectural changes might help?
+
+### Challenge 3 — The DNS Migration
+
+`api.example.com` TTL one hour. You update DNS. Five minutes later some traffic still hits old infrastructure. Colleague: "DNS is broken." Correct? What should the migration plan have accounted for?
+
+### Challenge 4 — The Fast HTTP Response, Slow User Interface
+
+HTML TTFB 90 ms, HTML download 15 ms, main JS 850 KB compressed, JS startup 1100 ms, critical API 240 ms (starts only after startup). Blank page until results. Manager: "Optimize the backend query by 20 ms?" Evaluate. What first?
+
+### Challenge 5 — The HTTPS Misconception
+
+"HTTPS means encrypted from browser all the way to Node.js." Architecture: `Browser → Cloud CDN → Load Balancer → Node.js`. Necessarily correct? What else do you need?
+
+### Challenge 6 — The HTTP/3 Question
+
+"Why was HTTP/3 created if HTTP/2 already multiplexes?" Explain HTTP/2's remaining transport limitation. Don't just say HTTP/3 is faster — which mechanism changed and why it matters.
+
+### Challenge 7 — The Unnecessary Round Trip
+
+`http://example.com` redirects to `https://example.com`. Why can the redirect increase latency? When might the browser avoid the initial insecure request?
+
+---
+
+# 18. Solutions and Discussion
+
+### Solution 1 — Empty server logs
+
+Not automatically a failure. **Client-side routing**; **browser cache / service worker**; **CDN cache**; also: frontend already has data and makes no request. Inspect the Network panel. Distinguish user-visible navigation from backend processing.
+
+### Solution 2 — Geographical performance
+
+Distance increases RTT — visible in connection, TLS, and request/response. More CPU doesn't remove propagation delay. Helps: CDN for cacheable content; fewer sequential round trips; connection reuse; better protocol/connection handling; services closer to users where consistency allows; keep user-visible work off unnecessary remote critical paths. "Deploy everything everywhere" isn't automatic — replication and consistency cost real complexity.
+
+### Solution 3 — DNS migration
+
+Expected behavior. Caches may retain the old address until TTL (and policies) allow. Plan a transition: lower TTL in advance; validate new infra; change DNS; keep old infra up; monitor until old destination isn't needed. Don't assume perfectly synchronized global changes.
+
+### Solution 4 — Slow UI
+
+A 20 ms backend win is unlikely to matter next to 1100 ms JS startup and a large bundle. Investigate: unnecessary modules in the initial bundle; long main-thread tasks; earlier API start; content before full init; code splitting / alternate rendering. The 240 ms API is delayed behind 1100 ms of startup — removing a dependency or overlapping work beats shaving backend milliseconds.
+
+### Solution 5 — HTTPS boundaries
+
+Not necessarily. TLS may terminate at CDN, then again at the load balancer; Node.js hop may or may not be encrypted. Inspect termination points and protocols per hop. Public HTTPS ≠ end-to-end protection through the stack.
+
+### Solution 6 — HTTP/3
+
+HTTP/2 multiplexes over TCP's one ordered byte stream; loss can delay unrelated streams. QUIC's independent streams avoid that form of HOL blocking, with integrated secure setup. Benefit depends on conditions and implementations. The point is a changed transport mechanism, not a newer acronym.
+
+### Solution 7 — The redirect
+
+Another request-response (and possibly connection/protocol work) as a sequential dependency. Applicable HSTS (including preload) can upgrade HTTP→HTTPS locally and skip the insecure round trip. Every unnecessary sequential network exchange is an opportunity for more latency.
+
+---
+
+# 19. The Mental Model Worth Keeping
+
+The useful result isn't memorizing acronyms — it's separation of responsibilities.
+
+**Where is the service?** DNS discovers destinations.
+
+**How does information get there?** IP routing moves packets.
+
+**Reliable exchange?** TCP or QUIC transport.
+
+**Secure conversation?** TLS-related authentication and protection.
+
+**Express the request?** HTTP semantics.
+
+**Who handles it?** CDN, proxy, balancer, app — or a combination.
+
+**Become a webpage?** Browser interprets, executes, lays out, renders.
+
+**Why slow then fast?** Different paths, reuse, and dependencies.
+
+Underneath:
+
+**The time spent executing application code is not the same as the time required to deliver an application experience.**
+
+A website is a distributed system extending into the user's browser. See that system and performance bugs, network failures, caching anomalies, and strange browser behavior become less mysterious.
+
+Not "Why is my website slow?" but:
+
+**Which dependency on the critical path is responsible for the delay, and what mechanism determines its cost?**
+
+---
+
+# 20. Next Lecture — Networking for Software Engineers
+
+Two servers, gigabit links, same app, fast CPUs. Large file transfer: excellent throughput. Tiny requests: one feels instant, the other painfully slow. Bandwidth enormous, code identical, CPUs idle — where did the time go?
+
+Packets, round trips, congestion windows, loss recovery, routing, connection establishment. Why more bandwidth often fails to fix latency; why a little packet loss can hurt a lot; why measuring a network is harder than a speed test.
+
+In **CS230-L02**, we'll investigate networking for software engineers — why fast connections can still feel slow.
+
+---
+
+## Optional Practical Lab — Watch the Browser Do It
+
+*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet and technical references.*
 
 A recent desktop browser and a terminal suffice. Results vary by site, browser, network, and privacy settings.
 
-## Experiment A — The network waterfall
+### Lab A — The network waterfall
 
 DevTools → **Network** → preserve log if you want redirects → reload. Inspect the main document's timing (Queueing, DNS, connection, SSL, waiting, download — browser categories, not universal protocol phases).
 
@@ -633,11 +773,11 @@ If the backend took 43 ms but the document took 600 ms: connection setup? Redire
 
 **Useful comparison:** reload normally, then with **Disable cache**. Some resources re-download — but OS DNS, CDN, connection reuse, and service workers are distinct. A truly cold navigation is harder than Ctrl+R.
 
-## Experiment B — Discover the protocol
+### Lab B — Discover the protocol
 
 Enable the **Protocol** column. Look for `h2`, `h3`, `http/1.1`. Different origins may differ. How many separate network origins does one page involve? One visual product may talk to many services.
 
-## Experiment C — Navigation timing in JavaScript
+### Lab C — Navigation timing in JavaScript
 
 ```javascript
 const navigation =
@@ -671,7 +811,7 @@ Milliseconds. Cautions: TLS is an API approximation; `waitingAfterRequest` inclu
 
 **Thought experiment:** DNS/connection/TLS all 0 ms, waiting 380 ms, transfer 12 ms. Reasonable: no fresh DNS/connection work on this path; substantial time after the request starts. **Not** proven: Node.js spent 380 ms. Timing narrows investigation; it rarely proves root cause alone.
 
-## Experiment D — From the terminal
+### Lab D — From the terminal
 
 ```bash
 nslookup example.com
@@ -689,163 +829,25 @@ On Windows PowerShell, use `curl.exe` for the real executable. Curl timings are 
 
 Compare browser vs curl. Differences may come from cookies, cache, service workers, protocol choice, reuse, auth, headers, extensions, proxies. Curl investigates network/HTTP well; it cannot perfectly reproduce a browser session.
 
-## Experiment E — Find an unexpected request
+### Lab E — Find an unexpected request
 
 Click between SPA routes: new HTML? Only API? Nothing? Full reload on the destination and compare.
 
 **Application navigation** (frontend) and **document navigation** (browser) can look identical to the user and behave very differently inside.
 
----
+### Lab F — Explain your observations
 
-# 17. A Production Investigation: The Mystery Revisited
+Write or speak a short diagnosis covering:
 
-Observations that seemed contradictory are now clues:
+1. Which stages owned the main document's delay.
+2. Which HTTP version carried major resources.
+3. How a second visit differed from a cold-ish first visit.
+4. Whether browser timing and curl timing told the same story.
+5. Whether a route change required a new document request.
 
-1. Backend ≈ 43 ms  
-2. Page sometimes several seconds  
-3. Reload much faster  
-4. Some content offline  
-5. Some loads leave no backend logs  
-
-## 17.1 Why the first visit is slow
-
-HTML arrives reasonably quickly. Large JS bundle → startup → only then fetch hotel data. Third-party resources too. Critical path:
-
-```text
-HTML → download JS → execute startup → fetch results → render
-```
-
-Bundles larger than needed; expensive modules on the initial path; too much synchronous init; API starts late. The 43 ms timer was never the right explanation for a four-second load.
-
-## 17.2 Why the second visit is faster
-
-Cached static resources, available DNS, reused connections, possibly less repeated browser work, retained state or data. Fewer initialization costs. No miracle.
-
-## 17.3 Why the backend sometimes sees nothing
-
-CDN satisfies static assets; client-side routing skips new HTML; service worker may handle fetches locally. No app-server log ≠ no meaningful browser work — work happened elsewhere.
-
-## 17.4 Why the website works partially offline
-
-Service worker serves the shell; some data already present; live availability may fail. Partially functional, nothing magical — enough local resources to reconstruct part of the experience.
-
-## 17.5 The real architectural lesson
-
-"The JS bundle was too large" is incomplete. The deeper issue was a poorly understood **critical path** — important work depended on downloading and executing that bundle before useful results.
-
-Improvements might include: code-split nonessential modules; avoid expensive init on the critical path; render useful content earlier; start essential fetches sooner; cut sequential dependencies; cache static assets well; profile JS execution, not only transfer; consider different rendering/data-loading strategies.
-
-These don't all solve the same problem — bytes, CPU, round trips, earlier work, concurrency, or what the user sees while waiting. Decide based on which part of the journey actually owns the delay.
+The objective is to practice separating browser experience from backend request logs.
 
 ---
-
-# 18. Engineering Challenges
-
-Reason about mechanisms before reading solutions.
-
-## Challenge 1 — The Empty Server Logs
-
-Frontend at `https://app.example.com`. User clicks between pages normally; Node.js logs show no matching requests. Logging failure? Give at least three legitimate explanations.
-
-## Challenge 2 — The Geographical Performance Mystery
-
-App servers in Frankfurt. Germany median document TTFB 120 ms; Australia 410 ms; app processing ≈ 35 ms for both. What accounts for the difference? Would more CPU necessarily fix it? What architectural changes might help?
-
-## Challenge 3 — The DNS Migration
-
-`api.example.com` TTL one hour. You update DNS. Five minutes later some traffic still hits old infrastructure. Colleague: "DNS is broken." Correct? What should the migration plan have accounted for?
-
-## Challenge 4 — The Fast HTTP Response, Slow User Interface
-
-HTML TTFB 90 ms, HTML download 15 ms, main JS 850 KB compressed, JS startup 1100 ms, critical API 240 ms (starts only after startup). Blank page until results. Manager: "Optimize the backend query by 20 ms?" Evaluate. What first?
-
-## Challenge 5 — The HTTPS Misconception
-
-"HTTPS means encrypted from browser all the way to Node.js." Architecture: `Browser → Cloud CDN → Load Balancer → Node.js`. Necessarily correct? What else do you need?
-
-## Challenge 6 — The HTTP/3 Question
-
-"Why was HTTP/3 created if HTTP/2 already multiplexes?" Explain HTTP/2's remaining transport limitation. Don't just say HTTP/3 is faster — which mechanism changed and why it matters.
-
-## Challenge 7 — The Unnecessary Round Trip
-
-`http://example.com` redirects to `https://example.com`. Why can the redirect increase latency? When might the browser avoid the initial insecure request?
-
----
-
-# 19. Solutions and Discussion
-
-## Solution 1 — Empty Server Logs
-
-Not automatically a failure. **Client-side routing**; **browser cache / service worker**; **CDN cache**; also: frontend already has data and makes no request. Inspect the Network panel. Distinguish user-visible navigation from backend processing.
-
-## Solution 2 — Geographical Performance
-
-Distance increases RTT — visible in connection, TLS, and request/response. More CPU doesn't remove propagation delay. Helps: CDN for cacheable content; fewer sequential round trips; connection reuse; better protocol/connection handling; services closer to users where consistency allows; keep user-visible work off unnecessary remote critical paths. "Deploy everything everywhere" isn't automatic — replication and consistency cost real complexity.
-
-## Solution 3 — DNS Migration
-
-Expected behavior. Caches may retain the old address until TTL (and policies) allow. Plan a transition: lower TTL in advance; validate new infra; change DNS; keep old infra up; monitor until old destination isn't needed. Don't assume perfectly synchronized global changes.
-
-## Solution 4 — Slow UI
-
-A 20 ms backend win is unlikely to matter next to 1100 ms JS startup and a large bundle. Investigate: unnecessary modules in the initial bundle; long main-thread tasks; earlier API start; content before full init; code splitting / alternate rendering. The 240 ms API is delayed behind 1100 ms of startup — removing a dependency or overlapping work beats shaving backend milliseconds.
-
-## Solution 5 — HTTPS Boundaries
-
-Not necessarily. TLS may terminate at CDN, then again at the load balancer; Node.js hop may or may not be encrypted. Inspect termination points and protocols per hop. Public HTTPS ≠ end-to-end protection through the stack.
-
-## Solution 6 — HTTP/3
-
-HTTP/2 multiplexes over TCP's one ordered byte stream; loss can delay unrelated streams. QUIC's independent streams avoid that form of HOL blocking, with integrated secure setup. Benefit depends on conditions and implementations. The point is a changed transport mechanism, not a newer acronym.
-
-## Solution 7 — The Redirect
-
-Another request-response (and possibly connection/protocol work) as a sequential dependency. Applicable HSTS (including preload) can upgrade HTTP→HTTPS locally and skip the insecure round trip. Every unnecessary sequential network exchange is an opportunity for more latency.
-
----
-
-# 20. The Mental Model Worth Keeping
-
-The useful result isn't memorizing acronyms — it's separation of responsibilities.
-
-**Where is the service?** DNS discovers destinations.  
-**How does information get there?** IP routing moves packets.  
-**Reliable exchange?** TCP or QUIC transport.  
-**Secure conversation?** TLS-related authentication and protection.  
-**Express the request?** HTTP semantics.  
-**Who handles it?** CDN, proxy, balancer, app — or a combination.  
-**Become a webpage?** Browser interprets, executes, lays out, renders.  
-**Why slow then fast?** Different paths, reuse, and dependencies.
-
-Underneath:
-
-**The time spent executing application code is not the same as the time required to deliver an application experience.**
-
-A website is a distributed system extending into the user's browser. See that system and performance bugs, network failures, caching anomalies, and strange browser behavior become less mysterious.
-
-Not "Why is my website slow?" but:
-
-**Which dependency on the critical path is responsible for the delay, and what mechanism determines its cost?**
-
----
-
-# 21. Next Session — Networking for Software Engineers
-
-Two servers, gigabit links, same app, fast CPUs. Large file transfer: excellent throughput. Tiny requests: one feels instant, the other painfully slow. Bandwidth enormous, code identical, CPUs idle — where did the time go?
-
-Packets, round trips, congestion windows, loss recovery, routing, connection establishment. Why more bandwidth often fails to fix latency; why a little packet loss can hurt a lot; why measuring a network is harder than a speed test.
-
-**CS230-L02: Networking for Software Engineers — Why Fast Connections Can Still Feel Slow.**
-
----
-
-
----
-
-## Next Lecture — CS230-L02: Networking for Software Engineers
-
-Continue in **CS230 — Computer Networks and Web Protocols**.
 
 ## Further Reading — Optional Technical References
 
@@ -859,9 +861,4 @@ The lecture is self-contained. These help for deeper exploration.
 6. [RFC 9114 — HTTP/3](https://www.rfc-editor.org/rfc/rfc9114.html)
 7. [web.dev — Time to First Byte](https://web.dev/articles/ttfb)
 8. [MDN — Service Worker Fetch Events](https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/fetch_event)
-
----
-
-
----
 

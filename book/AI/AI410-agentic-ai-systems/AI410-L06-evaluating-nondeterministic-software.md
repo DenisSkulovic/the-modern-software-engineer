@@ -12,6 +12,7 @@ next: AI410-L07
 
 
 
+
 # AI410 — Agentic AI Systems and Production Engineering
 ## Lecture 06: Evaluating Nondeterministic Software
 

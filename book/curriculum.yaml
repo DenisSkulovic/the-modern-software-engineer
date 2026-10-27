@@ -137,7 +137,7 @@ courses:
   discipline: CS
   level: 200
   type: core
-  status: complete
+  status: in_progress
   slug: computer-networks
   dir: CS/CS230-computer-networks
   lectures:
@@ -164,6 +164,48 @@ courses:
     - WEB201-S03
     source: CS/CS230-computer-networks/CS230-L03-http-the-protocol-that-runs-the-web.md
     manuscript: manuscript
+    edition: 2.0.0
+  - id: CS230-L04
+    title: "DNS: The Internet's Distributed Naming System"
+    slug: dns-the-internets-distributed-naming-system
+    legacy_ids: []
+    source: CS/CS230-computer-networks/CS230-L04-dns-the-internets-distributed-naming-system.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS230-L05
+    title: IP Addressing, Subnets, Routing, and NAT
+    slug: ip-addressing-subnets-routing-and-nat
+    legacy_ids: []
+    source: CS/CS230-computer-networks/CS230-L05-ip-addressing-subnets-routing-and-nat.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS230-L06
+    title: The Life of a Network Connection
+    slug: the-life-of-a-network-connection
+    legacy_ids: []
+    source: CS/CS230-computer-networks/CS230-L06-the-life-of-a-network-connection.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS230-L07
+    title: TLS and the Architecture of Trust
+    slug: tls-and-the-architecture-of-trust
+    legacy_ids: []
+    source: CS/CS230-computer-networks/CS230-L07-tls-and-the-architecture-of-trust.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS230-L08
+    title: Proxies, Load Balancers, and Modern Web Transport
+    slug: proxies-load-balancers-and-modern-web-transport
+    legacy_ids: []
+    source: CS/CS230-computer-networks/CS230-L08-proxies-load-balancers-and-modern-web-transport.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS230-L09
+    title: Network Forensics for Software Engineers
+    slug: network-forensics-for-software-engineers
+    legacy_ids: []
+    source: CS/CS230-computer-networks/CS230-L09-network-forensics-for-software-engineers.md
+    manuscript: stub
     edition: 2.0.0
 - code: CS320
   title: Operating Systems, Concurrency, and Runtimes

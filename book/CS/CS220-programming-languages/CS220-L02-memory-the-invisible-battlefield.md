@@ -12,6 +12,7 @@ next: CS220-L03
 
 
 
+
 # CS220 — Programming Languages, Memory, and Execution
 ## Lecture 02: Memory: The Invisible Battlefield
 
@@ -931,15 +932,15 @@ Over time:
 ```text
 EventEmitter
      |
-     +── Listener 1 ── Session 1
+     +── Listener 1 ── cust #1
      |
-     +── Listener 2 ── Session 2
+     +── Listener 2 ── cust #2
      |
-     +── Listener 3 ── Session 3
+     +── Listener 3 ── cust #3
      |
      +── ...
      |
-     +── Listener 100,000 ── Session 100,000
+     +── Listener 100,000 ── cust #100000
 ```
 
 Again, the garbage collector does exactly what it should: it preserves reachable objects. The application is responsible for detaching the listeners it no longer needs.
