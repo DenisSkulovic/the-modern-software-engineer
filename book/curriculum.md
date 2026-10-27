@@ -40,9 +40,9 @@ Library/content state — not whether you have studied the lecture. See [`STATUS
 | 400 | Complex systems, architecture, advanced integration, and capstones |
 | 500 | Reserved for future specialized / research-oriented material |
 
-Lecture IDs look like `CS330-L03`. Electives use the same scheme (they are courses with `type: planned` or `elective`, not a separate numbering universe).
+Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `type: elective` or still-`planned`, not a separate numbering universe).
 
-## Core courses (17 · 78 lectures)
+## Core courses (17 · 83 lectures)
 
 ### CS — Computer Science
 
@@ -98,13 +98,18 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (they are cours
 
 #### CS320 — Operating Systems, Concurrency, and Runtimes
 
-300-level · 3 lectures · course status `complete` · `CS/CS320-operating-systems-and-concurrency/`
+300-level · 8 lectures · course status `in_progress` · `CS/CS320-operating-systems-and-concurrency/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
 | `CS320-L01` | Concurrency, Parallelism, and Asynchrony | `manuscript` | `2.0.0` | `CS101-S09` |
 | `CS320-L02` | Operating Systems: The Manager Behind the Curtain | `manuscript` | `2.0.0` | `CS101-S10` |
 | `CS320-L03` | JavaScript and TypeScript Under the Microscope | `manuscript` | `2.0.0` | `CS101-S11` |
+| `CS320-L04` | Scheduling, CPU Time, and Contention | `stub` | `2.0.0` | `` |
+| `CS320-L05` | Virtual Memory, Paging, and Memory Pressure | `stub` | `2.0.0` | `` |
+| `CS320-L06` | From System Calls to Asynchronous I/O | `stub` | `2.0.0` | `` |
+| `CS320-L07` | Threads, Atomics, and Memory Ordering | `stub` | `2.0.0` | `` |
+| `CS320-L08` | Operating-System and Runtime Forensics | `stub` | `2.0.0` | `` |
 
 #### CS330 — Relational Databases and Transactions
 
@@ -247,19 +252,67 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (they are cours
 | `AI410-L06` | Evaluating Nondeterministic Software | `manuscript` | `2.0.0` | `AI501-S10` |
 | `AI410-L07` | Security, Reliability, and Economics of AI Systems | `manuscript` | `2.0.0` | `AI501-S11` |
 
+## Active electives (3 · 22 lectures)
+
+Active electives have on-disk lecture stubs or manuscripts and are validated like core courses. They remain optional in the study programme.
+
+### CS — Computer Science
+
+#### CS360 — Algorithms and Coding Interview Lab
+
+300-level · 7 lectures · course status `in_progress` · `CS/CS360-algorithms-interview-lab/`
+
+| ID | Lecture | Manuscript | Edition | Legacy |
+| --- | --- | --- | --- | --- |
+| `CS360-L01` | The Art of Solving an Unfamiliar Problem | `stub` | `2.0.0` | `` |
+| `CS360-L02` | Arrays, Strings, Hashing, and Sliding Windows | `stub` | `2.0.0` | `` |
+| `CS360-L03` | Binary Search, Sorting, and Greedy Decisions | `stub` | `2.0.0` | `` |
+| `CS360-L04` | Stacks, Queues, Heaps, and Ordered Processing | `stub` | `2.0.0` | `` |
+| `CS360-L05` | Trees, Graphs, and Traversal Strategies | `stub` | `2.0.0` | `` |
+| `CS360-L06` | Dynamic Programming, Backtracking, and State | `stub` | `2.0.0` | `` |
+| `CS360-L07` | The Senior Coding Interview Studio | `stub` | `2.0.0` | `` |
+
+### SE — Software Engineering
+
+#### SE450 — Kubernetes and Platform Engineering
+
+400-level · 8 lectures · course status `in_progress` · `SE/SE450-kubernetes-and-platform/`
+
+| ID | Lecture | Manuscript | Edition | Legacy |
+| --- | --- | --- | --- | --- |
+| `SE450-L01` | Kubernetes: A System That Reconciles Reality | `stub` | `2.0.0` | `` |
+| `SE450-L02` | Pods, Deployments, Jobs, and Controllers | `stub` | `2.0.0` | `` |
+| `SE450-L03` | Cluster Networking and Service Discovery | `stub` | `2.0.0` | `` |
+| `SE450-L04` | Scheduling, Resources, and Autoscaling | `stub` | `2.0.0` | `` |
+| `SE450-L05` | Configuration, Secrets, and Persistent State | `stub` | `2.0.0` | `` |
+| `SE450-L06` | Security, Isolation, and Multi-Tenancy | `stub` | `2.0.0` | `` |
+| `SE450-L07` | Releases, GitOps, and Platform Observability | `stub` | `2.0.0` | `` |
+| `SE450-L08` | The Kubernetes Incident Room | `stub` | `2.0.0` | `` |
+
+#### SE460 — Performance Engineering
+
+400-level · 7 lectures · course status `in_progress` · `SE/SE460-performance-engineering/`
+
+| ID | Lecture | Manuscript | Edition | Legacy |
+| --- | --- | --- | --- | --- |
+| `SE460-L01` | Performance Is an Experiment | `stub` | `2.0.0` | `` |
+| `SE460-L02` | CPU, Memory, and Runtime Performance | `stub` | `2.0.0` | `` |
+| `SE460-L03` | Queues, Concurrency, and Backpressure | `stub` | `2.0.0` | `` |
+| `SE460-L04` | Data, Storage, and I/O Performance | `stub` | `2.0.0` | `` |
+| `SE460-L05` | End-to-End Latency and Perceived Performance | `stub` | `2.0.0` | `` |
+| `SE460-L06` | Load Testing, Capacity, and Performance Budgets | `stub` | `2.0.0` | `` |
+| `SE460-L07` | The Performance Forensics Studio | `stub` | `2.0.0` | `` |
+
 ## Planned electives
 
-Elective status means optional in the programme — not a different ID scheme. Each starts with one lecture when written; courses may grow organically.
+Catalogue-only electives — no lecture files yet. Same ID scheme; promote to `type: elective` when stubs are created.
 
 | Code | Title | Status | Builds on | Notes |
 | --- | --- | --- | --- | --- |
 | `CS350` | Advanced PostgreSQL Engineering | `planned` | `CS330` | First lecture candidate: PostgreSQL Internals — MVCC, Vacuum, and Bloat |
-| `CS360` | Algorithms and Coding Interview Lab | `planned` | `CS110` | Algorithmic patterns for senior engineering interviews — distinct from listening to CS110 theory. Development priority #3 after CS340 and CS320 reorganization. |
 | `CS370` | Game Engines and Simulation Systems | `planned` | `CS220`, `CS320` | Independent exploration — game loops, entities, simulation time |
 | `SE250` | Modern Frontend Frameworks | `planned` | `SE240` | React for Vue Developers as first lecture candidate |
 | `SE350` | Advanced Software Design Patterns | `planned` | `SE330` |  |
-| `SE450` | Kubernetes and Platform Engineering | `planned` | `SE340`, `SE440` | Practical platform knowledge beyond SE340's Docker/AWS intro. Development priority #4 among planned electives (after CS340, CS320 expansion, CS360). |
-| `SE460` | Performance Engineering | `planned` | `CS320`, `SE440` |  |
 | `AI450` | Advanced Agentic Systems | `planned` | `AI410` | Durable agents, workflow engines, advanced evaluations |
 | `SE360` | Practical Terraform and Cloud Delivery | `planned` | `SE340` |  |
 | `CS240` | Linux Internals for Application Engineers | `planned` | `CS320`, `SE340` |  |

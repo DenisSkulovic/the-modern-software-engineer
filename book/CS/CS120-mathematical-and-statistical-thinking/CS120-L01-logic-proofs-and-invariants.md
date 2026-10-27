@@ -16,30 +16,46 @@ next: CS120-L02
 # CS120 — Mathematical and Statistical Thinking for Software Engineers
 ## Lecture 01: Logic, Proofs, and Invariants
 
-*Enough mathematical and statistical literacy to interpret measurements, uncertainty, and quantitative trade-offs in real software systems — without a semester of abstract formalism.*
-
-**Estimated study time:** TBD once the spoken manuscript exists (target roughly 60–90 minutes including lab).
+*Why a reservation algorithm can pass hundreds of tests and still occasionally double-book a room — and how invariants make that failure thinkable.*
 
 ---
 
-### Status — stub outline
+### Status — Planning Stub
 
-This file is a writing scaffold. Full voice-first manuscript still to be authored.
+Full voice-first manuscript not yet authored.
 
-**Learning objective:** Reason about correctness with assumptions, counterexamples, sets, functions, invariants, and algorithmic guarantees.
+### Learning Objective
 
-**Complements:** CS110 (algorithms and cost), AI410-L06 / SE440 / CS430 (measurement in context). This course builds the underlying mathematical intuition those lectures assume.
+Explain why tests demonstrate observed behavior but do not constitute general proof; identify assumptions, formulate invariants, and construct counterexamples to incorrect reasoning.
 
-**Voice-first target when written:** spoken narrative first; diagrams and dense samples as screen aids with spoken captions; oral examination; mental model; optional lab only after *The spoken lecture ends here…*
+### Opening Problem
 
-### Planned spoken path
+A reservation algorithm passes hundreds of tests but still occasionally double-books a room.
 
-1. Hook — a 'obviously correct' fix that violates an invariant
-2. Propositions, assumptions, and what a counterexample actually shows
-3. Sets, functions, and the vocabulary of precise claims
-4. Invariants as contracts systems must preserve across steps
-5. Proofs engineers actually use — induction, contradiction, case analysis
-6. Algorithmic guarantees as statements with preconditions
-7. Oral examination · Mental model · Next lecture · Optional lab
+### Planned Coverage
 
-<!-- Expand into full manuscript below; delete this stub scaffold when the lecture lands. -->
+Propositions, logical implications, necessary versus sufficient conditions, quantifiers, sets, functions, counterexamples, preconditions, postconditions, invariants, and constructive reasoning. Introduce proof by contradiction and induction where they clarify practical engineering problems.
+
+### Scope Boundaries
+
+CS110 teaches algorithmic techniques. This lecture teaches how to reason about claims and correctness, not how to implement sorting algorithms.
+
+### Expected Understanding
+
+Distinguish proof from observation; state assumptions explicitly; propose invariants a system must preserve; dismantle a false claim with a counterexample.
+
+### Planned Manuscript Structure
+
+1. Narrative hook and sustained engineering case study.
+2. Technical development of the underlying mechanisms.
+3. Practical trade-offs and realistic failure scenarios.
+4. Oral examination.
+5. Solutions and discussion.
+6. The Mental Model Worth Keeping.
+7. Next Lecture or course-completion transition.
+8. Optional Practical Lab, after the spoken lecture ends.
+9. Further Reading.
+10. Dense Cheatsheet — Interview Glance Card, last, inside one fenced text block.
+
+<!-- Full manuscript to be generated later. -->
+

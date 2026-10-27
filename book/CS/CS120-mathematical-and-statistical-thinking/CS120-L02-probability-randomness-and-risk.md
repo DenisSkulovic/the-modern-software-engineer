@@ -16,30 +16,46 @@ next: CS120-L03
 # CS120 — Mathematical and Statistical Thinking for Software Engineers
 ## Lecture 02: Probability, Randomness, and Risk
 
-*Enough mathematical and statistical literacy to interpret measurements, uncertainty, and quantitative trade-offs in real software systems — without a semester of abstract formalism.*
-
-**Estimated study time:** TBD once the spoken manuscript exists (target roughly 60–90 minutes including lab).
+*Why a fraud detector with 99% accuracy can still flood operators with false alarms about legitimate customers.*
 
 ---
 
-### Status — stub outline
+### Status — Planning Stub
 
-This file is a writing scaffold. Full voice-first manuscript still to be authored.
+Full voice-first manuscript not yet authored.
 
-**Learning objective:** Use conditional probability, independence, expectation, Bayes, collisions, and failure probabilities in engineering decisions.
+### Learning Objective
 
-**Complements:** CS110 (algorithms and cost), AI410-L06 / SE440 / CS430 (measurement in context). This course builds the underlying mathematical intuition those lectures assume.
+Interpret probabilistic claims without confusing prediction accuracy with posterior confidence; estimate expected outcomes and reason about independent and correlated risks.
 
-**Voice-first target when written:** spoken narrative first; diagrams and dense samples as screen aids with spoken captions; oral examination; mental model; optional lab only after *The spoken lecture ends here…*
+### Opening Problem
 
-### Planned spoken path
+A fraud detector reports 99% accuracy, yet most alerts turn out to concern legitimate customers.
 
-1. Hook — a 99%-accurate alert that floods the team with false positives
-2. Base rates, conditional probability, and Bayes in plain language
-3. Independence versus dependence in real systems
-4. Expected value as a decision tool, not a fortune teller
-5. Collisions, hash spaces, and birthday-style surprises
-6. Combining independent failure modes into overall risk
-7. Oral examination · Mental model · Next lecture · Optional lab
+### Planned Coverage
 
-<!-- Expand into full manuscript below; delete this stub scaffold when the lecture lands. -->
+Sample spaces, probabilities, conditional probability, independence, base rates, Bayes' theorem, expected value, variance intuition, random collisions, retry success probabilities, and elementary reliability calculations.
+
+### Scope Boundaries
+
+Avoid advanced probability theory. Teach the minimum formal machinery needed to understand real engineering decisions.
+
+### Expected Understanding
+
+Apply base-rate reasoning; compute simple conditional probabilities; estimate expected value and independent failure combinations without mistaking accuracy for posterior confidence.
+
+### Planned Manuscript Structure
+
+1. Narrative hook and sustained engineering case study.
+2. Technical development of the underlying mechanisms.
+3. Practical trade-offs and realistic failure scenarios.
+4. Oral examination.
+5. Solutions and discussion.
+6. The Mental Model Worth Keeping.
+7. Next Lecture or course-completion transition.
+8. Optional Practical Lab, after the spoken lecture ends.
+9. Further Reading.
+10. Dense Cheatsheet — Interview Glance Card, last, inside one fenced text block.
+
+<!-- Full manuscript to be generated later. -->
+

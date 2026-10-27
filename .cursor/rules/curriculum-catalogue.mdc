@@ -8,15 +8,17 @@ alwaysApply: false
 
 When adding or expanding lectures:
 
-1. Create the `.md` under the course `dir` with matching frontmatter (`id`, `prev`/`next`, `manuscript`, `edition`)
+1. Create the `.md` under the course `dir` with matching frontmatter (`id`, `prev`/`next`, `manuscript`, `edition`, `type`)
 2. Register it in `book/curriculum.yaml` (same indentation as siblings)
 3. Point the previous lecture’s `next:` at the new id; clear false “end of course” copy
 4. Prefer `manuscript: stub` until content exists; flip to `manuscript` when the full lecture lands
-5. Regenerate with `python book/tools/curriculum_render.py` and check with `curriculum_validate.py`
-6. Optional: `sync_manuscript_meta.py --frontmatter-only` to align frontmatter fields
+5. Course `type`: `core` for required catalogue; `elective` once stubs/files exist; keep `planned` only for catalogue-only entries with no files
+6. Regenerate with `python book/tools/curriculum_render.py` and check with `curriculum_validate.py` (validates both core and active electives)
+7. Optional: `sync_manuscript_meta.py --frontmatter-only` to align frontmatter fields
 
 ## Do not
 
 - Hardcode expected lecture counts in tools — the catalogue grows
 - Run `curriculum_migrate.py` for brand-new lectures (legacy 60-lecture migration helper)
 - Invent course or lecture IDs outside the yaml/manifest scheme
+- Promote electives to `type: core` merely to satisfy validation

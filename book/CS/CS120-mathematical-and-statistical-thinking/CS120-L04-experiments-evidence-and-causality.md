@@ -16,30 +16,46 @@ next: CS120-L05
 # CS120 — Mathematical and Statistical Thinking for Software Engineers
 ## Lecture 04: Experiments, Evidence, and Causality
 
-*Enough mathematical and statistical literacy to interpret measurements, uncertainty, and quantitative trade-offs in real software systems — without a semester of abstract formalism.*
-
-**Estimated study time:** TBD once the spoken manuscript exists (target roughly 60–90 minutes including lab).
+*A dashboard says a new booking interface improved conversion by 12%. Did the release actually cause the improvement?*
 
 ---
 
-### Status — stub outline
+### Status — Planning Stub
 
-This file is a writing scaffold. Full voice-first manuscript still to be authored.
+Full voice-first manuscript not yet authored.
 
-**Learning objective:** Design and critique A/B tests, benchmarks, and competing claims — confounders, significance, and what evidence actually supports.
+### Learning Objective
 
-**Complements:** CS110 (algorithms and cost), AI410-L06 / SE440 / CS430 (measurement in context). This course builds the underlying mathematical intuition those lectures assume.
+Design and critique simple experiments, interpret uncertain results, and recognize misleading evidence.
 
-**Voice-first target when written:** spoken narrative first; diagrams and dense samples as screen aids with spoken captions; oral examination; mental model; optional lab only after *The spoken lecture ends here…*
+### Opening Problem
 
-### Planned spoken path
+A new booking interface improves conversion by 12% according to a dashboard. Did the release actually cause the improvement?
 
-1. Hook — a 15% benchmark win that evaporates under scrutiny
-2. Experiment design — control, treatment, and what must stay fixed
-3. Confounding variables and stories that look causal but aren't
-4. Statistical significance versus practical importance
-5. A/B testing pitfalls — peeking, multiple comparisons, novelty effects
-6. Evaluating AI scores, error-rate drops, and production claims
-7. Oral examination · Mental model · Next lecture · Optional lab
+### Planned Coverage
 
-<!-- Expand into full manuscript below; delete this stub scaffold when the lecture lands. -->
+Hypotheses, control groups, randomization, confounding variables, selection bias, A/B testing, statistical significance, effect size, confidence intervals, multiple comparisons, experiment duration, and the distinction between correlation and causation.
+
+### Scope Boundaries
+
+AI410 applies evaluations to nondeterministic AI systems. This lecture teaches the underlying reasoning applicable to any experiment.
+
+### Expected Understanding
+
+Critique an A/B claim; name confounders; separate statistical significance from practical importance; distinguish correlation from causation.
+
+### Planned Manuscript Structure
+
+1. Narrative hook and sustained engineering case study.
+2. Technical development of the underlying mechanisms.
+3. Practical trade-offs and realistic failure scenarios.
+4. Oral examination.
+5. Solutions and discussion.
+6. The Mental Model Worth Keeping.
+7. Next Lecture or course-completion transition.
+8. Optional Practical Lab, after the spoken lecture ends.
+9. Further Reading.
+10. Dense Cheatsheet — Interview Glance Card, last, inside one fenced text block.
+
+<!-- Full manuscript to be generated later. -->
+

@@ -16,30 +16,46 @@ next: null
 # CS120 — Mathematical and Statistical Thinking for Software Engineers
 ## Lecture 05: Mathematical Models of Real Systems
 
-*Enough mathematical and statistical literacy to interpret measurements, uncertainty, and quantitative trade-offs in real software systems — without a semester of abstract formalism.*
-
-**Estimated study time:** TBD once the spoken manuscript exists (target roughly 60–90 minutes including lab).
+*A backend has ample average CPU capacity, yet latency suddenly explodes as traffic increases.*
 
 ---
 
-### Status — stub outline
+### Status — Planning Stub
 
-This file is a writing scaffold. Full voice-first manuscript still to be authored.
+Full voice-first manuscript not yet authored.
 
-**Learning objective:** Apply Little's Law, queues, capacity, growth, and back-of-the-envelope estimates to quantitative architectural trade-offs.
+### Learning Objective
 
-**Complements:** CS110 (algorithms and cost), AI410-L06 / SE440 / CS430 (measurement in context). This course builds the underlying mathematical intuition those lectures assume.
+Build small quantitative models, expose unrealistic assumptions, and estimate how changes in workload or architecture affect system behavior.
 
-**Voice-first target when written:** spoken narrative first; diagrams and dense samples as screen aids with spoken captions; oral examination; mental model; optional lab only after *The spoken lecture ends here…*
+### Opening Problem
 
-### Planned spoken path
+A backend has ample average CPU capacity, yet latency suddenly explodes as traffic increases.
 
-1. Hook — plenty of CPU left, yet latency explodes near capacity
-2. Little's Law as a bridge between throughput, latency, and concurrency
-3. Queues, utilization, and why the last 10% of capacity hurts
-4. Growth models and order-of-magnitude estimation
-5. Back-of-the-envelope architecture checks before building
-6. Choosing models that are wrong in useful ways
-7. Oral examination · Mental model · Course wrap · Optional lab
+### Planned Coverage
 
-<!-- Expand into full manuscript below; delete this stub scaffold when the lecture lands. -->
+Rates and units, growth models, bottlenecks, Little's Law, queueing intuition, utilization, throughput versus latency, Amdahl's Law, capacity estimation, back-of-the-envelope calculations, and sensitivity analysis.
+
+### Scope Boundaries
+
+CS430 and SE460 address distributed scaling and practical performance engineering. This lecture supplies the mathematical vocabulary those courses can build upon.
+
+### Expected Understanding
+
+Apply Little's Law and utilization intuition; produce a back-of-the-envelope capacity estimate; name the assumptions that would invalidate the model.
+
+### Planned Manuscript Structure
+
+1. Narrative hook and sustained engineering case study.
+2. Technical development of the underlying mechanisms.
+3. Practical trade-offs and realistic failure scenarios.
+4. Oral examination.
+5. Solutions and discussion.
+6. The Mental Model Worth Keeping.
+7. Next Lecture or course-completion transition.
+8. Optional Practical Lab, after the spoken lecture ends.
+9. Further Reading.
+10. Dense Cheatsheet — Interview Glance Card, last, inside one fenced text block.
+
+<!-- Full manuscript to be generated later. -->
+

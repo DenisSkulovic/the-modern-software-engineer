@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from curriculum_lib import BOOK_ROOT, build_indexes, load_manifest
 
 OUT = BOOK_ROOT / "curriculum.md"
@@ -71,11 +69,29 @@ def main() -> None:
     lines.append("")
     lines.append(
         "Lecture IDs look like `CS330-L03`. Electives use the same scheme "
-        "(they are courses with `type: planned` or `elective`, not a separate numbering universe).\n"
+        "(courses with `type: elective` or still-`planned`, not a separate numbering universe).\n"
     )
 
     core = [c for c in m["courses"] if c.get("type") == "core"]
+    electives = [c for c in m["courses"] if c.get("type") == "elective"]
     planned = [c for c in m["courses"] if c.get("type") == "planned"]
+
+    def render_course_block(c: dict) -> None:
+        n = len(c.get("lectures") or [])
+        lines.append(f"#### {c['code']} — {c['title']}\n")
+        lines.append(
+            f"{c['level']}-level · {n} lectures · course status `{c.get('status')}` · `{c['dir']}/`\n"
+        )
+        lines.append("| ID | Lecture | Manuscript | Edition | Legacy |")
+        lines.append("| --- | --- | --- | --- | --- |")
+        for lec in c.get("lectures") or []:
+            legacy = ", ".join(lec.get("legacy_ids") or [])
+            lines.append(
+                f"| `{lec['id']}` | {lec['title']} | "
+                f"`{lec.get('manuscript', '—')}` | "
+                f"`{lec.get('edition', '—')}` | `{legacy}` |"
+            )
+        lines.append("")
 
     core_lecture_n = sum(len(c.get("lectures") or []) for c in core)
     lines.append(f"## Core courses ({len(core)} · {core_lecture_n} lectures)\n")
@@ -87,28 +103,32 @@ def main() -> None:
         dname = m["disciplines"][disc]["name"]
         lines.append(f"### {disc} — {dname}\n")
         for c in by_disc.get(disc, []):
-            n = len(c.get("lectures") or [])
-            lines.append(
-                f"#### {c['code']} — {c['title']}\n"
-            )
-            lines.append(
-                f"{c['level']}-level · {n} lectures · course status `{c.get('status')}` · `{c['dir']}/`\n"
-            )
-            lines.append("| ID | Lecture | Manuscript | Edition | Legacy |")
-            lines.append("| --- | --- | --- | --- | --- |")
-            for lec in c.get("lectures") or []:
-                legacy = ", ".join(lec.get("legacy_ids") or [])
-                lines.append(
-                    f"| `{lec['id']}` | {lec['title']} | "
-                    f"`{lec.get('manuscript', '—')}` | "
-                    f"`{lec.get('edition', '—')}` | `{legacy}` |"
-                )
-            lines.append("")
+            render_course_block(c)
+
+    elective_lecture_n = sum(len(c.get("lectures") or []) for c in electives)
+    lines.append(
+        f"## Active electives ({len(electives)} · {elective_lecture_n} lectures)\n"
+    )
+    lines.append(
+        "Active electives have on-disk lecture stubs or manuscripts and are validated "
+        "like core courses. They remain optional in the study programme.\n"
+    )
+    elective_by_disc: dict[str, list] = {"CS": [], "SE": [], "AI": []}
+    for c in electives:
+        elective_by_disc.setdefault(c["discipline"], []).append(c)
+    for disc in ("CS", "SE", "AI"):
+        group = elective_by_disc.get(disc) or []
+        if not group:
+            continue
+        dname = m["disciplines"][disc]["name"]
+        lines.append(f"### {disc} — {dname}\n")
+        for c in group:
+            render_course_block(c)
 
     lines.append("## Planned electives\n")
     lines.append(
-        "Elective status means optional in the programme — not a different ID scheme. "
-        "Each starts with one lecture when written; courses may grow organically.\n"
+        "Catalogue-only electives — no lecture files yet. Same ID scheme; promote to "
+        "`type: elective` when stubs are created.\n"
     )
     lines.append("| Code | Title | Status | Builds on | Notes |")
     lines.append("| --- | --- | --- | --- | --- |")

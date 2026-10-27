@@ -16,30 +16,46 @@ next: CS120-L04
 # CS120 — Mathematical and Statistical Thinking for Software Engineers
 ## Lecture 03: Statistics, Distributions, and Sampling
 
-*Enough mathematical and statistical literacy to interpret measurements, uncertainty, and quantitative trade-offs in real software systems — without a semester of abstract formalism.*
-
-**Estimated study time:** TBD once the spoken manuscript exists (target roughly 60–90 minutes including lab).
+*Why two API versions with the same average latency can produce opposite customer experiences.*
 
 ---
 
-### Status — stub outline
+### Status — Planning Stub
 
-This file is a writing scaffold. Full voice-first manuscript still to be authored.
+Full voice-first manuscript not yet authored.
 
-**Learning objective:** Read variance, percentiles, heavy tails, sampling bias, and confidence intervals so measurements stop misleading you.
+### Learning Objective
 
-**Complements:** CS110 (algorithms and cost), AI410-L06 / SE440 / CS430 (measurement in context). This course builds the underlying mathematical intuition those lectures assume.
+Interpret measurements and distributions; understand why average performance can be misleading and why a sample doesn't automatically represent a population.
 
-**Voice-first target when written:** spoken narrative first; diagrams and dense samples as screen aids with spoken captions; oral examination; mental model; optional lab only after *The spoken lecture ends here…*
+### Opening Problem
 
-### Planned spoken path
+Two API versions have the same average latency, but customers strongly prefer one over the other.
 
-1. Hook — two APIs with identical mean latency and opposite user pain
-2. Distributions beat averages; tails often own the experience
-3. Variance, percentiles, and why p99 is not 'just a bigger average'
-4. Heavy-tailed latency and rare but catastrophic events
-5. Sampling bias — what you measured versus what you care about
-6. Confidence intervals as honesty about uncertainty
-7. Oral examination · Mental model · Next lecture · Optional lab
+### Planned Coverage
 
-<!-- Expand into full manuscript below; delete this stub scaffold when the lecture lands. -->
+Populations versus samples, mean versus median, variance and standard deviation, percentiles, distribution shapes, skew, heavy tails, outliers, sampling bias, confidence intervals, measurement uncertainty, and the dangers of averaging aggregates.
+
+### Scope Boundaries
+
+SE440 teaches operational observability. This lecture establishes the statistical intuition behind interpreting measurements.
+
+### Expected Understanding
+
+Read percentiles and tails; spot when a mean hides user pain; explain sampling bias and what a confidence interval does and does not claim.
+
+### Planned Manuscript Structure
+
+1. Narrative hook and sustained engineering case study.
+2. Technical development of the underlying mechanisms.
+3. Practical trade-offs and realistic failure scenarios.
+4. Oral examination.
+5. Solutions and discussion.
+6. The Mental Model Worth Keeping.
+7. Next Lecture or course-completion transition.
+8. Optional Practical Lab, after the spoken lecture ends.
+9. Further Reading.
+10. Dense Cheatsheet — Interview Glance Card, last, inside one fenced text block.
+
+<!-- Full manuscript to be generated later. -->
+

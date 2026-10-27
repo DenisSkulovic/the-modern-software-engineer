@@ -57,7 +57,7 @@ Full course and lecture listings: [`curriculum.md`](curriculum.md).
 
 ## Electives
 
-An elective is a **course you choose to take**, not a separate numbering scheme. Planned electives (for example `CS350` Advanced PostgreSQL, `SE450` Kubernetes, `CS370` Game Engines) live in `curriculum.yaml` as `type: planned` until lectures are written. First lecture of a planned course becomes `CS350-L01`, and the course may grow without a predetermined length.
+An elective is a **course you choose to take**, not a separate numbering scheme. Catalogue-only electives stay `type: planned` until stubs exist. Once lecture files are registered they become `type: elective` (still optional). Active electives today include `CS360`, `SE450`, and `SE460`; others (for example `CS350`, `CS370`) remain planned.
 
 ---
 

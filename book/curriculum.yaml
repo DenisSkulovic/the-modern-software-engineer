@@ -16,7 +16,8 @@ default_edition: 2.0.0
 disciplines:
   CS:
     name: Computer Science
-    scope: Computation, mathematical reasoning, languages, operating systems, networks, databases, distributed systems
+    scope: Computation, mathematical reasoning, languages, operating systems, networks, databases, distributed
+      systems
   SE:
     name: Software Engineering
     scope: Web applications, backend services, architecture, infrastructure, production operations
@@ -109,10 +110,9 @@ courses:
   status: in_progress
   slug: mathematical-and-statistical-thinking
   dir: CS/CS120-mathematical-and-statistical-thinking
-  notes: >-
-    Foundational mathematical literacy for engineers: logic, probability, statistics,
-    experiments, and quantitative models of real systems. Priority #1 among new
-    investments; deliberately avoids a full university math syllabus.
+  notes: 'Foundational mathematical literacy for engineers: logic, probability, statistics, experiments,
+    and quantitative models of real systems. Priority #1 among new investments; deliberately avoids a
+    full university math syllabus.'
   lectures:
   - id: CS120-L01
     title: Logic, Proofs, and Invariants
@@ -157,9 +157,8 @@ courses:
   status: complete
   slug: programming-languages
   dir: CS/CS220-programming-languages
-  notes: >-
-    Targeted future expansion (#5 after CS340, CS320 reorganization, CS360, SE450):
-    more comparative Python/JS/TS, type systems, and runtime behavior beyond the current focus.
+  notes: 'Targeted future expansion (#5 after CS340, CS320 reorganization, CS360, SE450): more comparative
+    Python/JS/TS, type systems, and runtime behavior beyond the current focus.'
   lectures:
   - id: CS220-L01
     title: Programming Languages and Abstraction
@@ -219,7 +218,7 @@ courses:
     manuscript: manuscript
     edition: 2.0.0
   - id: CS230-L04
-    title: "DNS: The Internet's Distributed Naming System"
+    title: 'DNS: The Internet''s Distributed Naming System'
     slug: dns-the-internets-distributed-naming-system
     legacy_ids: []
     source: CS/CS230-computer-networks/CS230-L04-dns-the-internets-distributed-naming-system.md
@@ -265,13 +264,12 @@ courses:
   discipline: CS
   level: 300
   type: core
-  status: complete
+  status: in_progress
   slug: operating-systems-and-concurrency
   dir: CS/CS320-operating-systems-and-concurrency
-  notes: >-
-    High-priority future expansion/reorganization (#2 after CS340). Processes,
-    scheduling, virtual memory, sync, and I/O are compressed; L03 language-semantics
-    material may belong more naturally in CS220.
+  notes: Preserve L01–L03 manuscripts; L04–L08 are focused OS/runtime deep dives and a forensics capstone.
+    L03 language-semantics material may belong more naturally in CS220 in a future revision — do not relocate
+    during stub generation.
   lectures:
   - id: CS320-L01
     title: Concurrency, Parallelism, and Asynchrony
@@ -296,6 +294,41 @@ courses:
     - CS101-S11
     source: CS/CS320-operating-systems-and-concurrency/CS320-L03-javascript-and-typescript-under-the-microscope.md
     manuscript: manuscript
+    edition: 2.0.0
+  - id: CS320-L04
+    title: Scheduling, CPU Time, and Contention
+    slug: scheduling-cpu-time-and-contention
+    legacy_ids: []
+    source: CS/CS320-operating-systems-and-concurrency/CS320-L04-scheduling-cpu-time-and-contention.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS320-L05
+    title: Virtual Memory, Paging, and Memory Pressure
+    slug: virtual-memory-paging-and-memory-pressure
+    legacy_ids: []
+    source: CS/CS320-operating-systems-and-concurrency/CS320-L05-virtual-memory-paging-and-memory-pressure.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS320-L06
+    title: From System Calls to Asynchronous I/O
+    slug: from-system-calls-to-asynchronous-io
+    legacy_ids: []
+    source: CS/CS320-operating-systems-and-concurrency/CS320-L06-from-system-calls-to-asynchronous-io.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS320-L07
+    title: Threads, Atomics, and Memory Ordering
+    slug: threads-atomics-and-memory-ordering
+    legacy_ids: []
+    source: CS/CS320-operating-systems-and-concurrency/CS320-L07-threads-atomics-and-memory-ordering.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS320-L08
+    title: Operating-System and Runtime Forensics
+    slug: operating-system-and-runtime-forensics
+    legacy_ids: []
+    source: CS/CS320-operating-systems-and-concurrency/CS320-L08-operating-system-and-runtime-forensics.md
+    manuscript: stub
     edition: 2.0.0
 - code: CS330
   title: Relational Databases and Transactions
@@ -340,10 +373,9 @@ courses:
   dir: CS/CS340-data-systems-beyond-relational
   builds_on:
   - CS330
-  notes: >-
-    Complements CS330. Document/key-value/graph/search/analytical models, storage
-    engines, MongoDB as a major example, replication/sharding, specialized stores.
-    Development priority #1 among new foundations (ahead of CS320 reorganization).
+  notes: 'Complements CS330. Document/key-value/graph/search/analytical models, storage engines, MongoDB
+    as a major example, replication/sharding, specialized stores. Development priority #1 among new foundations
+    (ahead of CS320 reorganization).'
   lectures:
   - id: CS340-L01
     title: The Database That Didn't Fit Into Tables
@@ -844,16 +876,64 @@ courses:
   title: Algorithms and Coding Interview Lab
   discipline: CS
   level: 300
-  type: planned
-  status: planned
+  type: elective
+  status: in_progress
   slug: algorithms-interview-lab
   dir: CS/CS360-algorithms-interview-lab
   builds_on:
   - CS110
-  lectures: []
-  notes: >-
-    Algorithmic patterns for senior engineering interviews — distinct from listening
-    to CS110 theory. Development priority #3 after CS340 and CS320 reorganization.
+  lectures:
+  - id: CS360-L01
+    title: The Art of Solving an Unfamiliar Problem
+    slug: the-art-of-solving-an-unfamiliar-problem
+    legacy_ids: []
+    source: CS/CS360-algorithms-interview-lab/CS360-L01-the-art-of-solving-an-unfamiliar-problem.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS360-L02
+    title: Arrays, Strings, Hashing, and Sliding Windows
+    slug: arrays-strings-hashing-and-sliding-windows
+    legacy_ids: []
+    source: CS/CS360-algorithms-interview-lab/CS360-L02-arrays-strings-hashing-and-sliding-windows.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS360-L03
+    title: Binary Search, Sorting, and Greedy Decisions
+    slug: binary-search-sorting-and-greedy-decisions
+    legacy_ids: []
+    source: CS/CS360-algorithms-interview-lab/CS360-L03-binary-search-sorting-and-greedy-decisions.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS360-L04
+    title: Stacks, Queues, Heaps, and Ordered Processing
+    slug: stacks-queues-heaps-and-ordered-processing
+    legacy_ids: []
+    source: CS/CS360-algorithms-interview-lab/CS360-L04-stacks-queues-heaps-and-ordered-processing.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS360-L05
+    title: Trees, Graphs, and Traversal Strategies
+    slug: trees-graphs-and-traversal-strategies
+    legacy_ids: []
+    source: CS/CS360-algorithms-interview-lab/CS360-L05-trees-graphs-and-traversal-strategies.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS360-L06
+    title: Dynamic Programming, Backtracking, and State
+    slug: dynamic-programming-backtracking-and-state
+    legacy_ids: []
+    source: CS/CS360-algorithms-interview-lab/CS360-L06-dynamic-programming-backtracking-and-state.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS360-L07
+    title: The Senior Coding Interview Studio
+    slug: the-senior-coding-interview-studio
+    legacy_ids: []
+    source: CS/CS360-algorithms-interview-lab/CS360-L07-the-senior-coding-interview-studio.md
+    manuscript: stub
+    edition: 2.0.0
+  notes: Algorithmic patterns for senior engineering interviews — distinct from listening to CS110 theory.
+    Practice-heavy; CS120 recommended. Development priority after CS120, CS320 expansion, and SE450.
 - code: CS370
   title: Game Engines and Simulation Systems
   discipline: CS
@@ -894,29 +974,138 @@ courses:
   title: Kubernetes and Platform Engineering
   discipline: SE
   level: 400
-  type: planned
-  status: planned
+  type: elective
+  status: in_progress
   slug: kubernetes-and-platform
   dir: SE/SE450-kubernetes-and-platform
   builds_on:
   - SE340
-  - SE440
-  lectures: []
-  notes: >-
-    Practical platform knowledge beyond SE340's Docker/AWS intro. Development
-    priority #4 among planned electives (after CS340, CS320 expansion, CS360).
+  - CS230
+  - CS320
+  lectures:
+  - id: SE450-L01
+    title: 'Kubernetes: A System That Reconciles Reality'
+    slug: kubernetes-a-system-that-reconciles-reality
+    legacy_ids: []
+    source: SE/SE450-kubernetes-and-platform/SE450-L01-kubernetes-a-system-that-reconciles-reality.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE450-L02
+    title: Pods, Deployments, Jobs, and Controllers
+    slug: pods-deployments-jobs-and-controllers
+    legacy_ids: []
+    source: SE/SE450-kubernetes-and-platform/SE450-L02-pods-deployments-jobs-and-controllers.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE450-L03
+    title: Cluster Networking and Service Discovery
+    slug: cluster-networking-and-service-discovery
+    legacy_ids: []
+    source: SE/SE450-kubernetes-and-platform/SE450-L03-cluster-networking-and-service-discovery.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE450-L04
+    title: Scheduling, Resources, and Autoscaling
+    slug: scheduling-resources-and-autoscaling
+    legacy_ids: []
+    source: SE/SE450-kubernetes-and-platform/SE450-L04-scheduling-resources-and-autoscaling.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE450-L05
+    title: Configuration, Secrets, and Persistent State
+    slug: configuration-secrets-and-persistent-state
+    legacy_ids: []
+    source: SE/SE450-kubernetes-and-platform/SE450-L05-configuration-secrets-and-persistent-state.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE450-L06
+    title: Security, Isolation, and Multi-Tenancy
+    slug: security-isolation-and-multi-tenancy
+    legacy_ids: []
+    source: SE/SE450-kubernetes-and-platform/SE450-L06-security-isolation-and-multi-tenancy.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE450-L07
+    title: Releases, GitOps, and Platform Observability
+    slug: releases-gitops-and-platform-observability
+    legacy_ids: []
+    source: SE/SE450-kubernetes-and-platform/SE450-L07-releases-gitops-and-platform-observability.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE450-L08
+    title: The Kubernetes Incident Room
+    slug: the-kubernetes-incident-room
+    legacy_ids: []
+    source: SE/SE450-kubernetes-and-platform/SE450-L08-the-kubernetes-incident-room.md
+    manuscript: stub
+    edition: 2.0.0
+  notes: Kubernetes as a distributed control system. SE440 recommended. Development priority after CS120
+    and CS320 expansion.
 - code: SE460
   title: Performance Engineering
   discipline: SE
   level: 400
-  type: planned
-  status: planned
+  type: elective
+  status: in_progress
   slug: performance-engineering
   dir: SE/SE460-performance-engineering
   builds_on:
+  - CS120
   - CS320
+  - CS430
   - SE440
-  lectures: []
+  lectures:
+  - id: SE460-L01
+    title: Performance Is an Experiment
+    slug: performance-is-an-experiment
+    legacy_ids: []
+    source: SE/SE460-performance-engineering/SE460-L01-performance-is-an-experiment.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE460-L02
+    title: CPU, Memory, and Runtime Performance
+    slug: cpu-memory-and-runtime-performance
+    legacy_ids: []
+    source: SE/SE460-performance-engineering/SE460-L02-cpu-memory-and-runtime-performance.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE460-L03
+    title: Queues, Concurrency, and Backpressure
+    slug: queues-concurrency-and-backpressure
+    legacy_ids: []
+    source: SE/SE460-performance-engineering/SE460-L03-queues-concurrency-and-backpressure.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE460-L04
+    title: Data, Storage, and I/O Performance
+    slug: data-storage-and-io-performance
+    legacy_ids: []
+    source: SE/SE460-performance-engineering/SE460-L04-data-storage-and-io-performance.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE460-L05
+    title: End-to-End Latency and Perceived Performance
+    slug: end-to-end-latency-and-perceived-performance
+    legacy_ids: []
+    source: SE/SE460-performance-engineering/SE460-L05-end-to-end-latency-and-perceived-performance.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE460-L06
+    title: Load Testing, Capacity, and Performance Budgets
+    slug: load-testing-capacity-and-performance-budgets
+    legacy_ids: []
+    source: SE/SE460-performance-engineering/SE460-L06-load-testing-capacity-and-performance-budgets.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE460-L07
+    title: The Performance Forensics Studio
+    slug: the-performance-forensics-studio
+    legacy_ids: []
+    source: SE/SE460-performance-engineering/SE460-L07-the-performance-forensics-studio.md
+    manuscript: stub
+    edition: 2.0.0
+  notes: Cross-layer measurement, diagnosis, and optimization. Familiarity with CS330 and SE240 is useful.
+    Development priority after CS120, CS320 expansion, and SE450.
 - code: AI450
   title: Advanced Agentic Systems
   discipline: AI

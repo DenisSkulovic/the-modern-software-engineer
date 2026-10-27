@@ -7,7 +7,7 @@ manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: [CS101-S11]
 prev: CS320-L02
-next: null
+next: CS320-L04
 ---
 
 
@@ -1087,19 +1087,15 @@ Syntax becomes automatic long before you own a mental model. Friendly JavaScript
 
 AI writes fluent TypeScript. **Syntactic fluency isn't correct semantics.** The engineer's job is knowing what the language guarantees and designing for real values, timing, and failure.
 
-That also closes CS320. You now have the vocabulary of concurrency, operating systems, and the runtime surprises that sit beneath everyday JavaScript and TypeScript.
+You now have the vocabulary of concurrency, operating systems, and the runtime surprises that sit beneath everyday JavaScript and TypeScript. CS320 continues with focused operating-system and runtime deep dives.
 
 ---
 
-# 18. Next Course — Frontend Engineering
+# 18. Next Lecture — Scheduling, CPU Time, and Contention
 
-The Foundations track ends here with CS320: concurrency and asynchrony, the operating system behind the process, and the JavaScript/TypeScript semantics that turn "it compiled" into production surprises.
+In **CS320-L04**, we'll examine why a machine with spare average CPU can still leave one worker starved — scheduling queues, contention, quotas, and wall-clock time versus CPU time.
 
-Recommended study order next is **SE240 — Frontend Engineering**. The browser is where many of today's lessons become visible in UI state, event timing, and the cost of careless copies.
-
-What happens when HTML, CSS, and JavaScript become pixels? Why can a tiny property change freeze an entire page? How do layout, paint, and the main thread interact with the async habits you just practiced?
-
-In **SE240-L01**, that course begins — Inside the Browser. If your next focus is durable data rather than the UI surface, **CS330** (relational databases and transactions) is a natural data-path alternative. See the recommended study order in `README.md`.
+After the expanded CS320 sequence, the recommended study-order next course remains **SE240 — Frontend Engineering**. The browser is where many of today's lessons become visible in UI state, event timing, and the cost of careless copies. If your next focus is durable data rather than the UI surface, **CS330** is a natural data-path alternative. See the recommended study order in `README.md`.
 
 ---
 

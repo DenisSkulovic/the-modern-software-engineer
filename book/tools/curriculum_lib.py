@@ -96,6 +96,18 @@ def core_lecture_count(manifest: dict[str, Any]) -> int:
     )
 
 
+def elective_lecture_count(manifest: dict[str, Any]) -> int:
+    return sum(
+        1
+        for c in manifest["courses"]
+        if c.get("type") == "elective"
+        for _ in (c.get("lectures") or [])
+    )
+
+
+ACTIVE_COURSE_TYPES = frozenset({"core", "elective"})
+
+
 def lecture_destination(course: dict, lec: dict) -> Path:
     return BOOK_ROOT / course["dir"] / f"{lec['id']}-{lec['slug']}.md"
 

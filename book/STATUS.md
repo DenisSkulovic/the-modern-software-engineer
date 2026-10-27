@@ -127,9 +127,10 @@ book/
 
 **Authoring a new elective lecture**
 
-1. Add course/lecture to `curriculum.yaml` with `manuscript: planned`
-2. Create stub file → `stub` → write → `draft` → `manuscript`
-3. `python tools/sync_manuscript_meta.py` then validate/render
+1. Promote the course from `type: planned` to `type: elective` when stubs land (do not mark it `core`)
+2. Add lecture entries in `curriculum.yaml` with `manuscript: stub`
+3. Create stub files → write → `draft` → `manuscript`
+4. `python tools/sync_manuscript_meta.py` then validate/render (validator covers core **and** elective)
 
 **Studying**
 
