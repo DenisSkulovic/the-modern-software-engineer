@@ -154,12 +154,12 @@ courses:
   discipline: CS
   level: 200
   type: core
-  status: in_progress
+  status: complete
   slug: programming-languages
   dir: CS/CS220-programming-languages
-  notes: 'L01–L03 manuscripts complete (JS/TS-centric). L04–L05 stubs broaden comparative type systems,
-    ownership, and multi-runtime behavior. Priority after CS120 among remaining foundational expansions.
-    Do not relocate CS320-L03 language-semantics material during stub generation.'
+  notes: 'All five lectures at manuscript status with Part I Intuition / Part II Deep Dive.
+    L01–L03 are JS/TS-centric foundations; L04–L05 broaden comparative type systems, ownership,
+    and multi-runtime behavior. Do not relocate CS320-L03 language-semantics material casually.'
   lectures:
   - id: CS220-L01
     title: Programming Languages and Abstraction
@@ -190,14 +190,14 @@ courses:
     slug: type-systems-ownership-and-language-design
     legacy_ids: []
     source: CS/CS220-programming-languages/CS220-L04-type-systems-ownership-and-language-design.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS220-L05
     title: One Program, Many Runtimes
     slug: one-program-many-runtimes
     legacy_ids: []
     source: CS/CS220-programming-languages/CS220-L05-one-program-many-runtimes.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
 
 - code: CS230
