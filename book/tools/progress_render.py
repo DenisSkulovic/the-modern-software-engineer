@@ -214,7 +214,7 @@ def main() -> None:
     )
 
     out = STUDENTS / args.student / "progress.md"
-    out.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    out.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"Wrote {out.relative_to(BOOK_ROOT)}")
 
 

@@ -1,6 +1,6 @@
 # Study Ledger — dskul
 
-**Student:** `dskul` · **Curriculum:** v2.0 · **Updated:** 2026-10-26 · **Rendered:** 2026-10-26
+**Student:** `dskul` · **Curriculum:** v2.0 · **Updated:** 2026-10-27 · **Rendered:** 2026-10-27
 
 Personal learning tracker (not manuscript status). Design: [`../../STATUS.md`](../../STATUS.md).
 
@@ -8,9 +8,9 @@ Personal learning tracker (not manuscript status). Design: [`../../STATUS.md`](.
 
 | Status | Count |
 | --- | ---: |
-| `unopened` · | 60 |
-| `wandering` ~ | 0 |
-| `studying` > | 0 |
+| `unopened` · | 54 |
+| `wandering` ~ | 1 |
+| `studying` > | 5 |
 | `labbing` * | 0 |
 | `settled` ✓ | 0 |
 | `fluent` ★ | 0 |
@@ -26,19 +26,19 @@ _Nothing overdue. Nice._
 
 ## Suggested next rooms
 
-- `CS110-L01` — What Is Computation, Really? (`unopened`, confidence 0)
-- `CS110-L02` — Everything Is Numbers — Until It Isn't (`unopened`, confidence 0)
-- `CS110-L03` — Algorithms and the Cost of Computation (`unopened`, confidence 0)
-- `CS110-L04` — Data Structures: Choosing How to Remember Things (`unopened`, confidence 0)
+- `CS110-L01` — What Is Computation, Really? (`studying`, confidence 2)
+- `CS110-L02` — Everything Is Numbers — Until It Isn't (`studying`, confidence 2)
+- `CS110-L03` — Algorithms and the Cost of Computation (`studying`, confidence 2)
+- `CS110-L04` — Data Structures: Choosing How to Remember Things (`studying`, confidence 2)
 - `CS110-L05` — Searching, Sorting, and Finding Shortcuts (`unopened`, confidence 0)
 
 ## Course heat map
 
 | Course | Rollup | Pattern |
 | --- | --- | --- |
-| `CS110` | `unopened` | `·····` |
+| `CS110` | `underway` | `>>>>·` |
 | `CS220` | `unopened` | `···` |
-| `CS230` | `unopened` | `···` |
+| `CS230` | `underway` | `~>·` |
 | `CS320` | `unopened` | `···` |
 | `SE240` | `unopened` | `······` |
 | `SE310` | `unopened` | `···` |
@@ -69,16 +69,16 @@ Glyphs: `·`=unopened, `~`=wandering, `>`=studying, `*`=labbing, `✓`=settled, 
 | `AI410-L05` | `unopened` | 0 | 0 | — | — |  |
 | `AI410-L06` | `unopened` | 0 | 0 | — | — |  |
 | `AI410-L07` | `unopened` | 0 | 0 | — | — |  |
-| `CS110-L01` | `unopened` | 0 | 0 | — | — |  |
-| `CS110-L02` | `unopened` | 0 | 0 | — | — |  |
-| `CS110-L03` | `unopened` | 0 | 0 | — | — |  |
-| `CS110-L04` | `unopened` | 0 | 0 | — | — |  |
+| `CS110-L01` | `studying` | 2 | 1 | 2026-10-26 | — | Full voice listen-through (Markdown Read |
+| `CS110-L02` | `studying` | 2 | 1 | 2026-10-26 | — | Full voice listen-through (Markdown Read |
+| `CS110-L03` | `studying` | 2 | 1 | 2026-10-26 | — | Full voice listen-through (Markdown Read |
+| `CS110-L04` | `studying` | 2 | 1 | 2026-10-26 | — | Full voice listen-through (Markdown Read |
 | `CS110-L05` | `unopened` | 0 | 0 | — | — |  |
 | `CS220-L01` | `unopened` | 0 | 0 | — | — |  |
 | `CS220-L02` | `unopened` | 0 | 0 | — | — |  |
 | `CS220-L03` | `unopened` | 0 | 0 | — | — |  |
-| `CS230-L01` | `unopened` | 0 | 0 | — | — |  |
-| `CS230-L02` | `unopened` | 0 | 0 | — | — |  |
+| `CS230-L01` | `wandering` | 1 | 1 | 2026-10-26 | — | Voice listen-through once — attentive bu |
+| `CS230-L02` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.  |
 | `CS230-L03` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L01` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L02` | `unopened` | 0 | 0 | — | — |  |

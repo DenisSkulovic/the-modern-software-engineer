@@ -1,7 +1,7 @@
 student: dskul
 display_name: dskul
 created: '2026-10-26'
-updated: '2026-10-26'
+updated: '2026-10-27'
 curriculum_version: '2.0'
 learning_statuses:
   unopened: Never started
@@ -26,51 +26,51 @@ lectures:
   CS110-L01:
     course: CS110
     title: What Is Computation, Really?
-    status: unopened
-    confidence: 0
-    passes: 0
-    opened_on: null
+    status: studying
+    confidence: 2
+    passes: 1
+    opened_on: '2026-10-26'
     settled_on: null
-    last_touched: null
+    last_touched: '2026-10-26'
     next_encore: null
-    encore_interval_days: null
-    notes: ''
+    encore_interval_days: 14
+    notes: 'Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not started.'
   CS110-L02:
     course: CS110
     title: Everything Is Numbers — Until It Isn't
-    status: unopened
-    confidence: 0
-    passes: 0
-    opened_on: null
+    status: studying
+    confidence: 2
+    passes: 1
+    opened_on: '2026-10-26'
     settled_on: null
-    last_touched: null
+    last_touched: '2026-10-26'
     next_encore: null
-    encore_interval_days: null
-    notes: ''
+    encore_interval_days: 14
+    notes: 'Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not started.'
   CS110-L03:
     course: CS110
     title: Algorithms and the Cost of Computation
-    status: unopened
-    confidence: 0
-    passes: 0
-    opened_on: null
+    status: studying
+    confidence: 2
+    passes: 1
+    opened_on: '2026-10-26'
     settled_on: null
-    last_touched: null
+    last_touched: '2026-10-26'
     next_encore: null
-    encore_interval_days: null
-    notes: ''
+    encore_interval_days: 14
+    notes: 'Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not started.'
   CS110-L04:
     course: CS110
     title: 'Data Structures: Choosing How to Remember Things'
-    status: unopened
-    confidence: 0
-    passes: 0
-    opened_on: null
+    status: studying
+    confidence: 2
+    passes: 1
+    opened_on: '2026-10-26'
     settled_on: null
-    last_touched: null
+    last_touched: '2026-10-26'
     next_encore: null
-    encore_interval_days: null
-    notes: ''
+    encore_interval_days: 14
+    notes: 'Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not started.'
   CS110-L05:
     course: CS110
     title: Searching, Sorting, and Finding Shortcuts
@@ -122,27 +122,27 @@ lectures:
   CS230-L01:
     course: CS230
     title: The Journey of a Web Request
-    status: unopened
-    confidence: 0
-    passes: 0
-    opened_on: null
+    status: wandering
+    confidence: 1
+    passes: 1
+    opened_on: '2026-10-26'
     settled_on: null
-    last_touched: null
+    last_touched: '2026-10-26'
     next_encore: null
-    encore_interval_days: null
-    notes: ''
+    encore_interval_days: 14
+    notes: 'Voice listen-through once — attentive but dense/networky; useful as shallow map-of-existence refresher, not grasp. Skipped CS110-L05 to diversify. Candidate: keep L01 as tour + deepen via L02/L03 (or new zoom-ins) rather than inflate L01.'
   CS230-L02:
     course: CS230
     title: Networking for Software Engineers
-    status: unopened
-    confidence: 0
-    passes: 0
-    opened_on: null
+    status: studying
+    confidence: 2
+    passes: 1
+    opened_on: '2026-10-27'
     settled_on: null
-    last_touched: null
+    last_touched: '2026-10-27'
     next_encore: null
-    encore_interval_days: null
-    notes: ''
+    encore_interval_days: 14
+    notes: 'Full voice listen-through; one session. Prose done; labs not started.'
   CS230-L03:
     course: CS230
     title: 'HTTP: The Protocol That Runs the Web'
