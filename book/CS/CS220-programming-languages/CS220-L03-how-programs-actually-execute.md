@@ -7,8 +7,9 @@ manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: [CS101-S08]
 prev: CS220-L02
-next: null
+next: CS220-L04
 ---
+
 
 
 
@@ -1310,19 +1311,17 @@ TypeScript sits atop parse, bytecode and JIT tiers, the CPU, the memory hierarch
 
 That is why studying runtime execution remains valuable even when an assistant can generate the code. Someone still has to recognize which bottleneck is real, which measurement answers the question, and which change is safe.
 
-That also closes CS220. You now have the vocabulary of languages, memory, and the path from source to silicon.
+You now have the JS/TS-centered vocabulary of languages, memory, and the path from source to silicon. Two lectures still widen the frame beyond one ecosystem.
 
 ---
 
-# 19. Next Course — Computer Networks and Web Protocols
+# 19. Next Lecture — Type Systems, Ownership, and Language Design
 
-CS220 ends here: how languages represent values, where they live in memory, and what the machine is actually doing when a program runs.
+L01–L03 stayed close to TypeScript, JavaScript, and V8. That is enough to debug a Node service — not enough to understand why other languages make different promises.
 
-The Foundations track continues outward — from one process thinking about itself to processes talking across a network.
+In **CS220-L04**, we compare type systems and memory-ownership designs across languages: what static types, nominal types, inference, mutability rules, and ownership can enforce at compile time — and what they still cannot. After that, **CS220-L05** runs the same program across several runtimes so concurrency and performance folklore meet measurement.
 
-What happens when a browser asks for a page? How do DNS, HTTP, TLS, and TCP turn a URL into bytes on the wire? Where does latency hide when the CPU looks idle?
-
-In **CS230-L01**, the next course in the recommended study order begins — Computer Networks and Web Protocols, starting with the journey of a web request. For concurrency, the event loop, and the operating system that schedules many things at once, **CS320** is the natural systems follow-on — see the recommended study order in `README.md`.
+Networks (**CS230**) and operating-system concurrency (**CS320**) remain the natural Foundations follow-ons once CS220 is complete — see the recommended study order in `README.md`.
 
 ---
 

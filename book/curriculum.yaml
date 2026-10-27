@@ -154,11 +154,12 @@ courses:
   discipline: CS
   level: 200
   type: core
-  status: complete
+  status: in_progress
   slug: programming-languages
   dir: CS/CS220-programming-languages
-  notes: 'Targeted future expansion (#5 after CS340, CS320 reorganization, CS360, SE450): more comparative
-    Python/JS/TS, type systems, and runtime behavior beyond the current focus.'
+  notes: 'L01–L03 manuscripts complete (JS/TS-centric). L04–L05 stubs broaden comparative type systems,
+    ownership, and multi-runtime behavior. Priority after CS120 among remaining foundational expansions.
+    Do not relocate CS320-L03 language-semantics material during stub generation.'
   lectures:
   - id: CS220-L01
     title: Programming Languages and Abstraction
@@ -184,6 +185,21 @@ courses:
     source: CS/CS220-programming-languages/CS220-L03-how-programs-actually-execute.md
     manuscript: manuscript
     edition: 2.0.0
+  - id: CS220-L04
+    title: Type Systems, Ownership, and Language Design
+    slug: type-systems-ownership-and-language-design
+    legacy_ids: []
+    source: CS/CS220-programming-languages/CS220-L04-type-systems-ownership-and-language-design.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS220-L05
+    title: One Program, Many Runtimes
+    slug: one-program-many-runtimes
+    legacy_ids: []
+    source: CS/CS220-programming-languages/CS220-L05-one-program-many-runtimes.md
+    manuscript: stub
+    edition: 2.0.0
+
 - code: CS230
   title: Computer Networks and Web Protocols
   discipline: CS

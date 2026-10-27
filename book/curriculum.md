@@ -42,7 +42,7 @@ Library/content state — not whether you have studied the lecture. See [`STATUS
 
 Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `type: elective` or still-`planned`, not a separate numbering universe).
 
-## Core courses (17 · 83 lectures)
+## Core courses (17 · 85 lectures)
 
 ### CS — Computer Science
 
@@ -72,13 +72,15 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `
 
 #### CS220 — Programming Languages, Memory, and Execution
 
-200-level · 3 lectures · course status `complete` · `CS/CS220-programming-languages/`
+200-level · 5 lectures · course status `in_progress` · `CS/CS220-programming-languages/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
 | `CS220-L01` | Programming Languages and Abstraction | `manuscript` | `2.0.0` | `CS101-S06` |
 | `CS220-L02` | Memory: The Invisible Battlefield | `manuscript` | `2.0.0` | `CS101-S07` |
 | `CS220-L03` | How Programs Actually Execute | `manuscript` | `2.0.0` | `CS101-S08` |
+| `CS220-L04` | Type Systems, Ownership, and Language Design | `stub` | `2.0.0` | `` |
+| `CS220-L05` | One Program, Many Runtimes | `stub` | `2.0.0` | `` |
 
 #### CS230 — Computer Networks and Web Protocols
 
