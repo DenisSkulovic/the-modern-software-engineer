@@ -280,12 +280,12 @@ courses:
   discipline: CS
   level: 300
   type: core
-  status: in_progress
+  status: complete
   slug: operating-systems-and-concurrency
   dir: CS/CS320-operating-systems-and-concurrency
-  notes: Preserve L01–L05 manuscripts; L06–L08 remain focused OS/runtime deep-dive stubs and a forensics capstone.
+  notes: All eight lectures at manuscript status with Part I Intuition / Part II Deep Dive.
     L03 language-semantics material may belong more naturally in CS220 in a future revision — do not relocate
-    during stub generation.
+    casually.
   lectures:
   - id: CS320-L01
     title: Concurrency, Parallelism, and Asynchrony
@@ -330,21 +330,21 @@ courses:
     slug: from-system-calls-to-asynchronous-io
     legacy_ids: []
     source: CS/CS320-operating-systems-and-concurrency/CS320-L06-from-system-calls-to-asynchronous-io.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS320-L07
     title: Threads, Atomics, and Memory Ordering
     slug: threads-atomics-and-memory-ordering
     legacy_ids: []
     source: CS/CS320-operating-systems-and-concurrency/CS320-L07-threads-atomics-and-memory-ordering.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS320-L08
     title: Operating-System and Runtime Forensics
     slug: operating-system-and-runtime-forensics
     legacy_ids: []
     source: CS/CS320-operating-systems-and-concurrency/CS320-L08-operating-system-and-runtime-forensics.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
 - code: CS330
   title: Relational Databases and Transactions
