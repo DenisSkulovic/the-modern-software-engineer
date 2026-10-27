@@ -10,9 +10,6 @@ prev: CS110-L02
 next: CS110-L04
 ---
 
-
-
-
 # CS110 — Foundations of Computation and Algorithms
 ## Lecture 03: Algorithms and the Cost of Computation
 
@@ -22,29 +19,11 @@ next: CS110-L04
 
 ---
 
-### How to read this session
+### How to listen to this lecture
 
-Fifteen rooms. One walk. Stop wherever you like — the plot survives.
+Written for continuous listening first, then for on-screen re-reading. Sticky-note callouts mark ideas worth pausing on. Near the end, answer the challenges **out loud** before reading solutions. The console experiment lives after the spoken lecture ends — keep it for a screen session.
 
-```text
-  ROOM MAP
-  ─────────────────────────────────────────────────────────────
-  ① City crawls        ② Scaling ≠ linear     ③ Big O ≠ stopwatch
-  ④ Memory hierarchy   ⑤ N+1 waiting          ⑥ Spatial indexes
-  ⑦ Array vs Set       ⑧ Time vs space        ⑨ Engineering judgment
-  ⑩ 35% CPU mystery    ⑪ Interview mindset    ⑫ Lab
-  ⑬ Exercises          ⑭ Solutions            ⑮ Takeaways
-  ─────────────────────────────────────────────────────────────
-```
-
-| Rooms | Theme | Feel |
-|---|---|---|
-| 1–3 | City mystery + how costs grow | story → math intuition |
-| 4–8 | Memory, waiting, indexes, Sets, space | the "aha" core |
-| 9–11 | Real judgment + interview thinking | practical wisdom |
-| 12–15 | Lab, exercises, answers, takeaways | practice |
-
-> **Reading tip:** Sticky notes = rest stops. ASCII pictures = the illustrations. Don't memorize Big O tables — feel how the curves diverge.
+By the end, you should be able to explain why costs grow differently as data grows, why Big O is a growth story rather than a stopwatch, why waiting and memory locality count as performance, and what questions to ask before rewriting something that feels slow.
 
 ---
 
@@ -79,11 +58,9 @@ Naturally, you open a hardware monitoring application.
 
 And the results are infuriating.
 
-| Gauge | Reading |
-|---|---|
-| CPU utilization | 35% |
-| GPU utilization | 40% |
-| Memory usage | nowhere near the limit |
+- CPU utilization: about 35%.
+- GPU utilization: about 40%.
+- Memory usage: nowhere near the limit.
 
 What the hell?
 
@@ -134,6 +111,8 @@ It's readable.
 And for a few hundred people, it may be absolutely fine.
 
 Now suppose the simulation performs this operation for every resident.
+
+For every resident, call `findNearbyPeople` against the whole population, then update interactions — nested work that grows badly as the city grows.
 
 ```typescript
 for (const person of residents) {
@@ -198,9 +177,7 @@ This distinction is one of the most important in computer science.
 
 Let's investigate that second part.
 
-```text
-  ✓ Room 1 complete — the city isn't "broken"; the work is absurd
-```
+> ✓ Room 1 complete — the city isn't "broken"; the work is absurd
 
 ---
 
@@ -234,12 +211,13 @@ Imagine three hypothetical algorithms.
 
 Let's see what happens as the input grows.
 
-| Number of records | A: Fixed work | B: Linear work | C: Quadratic work |
-|---|---:|---:|---:|
-| 100 | 100 | 100 | 10,000 |
-| 1,000 | 100 | 1,000 | 1,000,000 |
-| 10,000 | 100 | 10,000 | 100,000,000 |
-| 100,000 | 100 | 100,000 | 10,000,000,000 |
+At 100 records, A does about 100 operations, B about 100, and C about 10,000.
+
+At 1,000 records, A is still about 100, B about 1,000, and C about one million.
+
+At 10,000 records, A remains about 100, B about 10,000, and C about 100 million.
+
+At 100,000 records, A is still about 100, B about 100,000, and C about ten billion.
 
 ```text
   Growth mood board
@@ -281,13 +259,11 @@ The most familiar notation is Big O.
 
 You've certainly seen expressions such as:
 
-| Notation | Nickname |
-|---|---|
-| O(1) | constant |
-| O(log n) | logarithmic |
-| O(n) | linear |
-| O(n log n) | "almost linear" sorting territory |
-| O(n²) | quadratic |
+- **O(1)** — constant.
+- **O(log n)** — logarithmic.
+- **O(n)** — linear.
+- **O(n log n)** — the familiar "almost linear" sorting territory.
+- **O(n²)** — quadratic.
 
 They look mathematical, but the practical idea is straightforward.
 
@@ -301,9 +277,7 @@ Let's examine the most useful complexity classes.
 
 Imagine retrieving an array element by its index.
 
-```typescript
-const customer = customers[500];
-```
+`const customer = customers[500];`
 
 In the usual array model, this access takes constant time.
 
@@ -320,6 +294,8 @@ It means its asymptotic cost is bounded independently of the input size under th
 ### O(n) — Linear work
 
 Imagine searching an unsorted array for a particular customer.
+
+A linear scan: `findCustomer` walks the array with `.find` until it matches the target id.
 
 ```typescript
 function findCustomer(
@@ -420,12 +396,13 @@ What matters is the actual amount of work.
 
 Consider the approximate growth of several classes:
 
-| Input size | log₂ n | n | n log₂ n | n² |
-|---|---:|---:|---:|---:|
-| 1,000 | 10 | 1,000 | 10,000 | 1 million |
-| 10,000 | 13 | 10,000 | 133,000 | 100 million |
-| 100,000 | 17 | 100,000 | 1.66 million | 10 billion |
-| 1,000,000 | 20 | 1 million | 19.9 million | 1 trillion |
+At 1,000 inputs, log₂ n is about 10, n is 1,000, n log₂ n about 10,000, and n² about one million.
+
+At 10,000, log₂ n is about 13, n is 10,000, n log₂ n about 133,000, and n² about 100 million.
+
+At 100,000, log₂ n is about 17, n is 100,000, n log₂ n about 1.66 million, and n² about 10 billion.
+
+At one million, log₂ n is about 20, n is one million, n log₂ n about 19.9 million, and n² about one trillion.
 
 ```text
   Same table, as a vibe
@@ -446,9 +423,7 @@ It punishes you mercilessly for success.
 
 If your product becomes popular and your dataset grows, quadratic behavior can become an expensive little celebration of your newfound customers.
 
-```text
-  ✓ Room 2 complete — growth rates are the real plot twist
-```
+> ✓ Room 2 complete — growth rates are the real plot twist
 
 ---
 
@@ -475,13 +450,6 @@ B is O(n²).
 Clearly, A is better, right?
 
 Let's compare them.
-
-| n | Algorithm A (`1000n`) | Algorithm B (`n²`) | Winner |
-|---:|---:|---:|---|
-| 10 | 10,000 | 100 | **B** |
-| 100 | 100,000 | 10,000 | **B** |
-| 1,000 | 1,000,000 | 1,000,000 | tie |
-| 10,000 | 10,000,000 | 100,000,000 | **A** |
 
 For `n = 10`:
 
@@ -538,9 +506,7 @@ And an algorithm that looks theoretically superior may suffer from poor memory a
 
 Let's investigate why physical machines complicate the picture.
 
-```text
-  ✓ Room 3 complete — Big O is a growth story, not a stopwatch
-```
+> ✓ Room 3 complete — Big O is a growth story, not a stopwatch
 
 ---
 
@@ -677,15 +643,13 @@ Big O deliberately ignores many of the details that determine real execution tim
 
 Those details include:
 
-| Factor | Why it matters |
-|---|---|
-| Constant factors | same Big O, different wall time |
-| Memory allocations | allocate thrashing can dominate |
-| Cache locality | same n, different stall time |
-| Garbage collection | pauses mid-"O(n)" loop |
-| Branch prediction | unpredictable branches cost |
-| Runtime optimizations | JIT can rewrite the race |
-| System calls / I/O / network | waiting ≠ computing |
+- **Constant factors** — same Big O, different wall-clock time.
+- **Memory allocations** — allocation thrashing can dominate.
+- **Cache locality** — same n, different stall time.
+- **Garbage collection** — pauses mid-"O(n)" loop.
+- **Branch prediction** — unpredictable branches cost.
+- **Runtime optimizations** — a JIT can rewrite the race.
+- **System calls, I/O, and network** — waiting is not the same as computing.
 
 Understanding asymptotic complexity gives you a powerful first approximation.
 
@@ -695,9 +659,7 @@ But even that isn't the entire story.
 
 Because sometimes the biggest cost isn't CPU or memory at all.
 
-```text
-  ✓ Room 4 complete — same Big O, different memory walks
-```
+> ✓ Room 4 complete — same Big O, different memory walks
 
 ---
 
@@ -845,9 +807,7 @@ The question isn't simply how many JavaScript instructions your program performs
 
 It's how much total work the system performs, where that work happens, and which operations determine the response's completion time.
 
-```text
-  ✓ Room 5 complete — waiting counts as performance
-```
+> ✓ Room 5 complete — waiting counts as performance
 
 ---
 
@@ -1005,9 +965,7 @@ So even here, we're looking at a trade-off.
 
 That's an idea worth remembering.
 
-```text
-  ✓ Room 6 complete — don't check Copenhagen for a bakery in Vilnius
-```
+> ✓ Room 6 complete — don't check Copenhagen for a bakery in Vilnius
 
 ---
 
@@ -1073,10 +1031,8 @@ The behavior is almost identical from the caller's perspective.
 
 But the computational structure changes.
 
-| Approach | Rough cost | With 200k × 10k |
-|---|---|---|
-| Array `.includes` per request | O(m × n) | ~2 billion comparisons |
-| Build `Set`, then `.has` | O(n + m) expected | ~210,000 ops |
+- Array `.includes` on each request: roughly O(m × n) — with 200,000 inventory items and 10,000 requested IDs, on the order of two billion comparisons.
+- Build a `Set`, then use `.has`: expected O(n + m) — about 210,000 operations for the same sizes.
 
 Building the Set takes O(n) expected time under typical hash-based implementations.
 
@@ -1134,9 +1090,7 @@ This is why performance discussions should include the workload, not merely the 
 >
 > Sometimes the "optimization" is just picking a structure that matches the operation.
 
-```text
-  ✓ Room 7 complete — Set vs includes: same job, different universe
-```
+> ✓ Room 7 complete — Set vs includes: same job, different universe
 
 ---
 
@@ -1153,6 +1107,8 @@ Consider processing a stream of customer events.
 Your task is to determine whether any customer ID appears more than once.
 
 One approach stores every ID in a Set.
+
+One approach: walk the ids, keep a `Set` of what you have seen, and return true as soon as an id repeats.
 
 ```typescript
 function hasDuplicate(ids: string[]): boolean {
@@ -1202,10 +1158,8 @@ But if data arrives in arbitrary order and we cannot reorder or store it, the pr
 
 The point is that we now have two resource dimensions:
 
-| Dimension | Question |
-|---|---|
-| **Time complexity** | How much work must the algorithm perform? |
-| **Space complexity** | How much additional memory does it require? |
+- **Time complexity** — how much work must the algorithm perform?
+- **Space complexity** — how much additional memory does it require?
 
 ```text
   Classic trade-offs
@@ -1249,9 +1203,7 @@ The more useful rule is:
 >
 > Choose the structure whose strengths match the operations your application performs most often.
 
-```text
-  ✓ Room 8 complete — time and space are a conversation
-```
+> ✓ Room 8 complete — time and space are a conversation
 
 ---
 
@@ -1331,24 +1283,20 @@ Not with randomly rewriting code that looks suspicious.
 
 A useful investigation might involve:
 
-| Signal | What it reveals |
-|---|---|
-| Total response time | user-facing pain |
-| CPU utilization / profiling | hot code paths |
-| DB query duration + count | N+1 and slow SQL |
-| Network round trips | waiting between services |
-| Memory allocations / GC | thrashing and pauses |
-| Event-loop delays | Node blocked on sync work |
-| Cache hit rates | locality / reuse |
-| Lock contention / queue waits | serialization bottlenecks |
+- **Total response time** — the user-facing pain.
+- **CPU utilization and profiling** — hot code paths.
+- **Database query duration and count** — N+1 patterns and slow SQL.
+- **Network round trips** — waiting between services.
+- **Memory allocations and garbage collection** — thrashing and pauses.
+- **Event-loop delays** — Node blocked on synchronous work.
+- **Cache hit rates** — locality and reuse.
+- **Lock contention and queue waits** — serialization bottlenecks.
 
 The goal is to find the operations consuming time or resources along the critical path.
 
 Then you can decide whether the right response is a better algorithm, better data structure, better architecture, or simply a more appropriate deployment configuration.
 
-```text
-  ✓ Room 9 complete — Big O is a tool; judgment is the craft
-```
+> ✓ Room 9 complete — Big O is a tool; judgment is the craft
 
 ---
 
@@ -1456,9 +1404,7 @@ And if that operation has poor scaling behavior, adding more data can make the p
 >
 > Low overall CPU % can still mean you're stuck on one busy critical path.
 
-```text
-  ✓ Room 10 complete — 35% CPU mystery solved
-```
+> ✓ Room 10 complete — 35% CPU mystery solved
 
 ---
 
@@ -1551,15 +1497,241 @@ The more specialized subjects—dynamic programming techniques, graph algorithms
 
 We'll introduce some of those ideas later in the course.
 
-```text
-  ✓ Room 11 complete — interviewers want judgment, not just loops
-```
+> ✓ Room 11 complete — interviewers want judgment, not just loops
 
 ---
 
-# 12. Practical Experiment: Make an Algorithm Collapse
+# 12. The Oral Examination
 
-Let's stop talking and observe the behavior.
+We now have enough knowledge to reason about cost like an engineer rather than merely recognizing Big O nicknames.
+
+Before reading the solutions, try answering these questions out loud. Imagine that a senior engineer is interviewing you and will challenge any hand-waving.
+
+### Challenge A — The API That Ages Badly
+
+A service maintains a list of 50,000 customers.
+
+Every new customer registration checks whether the email address already exists by scanning the entire list.
+
+The company receives 5,000 new registration attempts each day.
+
+1. What is the worst-case complexity of one registration check?
+2. Approximately how many comparisons might be performed across one day?
+3. How would a hash-based lookup change the computational structure?
+4. If the customers are stored in PostgreSQL, what would be a more appropriate solution than copying everything into an in-memory Set?
+5. Why might a unique database constraint be important even if an application-level lookup is very fast?
+
+The fifth question connects algorithmic efficiency with data integrity.
+
+### Challenge B — The Billion-Comparison Disaster
+
+You have two collections:
+
+- 100,000 registered customers.
+- 100,000 incoming external records.
+
+For every external record, your code scans all registered customers, searching for a matching email address.
+
+1. What is the worst-case number of comparisons?
+2. How would you improve the algorithm?
+3. What additional memory would your approach use?
+4. What happens if email matching must be case-insensitive?
+5. What happens if the two collections are too large to fit in memory?
+
+Don't worry about implementing a production solution to the last question.
+
+Describe the general strategies available.
+
+### Challenge C — Why the CPU Isn't Busy
+
+Your Node.js API is extremely slow.
+
+You observe:
+
+- Overall CPU usage: 20%.
+- Memory usage: moderate.
+- Database utilization: moderate.
+- Average request latency: 6 seconds.
+
+A developer proposes doubling the number of application servers.
+
+Another proposes increasing database capacity.
+
+A third suggests rewriting the endpoint in Rust.
+
+What evidence would you want before choosing any of these proposals?
+
+Consider the distinction between:
+
+- CPU-bound operations.
+- Network and database waiting.
+- Serial dependencies.
+- Lock contention.
+- Inefficient query patterns.
+
+Could a single expensive JavaScript computation explain low overall CPU usage?
+
+Could hundreds of sequential database requests produce similar symptoms?
+
+How would you distinguish them?
+
+### Challenge D — An Algorithmic Trade-Off
+
+You need to find the ten most frequently purchased products from one million purchase events.
+
+Consider several approaches.
+
+**Approach 1:** Count occurrences of each product, then sort all products by frequency.
+
+**Approach 2:** Count occurrences, then maintain a heap containing only the ten most frequent candidates.
+
+**Approach 3:** Run an appropriate aggregation query in the database.
+
+Which would you use?
+
+Does your decision change if:
+
+- There are only twenty distinct products?
+- There are 900,000 distinct products?
+- The result is requested once per day?
+- The result is requested thousands of times per second?
+- Purchase events arrive continuously?
+
+There's no single answer that wins every scenario.
+
+That's the point.
+
+---
+
+# 13. Solutions and Discussion
+
+*Read after attempting the oral challenges. The console lab appears after the spoken lecture ends.*
+
+### Solution A — The aging API
+
+A linear scan across 50,000 customers has O(n) worst-case complexity.
+
+Across 5,000 registration attempts, we could perform roughly 250 million comparisons if every attempt requires a full scan.
+
+A hash-based lookup can reduce expected membership-check costs significantly after building or maintaining an appropriate hash-based structure.
+
+However, if the authoritative customer data resides in PostgreSQL, an indexed lookup is often more appropriate.
+
+And more importantly, a unique database constraint protects against concurrent registrations that pass an application-level check simultaneously.
+
+Two requests might both observe that an email address isn't registered yet.
+
+Both might attempt to create a customer.
+
+Without database-enforced uniqueness, both could succeed.
+
+A fast lookup doesn't automatically guarantee correctness under concurrency.
+
+### Solution B — Billion comparisons
+
+The worst-case number of comparisons is:
+
+`100,000 × 100,000 = 10,000,000,000`
+
+Ten billion comparisons.
+
+A hash-based lookup structure could reduce expected matching work dramatically.
+
+But it uses additional memory proportional to the number of indexed records.
+
+Case-insensitive matching requires a deliberate and consistent policy for canonicalizing or comparing identifiers. Email addresses have their own technical and provider-specific nuances, so simplistic lowercasing is not a universal identity policy.
+
+For datasets too large for memory, options may include database joins, disk-based sorting and merging, or partitioned processing.
+
+The best approach depends on data distribution, resource limits, and correctness requirements.
+
+### Solution C — Idle CPU
+
+The correct next step is measurement.
+
+Check detailed CPU usage and profiling.
+
+Inspect event-loop delay and CPU-intensive synchronous operations.
+
+Measure database query counts and timings.
+
+Inspect distributed traces or request-level timing.
+
+Look for serial network operations and waits.
+
+Doubling the number of servers might improve throughput under certain bottlenecks without improving the latency of one slow sequential request.
+
+Increasing database capacity may accomplish little if the application is issuing unnecessary round trips.
+
+Rewriting code in Rust might reduce CPU costs while doing almost nothing for network-bound waiting.
+
+The best optimization targets the actual critical path.
+
+### Solution D — Top-ten products
+
+Counting occurrences requires processing the events.
+
+If there are `n` events and `k` distinct products, a hash-based frequency map typically requires expected O(n) processing time and O(k) memory.
+
+Sorting all `k` products by frequency requires O(k log k) additional time.
+
+Maintaining a heap of the top ten candidates after counting can reduce the selection step to O(k log 10), which is effectively linear in `k` for a fixed top-ten requirement.
+
+A database aggregation may be ideal when the data is already stored and indexed appropriately.
+
+If the same result is requested thousands of times per second, caching or maintaining incremental aggregates may matter much more than repeatedly optimizing the selection algorithm.
+
+If events arrive continuously, maintaining updated counts and rankings becomes a different system-design problem.
+
+The right answer depends on scale, query frequency, freshness requirements, and existing infrastructure.
+
+---
+
+# 14. The Mental Model Worth Keeping
+
+Back to the city at 120,000 residents: simulation crawling, CPU underutilized, GPU with spare capacity. We now have a better investigation frame.
+
+Remember these durable distinctions:
+
+**Correct is not the same as scalable** — complexity asks how cost grows.
+
+**Big O is a growth story, not a stopwatch** — constants, memory, and input distribution still matter.
+
+**Same Big O can feel very different** — locality, allocations, and waiting change wall-clock time.
+
+**Waiting is performance too** — N+1 queries and network round trips can dominate while CPU looks idle.
+
+**Pay to organize, then skip irrelevant work** — indexes and Sets change the algorithm, not just the loop.
+
+**Time and space trade off** — match the structure to the operations you actually perform.
+
+**Measure before rewriting** — utilization percentages need context; one busy critical path can starve a machine that looks idle overall.
+
+> **The master sticky note**
+>
+> Before optimizing how quickly a computer performs an operation, ask whether the operation needs to be performed at all.
+
+The city simulator didn't primarily need a faster distance function — it needed to stop comparing everyone to everyone. The backend didn't need a faster language — it needed fewer sequential database requests. Inventory matching didn't need a faster loop — it needed a better structure.
+
+That is the value of studying algorithms: recognize problem structure, understand the work required, and eliminate unnecessary computation — across languages, frameworks, and generations of technology.
+
+---
+
+# 15. Next Lecture — Data Structures: Choosing How to Remember Things
+
+We've learned to ask how work grows, what the machine is waiting for, and whether a different structure could eliminate comparisons entirely.
+
+But which structures should you reach for, and what do they remember well?
+
+When is an array enough? When does a hash table earn its keep? What do trees, queues, and graphs buy you — and what do they cost?
+
+In **CS110-L04**, we'll study data structures as choices about how to remember things — so the algorithm you need becomes the cheap one.
+
+---
+
+## Optional Practical Lab — Make an Algorithm Collapse
+
+*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet.*
 
 Open Node.js or your browser console.
 
@@ -1572,6 +1744,8 @@ The second builds a Set.
 The implementations perform the same logical task.
 
 > **Gym rules:** predict which wins *before* you run it. Then make it collapse by growing `n`.
+
+Two functions, same job: the slow one scans array `b` with `.includes` for each value in `a`; the fast one builds a `Set` from `b` and uses `.has`.
 
 ```javascript
 function hasOverlapSlow(a, b) {
@@ -1685,255 +1859,4 @@ Early termination matters.
 Upfront preprocessing costs matter.
 
 The theoretically superior approach isn't guaranteed to win on every input.
-
-```text
-  ✓ Room 12 complete — you made an algorithm collapse (hopefully)
-```
-
----
-
-# 13. Exercises: Think Like a Computer Scientist
-
-Take these seriously enough to reason through them, but don't turn them into a formal examination.
-
-The goal is understanding.
-
-## Exercise A — The API That Ages Badly
-
-**Suggested time: 8 minutes**
-
-A service maintains a list of 50,000 customers.
-
-Every new customer registration checks whether the email address already exists by scanning the entire list.
-
-The company receives 5,000 new registration attempts each day.
-
-1. What is the worst-case complexity of one registration check?
-2. Approximately how many comparisons might be performed across one day?
-3. How would a hash-based lookup change the computational structure?
-4. If the customers are stored in PostgreSQL, what would be a more appropriate solution than copying everything into an in-memory Set?
-5. Why might a unique database constraint be important even if an application-level lookup is very fast?
-
-The fifth question connects algorithmic efficiency with data integrity.
-
-## Exercise B — The Billion-Comparison Disaster
-
-**Suggested time: 8 minutes**
-
-You have two collections:
-
-- 100,000 registered customers.
-- 100,000 incoming external records.
-
-For every external record, your code scans all registered customers, searching for a matching email address.
-
-1. What is the worst-case number of comparisons?
-2. How would you improve the algorithm?
-3. What additional memory would your approach use?
-4. What happens if email matching must be case-insensitive?
-5. What happens if the two collections are too large to fit in memory?
-
-Don't worry about implementing a production solution to the last question.
-
-Describe the general strategies available.
-
-## Exercise C — Why the CPU Isn't Busy
-
-**Suggested time: 8 minutes**
-
-Your Node.js API is extremely slow.
-
-You observe:
-
-- Overall CPU usage: 20%.
-- Memory usage: moderate.
-- Database utilization: moderate.
-- Average request latency: 6 seconds.
-
-A developer proposes doubling the number of application servers.
-
-Another proposes increasing database capacity.
-
-A third suggests rewriting the endpoint in Rust.
-
-What evidence would you want before choosing any of these proposals?
-
-Consider the distinction between:
-
-- CPU-bound operations.
-- Network and database waiting.
-- Serial dependencies.
-- Lock contention.
-- Inefficient query patterns.
-
-Could a single expensive JavaScript computation explain low overall CPU usage?
-
-Could hundreds of sequential database requests produce similar symptoms?
-
-How would you distinguish them?
-
-## Exercise D — An Algorithmic Trade-Off
-
-**Suggested time: 10 minutes**
-
-You need to find the ten most frequently purchased products from one million purchase events.
-
-Consider several approaches.
-
-**Approach 1:** Count occurrences of each product, then sort all products by frequency.
-
-**Approach 2:** Count occurrences, then maintain a heap containing only the ten most frequent candidates.
-
-**Approach 3:** Run an appropriate aggregation query in the database.
-
-Which would you use?
-
-Does your decision change if:
-
-- There are only twenty distinct products?
-- There are 900,000 distinct products?
-- The result is requested once per day?
-- The result is requested thousands of times per second?
-- Purchase events arrive continuously?
-
-There's no single answer that wins every scenario.
-
-That's the point.
-
-```text
-  ✓ Room 13 complete — stretch done (solutions next)
-```
-
----
-
-# 14. Exercise Discussion and Solutions
-
-*Read this section after attempting the exercises.*
-
-## Exercise A
-
-A linear scan across 50,000 customers has O(n) worst-case complexity.
-
-Across 5,000 registration attempts, we could perform roughly 250 million comparisons if every attempt requires a full scan.
-
-A hash-based lookup can reduce expected membership-check costs significantly after building or maintaining an appropriate hash-based structure.
-
-However, if the authoritative customer data resides in PostgreSQL, an indexed lookup is often more appropriate.
-
-And more importantly, a unique database constraint protects against concurrent registrations that pass an application-level check simultaneously.
-
-Two requests might both observe that an email address isn't registered yet.
-
-Both might attempt to create a customer.
-
-Without database-enforced uniqueness, both could succeed.
-
-A fast lookup doesn't automatically guarantee correctness under concurrency.
-
-## Exercise B
-
-The worst-case number of comparisons is:
-
-`100,000 × 100,000 = 10,000,000,000`
-
-Ten billion comparisons.
-
-A hash-based lookup structure could reduce expected matching work dramatically.
-
-But it uses additional memory proportional to the number of indexed records.
-
-Case-insensitive matching requires a deliberate and consistent policy for canonicalizing or comparing identifiers. Email addresses have their own technical and provider-specific nuances, so simplistic lowercasing is not a universal identity policy.
-
-For datasets too large for memory, options may include database joins, disk-based sorting and merging, or partitioned processing.
-
-The best approach depends on data distribution, resource limits, and correctness requirements.
-
-## Exercise C
-
-The correct next step is measurement.
-
-Check detailed CPU usage and profiling.
-
-Inspect event-loop delay and CPU-intensive synchronous operations.
-
-Measure database query counts and timings.
-
-Inspect distributed traces or request-level timing.
-
-Look for serial network operations and waits.
-
-Doubling the number of servers might improve throughput under certain bottlenecks without improving the latency of one slow sequential request.
-
-Increasing database capacity may accomplish little if the application is issuing unnecessary round trips.
-
-Rewriting code in Rust might reduce CPU costs while doing almost nothing for network-bound waiting.
-
-The best optimization targets the actual critical path.
-
-## Exercise D
-
-Counting occurrences requires processing the events.
-
-If there are `n` events and `k` distinct products, a hash-based frequency map typically requires expected O(n) processing time and O(k) memory.
-
-Sorting all `k` products by frequency requires O(k log k) additional time.
-
-Maintaining a heap of the top ten candidates after counting can reduce the selection step to O(k log 10), which is effectively linear in `k` for a fixed top-ten requirement.
-
-A database aggregation may be ideal when the data is already stored and indexed appropriately.
-
-If the same result is requested thousands of times per second, caching or maintaining incremental aggregates may matter much more than repeatedly optimizing the selection algorithm.
-
-If events arrive continuously, maintaining updated counts and rankings becomes a different system-design problem.
-
-The right answer depends on scale, query frequency, freshness requirements, and existing infrastructure.
-
-```text
-  ✓ Room 14 complete — answers checked
-```
-
----
-
-# 15. What We've Actually Learned
-
-Back to the city at 120,000 residents: simulation crawling, CPU underutilized, GPU with spare capacity. We now have a better investigation frame.
-
-```text
-  POCKET CARD — CS110-L03
-  ═══════════════════════════════════════════════════════════
-  1. Correct ≠ scalable (complexity is how cost grows)
-  2. Big O = growth story, not a stopwatch
-  3. Same Big O can feel very different (memory, constants)
-  4. Waiting (N+1, network) is performance too
-  5. Indexes / Sets: pay to organize → skip irrelevant work
-  6. Time ↔ space trade-offs; match structure to operations
-  7. Measure before rewriting; utilization % needs context
-  8. Before speeding work up: ask if the work is needed
-  ═══════════════════════════════════════════════════════════
-```
-
-Complexity describes how resource needs grow — a quadratic algorithm can become catastrophic as input grows. Big O is asymptotic growth, not a benchmark; constants, memory, and distribution still matter. Data structures can change costs entirely. Time and memory trade off. Avoiding unnecessary work often beats doing the same work faster.
-
-Waiting — network, database, synchronization — is part of performance even when CPU looks idle. Hardware utilization must be read carefully: one critical thread can bottleneck while other resources sit idle. The right solution depends on workload, access patterns, correctness, and growth.
-
-> **The master sticky note**
->
-> Before optimizing how quickly a computer performs an operation, ask whether the operation needs to be performed at all.
-
-The city simulator didn't primarily need a faster distance function — it needed to stop comparing everyone to everyone. The backend didn't need a faster language — it needed fewer sequential database requests. Inventory matching didn't need a faster loop — it needed a better structure.
-
-That is the value of studying algorithms: recognize problem structure, understand the work required, and eliminate unnecessary computation — across languages, frameworks, and generations of technology.
-
-```text
-  ✓ All rooms visited. City saved (in theory). See you in CS110-L04.
-```
-
----
-
-
----
-
-## Next Lecture — CS110-L04: Data Structures: Choosing How to Remember Things
-
-Continue in **CS110 — Foundations of Computation and Algorithms**.
 

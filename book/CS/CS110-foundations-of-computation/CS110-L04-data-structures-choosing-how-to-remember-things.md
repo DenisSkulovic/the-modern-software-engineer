@@ -22,29 +22,11 @@ next: CS110-L05
 
 ---
 
-### How to read this session
+### How to listen to this lecture
 
-Fifteen rooms again. Same museum walk as Sessions 1–3. Pick a room, look at the picture, move on.
+Written for continuous listening first, then for on-screen re-reading. Sticky-note callouts mark ideas worth pausing on. Near the end, answer the oral challenges **out loud** before reading solutions. The scheduler lab lives after the spoken lecture ends — keep it for a screen session.
 
-```text
-  ROOM MAP
-  ─────────────────────────────────────────────────────────────
-  ① Hotel mystery      ② Arrays            ③ Linked lists
-  ④ Hash tables        ⑤ Trees / B-trees    ⑥ Heaps
-  ⑦ Graphs             ⑧ LRU combo          ⑨ Multiple indexes
-  ⑩ Complexity kinds   ⑪ Selection table    ⑫ Lab
-  ⑬ Challenges         ⑭ Solutions          ⑮ Takeaways
-  ─────────────────────────────────────────────────────────────
-```
-
-| Rooms | Theme | Feel |
-|---|---|---|
-| 1 | Hotel can't find its guests | mystery setup |
-| 2–7 | Array → list → hash → tree → heap → graph | the structure zoo |
-| 8–11 | Combining structures + choosing wisely | engineering judgment |
-| 12–15 | Lab, challenges, answers, takeaways | practice |
-
-> **Reading tip:** Every structure is an investment — you pay memory/maintenance to make *some* future operations cheap. Sticky notes name the investment.
+Every structure is an investment: you pay memory and maintenance to make *some* future operations cheap. By the end, you should be able to say what arrays, linked lists, hash tables, trees, heaps, and graphs each remember well, how real systems combine them, what worst-case, expected, and amortized actually promise, and which questions to ask before choosing.
 
 ---
 
@@ -59,6 +41,8 @@ You're responsible for the software behind a large international hotel chain.
 Everything has been running smoothly. The company has hundreds of properties, millions of historical reservations, thousands of daily check-ins, and a modest army of background workers processing everything from payment confirmations to housekeeping assignments.
 
 Then a strange problem appears.
+
+Here is the pain by department, with what's fast and what's slow for each:
 
 ```text
   DEPARTMENT          WHAT'S FAST              WHAT'S SLOW
@@ -113,13 +97,11 @@ Each reservation contains:
 
 Now consider five questions:
 
-| # | Question | Kind of operation |
-|---|---|---|
-| 1 | Find reservation `R-845192` | exact lookup |
-| 2 | Find all reservations for one customer | lookup → many results |
-| 3 | Find reservations checking out tomorrow | range / category filter |
-| 4 | Identify the next background job | priority / ordering |
-| 5 | Are two hotels connected by transport? | relationships / connectivity |
+1. Find reservation `R-845192`.
+2. Find all reservations for one customer.
+3. Find reservations checking out tomorrow.
+4. Identify the next background job.
+5. Are two hotels connected by transport?
 
 All five questions involve retrieving or organizing information.
 
@@ -143,9 +125,7 @@ The same information can be arranged in ways that make one operation trivial and
 
 Let's discover how.
 
-```text
-  ✓ Room 1 complete — same data, five different access patterns
-```
+> ✓ Room 1 complete — same data, five different access patterns
 
 ---
 
@@ -156,6 +136,8 @@ We'll begin with the most familiar data structure.
 The array.
 
 You have probably used arrays so many times that they barely register as a design decision.
+
+Here is an array of three reservation objects, each with an id and a guest name:
 
 ```typescript
 const reservations = [
@@ -178,6 +160,8 @@ In the classical array model, elements of equal size occupy consecutive position
 If an array begins at memory address `A`, each element occupies `s` bytes, and we want element `i`, its location can be calculated as:
 
 `A + i × s`
+
+Here is that address math as a picture: the array starts at A, and element i sits at A plus i times s, with no searching:
 
 ```text
   Address math (no searching)
@@ -236,6 +220,8 @@ We want to insert a new reservation in the middle.
 
 If the array contains one million entries, inserting an element near the beginning may require moving almost one million existing entries to make room.
 
+Here is a contiguous array holding a through f. We insert X after b, and every element after b shifts one slot to the right:
+
 ```text
   Insert in the middle of a contiguous array
   ──────────────────────────────────────────
@@ -273,13 +259,11 @@ That's nonsense.
 
 Arrays remain exceptionally useful for:
 
-| Great for… | Why |
-|---|---|
-| Sequential processing | walk contiguously |
-| Small collections | simplicity wins |
-| Ordered lists / by position | O(1) index |
-| Numerical / rendering work | locality + typed arrays |
-| Building other structures | heaps live in arrays! |
+- **Sequential processing** — you walk contiguous memory.
+- **Small collections** — simplicity wins.
+- **Ordered lists addressed by position** — O(1) indexing.
+- **Numerical and rendering work** — locality plus typed arrays.
+- **Building other structures** — heaps live in arrays!
 
 In fact, some of the more sophisticated structures we'll study are implemented using arrays internally.
 
@@ -291,9 +275,7 @@ If you're repeatedly searching an enormous unsorted collection by an arbitrary i
 
 Which brings us to our first alternative.
 
-```text
-  ✓ Room 2 complete — boring arrays are secretly powerful
-```
+> ✓ Room 2 complete — boring arrays are secretly powerful
 
 ---
 
@@ -315,6 +297,8 @@ And so on.
 
 You've just imagined a linked list.
 
+Here are the two layouts side by side: an array is a contiguous row of slots, while a linked list is scattered nodes A, B, C, and D, each holding a note that points at the next:
+
 ```text
   Array mailboxes              Linked-list warehouse
   ───────────────              ─────────────────────
@@ -322,7 +306,7 @@ You've just imagined a linked list.
    contiguous row              scattered; follow the notes
 ```
 
-A node might look like this:
+A node holds a value and a `next` reference that points at another node, or at null:
 
 ```typescript
 interface ListNode<T> {
@@ -343,7 +327,7 @@ Suppose you already have a reference to node B.
 
 And you want to insert node X immediately after it.
 
-You can update a couple of references:
+You create a new node whose `next` points at whatever B used to point to, then you point B's `next` at the new node:
 
 ```typescript
 const newNode = {
@@ -353,6 +337,8 @@ const newNode = {
 
 nodeB.next = newNode;
 ```
+
+Here is the before and after: B pointed to C, and now B points to X, which points to C. Two pointer updates, and no shifting a million items:
 
 ```text
   Before:  B ──► C ──► D
@@ -437,16 +423,13 @@ We'll return to that later.
 
 For now, remember:
 
-| | Arrays | Linked lists |
-|---|---|---|
-| Excel at | indexed + sequential access | local structural changes (with a known node) |
-| Struggle with | middle insert/delete (shifting) | finding an arbitrary position |
+**Arrays** excel at indexed and sequential access, and struggle with inserting or deleting in the middle, because everything shifts.
+
+**Linked lists** excel at local structural changes when you already hold the node, and struggle with finding an arbitrary position.
 
 Neither dominates the other universally.
 
-```text
-  ✓ Room 3 complete — O(1) insert needs a known node first
-```
+> ✓ Room 3 complete — O(1) insert needs a known node first
 
 ---
 
@@ -494,22 +477,16 @@ Or, even more simply, imagine assigning a bucket using:
 
 The `%` operator gives the remainder after division.
 
-Suppose our hash values are:
+Suppose our hash values are 10, 18, 26, 31, and 43. Hash 10 lands in bucket 2. So do 18 and 26. Hash 31 lands in bucket 7, and hash 43 lands in bucket 3.
 
-| Hash value | Bucket |
-|---|---:|
-| 10 | 2 |
-| 18 | 2 |
-| 26 | 2 |
-| 31 | 7 |
-| 43 | 3 |
+Here is the toy table with its eight buckets. Bucket 2 holds three entries — a collision party — bucket 3 holds 43, and bucket 7 holds 31:
 
 ```text
   Eight buckets (toy table)
   ─────────────────────────
   [0] [1] [2] [3] [4] [5] [6] [7]
-           │   │
-           │   └── 43
+           │   │               │
+           │   └── 43          └── 31
            └── 10, 18, 26   ← collision party in bucket 2
 ```
 
@@ -567,13 +544,7 @@ Over many insertions, the expected cost per insertion can remain effectively con
 
 ## Why hash tables are so powerful
 
-For well-designed hash tables under typical operating conditions:
-
-| Operation | Typical expected cost |
-|---|---|
-| Lookup by key | expected O(1) |
-| Insert by key | expected O(1) |
-| Delete by key | expected O(1) |
+For well-designed hash tables under typical operating conditions, lookup by key, insert by key, and delete by key are each expected O(1).
 
 That means the expected number of probing steps doesn't grow proportionally with the number of records, assuming the implementation controls collisions and load appropriately.
 
@@ -601,6 +572,8 @@ But in ordinary application workloads, hash tables are extraordinarily useful.
 
 You already use these ideas in JavaScript.
 
+Here is a Map from reservation ID strings to Reservation objects. We set two entries, then get the one for R-102:
+
 ```typescript
 const reservations = new Map<string, Reservation>();
 
@@ -619,6 +592,8 @@ The JavaScript specification does not require a particular internal hash-table i
 One subtle point is worth knowing.
 
 JavaScript objects used as Map keys are compared by identity rather than by structural equality.
+
+Here two objects, `a` and `b`, have exactly the same id field. We store a value under `a`, then look it up with `b`, and the answer is `undefined`:
 
 ```typescript
 const a = { id: 42 };
@@ -664,9 +639,7 @@ That's where another family of data structures becomes important.
 >
 > Hash = great for exact keys. Not a range scanner.
 
-```text
-  ✓ Room 4 complete — needles without haystacks (exact keys only)
-```
+> ✓ Room 4 complete — needles without haystacks (exact keys only)
 
 ---
 
@@ -725,7 +698,7 @@ For a typical binary search tree:
 - Values smaller than the current node's key belong in its left subtree.
 - Values larger belong in its right subtree.
 
-Imagine this arrangement:
+Imagine this arrangement. Here is a small search tree: 50 at the root, 25 and 75 below it, and leaves 10, 40, 60, and 90. Searching for 60 goes right at 50, then left at 75, skipping the whole left half early:
 
 ```text
               50
@@ -764,18 +737,18 @@ That's the key idea.
 
 Now imagine inserting values in ascending order into an ordinary binary search tree without balancing.
 
-The tree may become:
+The tree may become a stick: 10, then 20 as its right child, then 30, 40, and 50, each hanging off to the right:
 
 ```text
-10
-  \
-   20
-     \
-      30
-        \
-         40
-           \
-            50
+  10
+    \
+     20
+       \
+        30
+          \
+           40
+             \
+              50
 
   That's a stick, not a tree. Search for 50 = walk everything.
 ```
@@ -808,7 +781,7 @@ Let's return to PostgreSQL.
 
 Imagine a table containing ten million reservations.
 
-You execute:
+You ask for a single reservation by its ID:
 
 ```sql
 SELECT *
@@ -844,6 +817,8 @@ Instead of making a binary decision at every node, a page can guide the search a
 
 That produces a shallow tree.
 
+Here is the contrast: a binary tree is tall and skinny, with two children per node and many hops, while a B-tree page holds many keys and fans out to many child pages, so it needs far fewer expensive hops:
+
 ```text
   Binary tree (skinny, tall)     B-tree page (fat, shallow)
   ──────────────────────────     ──────────────────────────
@@ -860,7 +835,7 @@ A B-tree with a high branching factor can index enormous datasets while requirin
 
 And because entries are organized in key order, B-tree indexes can also support range scans efficiently.
 
-For example:
+For example, ask for reservations whose check-out date falls in the first week of November:
 
 ```sql
 SELECT *
@@ -905,9 +880,7 @@ The same principle applies across computer science:
 >
 > A data structure is an investment in making particular future operations cheaper.
 
-```text
-  ✓ Room 5 complete — trees cut the search space; B-trees cut disk hops
-```
+> ✓ Room 5 complete — trees cut the search space; B-trees cut disk hops
 
 ---
 
@@ -956,7 +929,7 @@ A binary min-heap is a tree-shaped structure with a simple ordering rule:
 
 Every parent has a value no greater than its children.
 
-For example:
+For example, here is a small min-heap: 2 at the root, 5 and 4 below it, then 9, 8, 7, and 6. It isn't fully sorted, but the root is always the minimum — the next job:
 
 ```text
               2  ← always the minimum (next job)
@@ -998,11 +971,7 @@ This is called *sifting down*.
 
 Because a complete binary tree has logarithmic height:
 
-| Operation | Cost |
-|---|---|
-| Peek at the minimum | O(1) |
-| Insert | O(log n) |
-| Remove the minimum | O(log n) |
+Peeking at the minimum is O(1). Inserting is O(log n). Removing the minimum is O(log n).
 
 That's a useful combination.
 
@@ -1019,6 +988,8 @@ For a zero-indexed array:
 - The left child of index `i` is at `2i + 1`.
 - The right child is at `2i + 2`.
 - The parent is at `floor((i - 1) / 2)`.
+
+Here is that same heap laid out as an array at indices zero through six: 2, 5, 4, 9, 8, 7, and 6, with the root at index zero:
 
 ```text
   Heap as an array
@@ -1047,11 +1018,6 @@ A priority queue returns elements according to their priority.
 
 These represent different policies.
 
-| Queue type | Returns… | Use when… |
-|---|---|---|
-| FIFO | arrival order | fairness / arrival order matters |
-| Priority (often a heap) | urgency / deadline / rank | "what's next?" ≠ "who arrived first?" |
-
 A FIFO queue is appropriate when every job should be handled in arrival order.
 
 A priority queue is appropriate when the next item is determined by urgency, deadline, cost, or another ranking.
@@ -1072,9 +1038,7 @@ Which leads us to another important idea:
 
 Real systems often combine several data structures to support different operations efficiently.
 
-```text
-  ✓ Room 6 complete — heaps answer "what's next?" in O(1) peek
-```
+> ✓ Room 6 complete — heaps answer "what's next?" in O(1) peek
 
 ---
 
@@ -1103,7 +1067,7 @@ For our city:
 - Vertices represent intersections.
 - Edges represent roads connecting intersections.
 
-A simplified graph might look like this:
+A simplified graph might look like this: intersections A, B, and C along the top, D and E below, F under C, and G under E.
 
 ```text
     A —— B —— C
@@ -1127,7 +1091,7 @@ The graph structure determines what questions can be answered.
 
 One common way to represent a graph is through adjacency lists.
 
-For each node, store its neighbors.
+For each node, store its neighbors. Here is the road network as a Map from each intersection to the list of intersections it connects to:
 
 ```typescript
 const roads = new Map<string, string[]>([
@@ -1171,6 +1135,8 @@ Then three.
 
 And so on.
 
+Here are the layers from A: hop zero is A; hop one is B and D; hop two is C and E; hop three is F and G, so we find G in three hops:
+
 ```text
   BFS layers from A
   ─────────────────
@@ -1182,7 +1148,7 @@ And so on.
 
 This is naturally implemented using a queue.
 
-Here's a simple version:
+Here's a simple version: a function that takes a graph, a start, and a target. It keeps a queue with a head index, a Set of visited nodes, and a `previous` Map so it can rebuild the path, and it returns the path or null:
 
 ```typescript
 function shortestPathByHops(
@@ -1224,12 +1190,10 @@ function shortestPathByHops(
 
 There are several interesting structures working together here.
 
-| Piece | Role |
-|---|---|
-| Map of adjacency lists | the graph |
-| Queue | exploration order (BFS) |
-| Set | already discovered? |
-| `previous` Map | reconstruct the path |
+- The **Map of adjacency lists** is the graph itself.
+- The **queue** decides exploration order.
+- The **Set** answers: have we already discovered this node?
+- The **`previous` Map** lets us reconstruct the path.
 
 Notice how data structures aren't isolated academic curiosities.
 
@@ -1255,17 +1219,9 @@ The data structure helps determine the behavior of the algorithm.
 
 ## Why we don't use Array.shift()
 
-You may have noticed this:
+You may have noticed that we wrote `const current = queue[head++];`.
 
-```typescript
-const current = queue[head++];
-```
-
-Why not simply write:
-
-```typescript
-const current = queue.shift();
-```
+Why not simply write `const current = queue.shift();`?
 
 Because removing the first element from a JavaScript array can require shifting the remaining elements.
 
@@ -1321,9 +1277,7 @@ And even aspects of AI agent execution.
 
 Once you begin recognizing graphs, you start seeing them everywhere.
 
-```text
-  ✓ Room 7 complete — relationships are data structures too
-```
+> ✓ Room 7 complete — relationships are data structures too
 
 ---
 
@@ -1387,6 +1341,8 @@ Maintain:
 1. A hash map from customer ID to cache node.
 2. A doubly linked list representing usage order.
 
+Here is the structure: the map goes from ID to node reference for fast find, and the list runs from least recently used on the left to most recently used on the right. We evict at the least-recently-used end, and touching an entry moves it to the most-recently-used end:
+
 ```text
   LRU = Map + doubly linked list
   ──────────────────────────────
@@ -1424,6 +1380,8 @@ Two structures compensate for each other's weaknesses.
 JavaScript's `Map` maintains insertion order.
 
 That lets us create a compact illustrative LRU cache without explicitly building a linked list.
+
+Here is a class with a capacity. The `get` method moves a key to the newest position, and `set` inserts, then evicts the oldest key if we're over capacity:
 
 ```typescript
 class LRUCache<K, V> {
@@ -1478,9 +1436,7 @@ And it demonstrates something useful:
 >
 > Sometimes the best data structure isn't one structure. It's a carefully chosen combination.
 
-```text
-  ✓ Room 8 complete — LRU = map for lookup + list for recency
-```
+> ✓ Room 8 complete — LRU = map for lookup + list for recency
 
 ---
 
@@ -1508,7 +1464,7 @@ A priority queue supports scheduled background work.
 
 A graph represents relationships between hotels, transport links, or dependencies.
 
-Conceptually:
+Conceptually, the reservation data sits at the top, with an ID lookup Map, a customer index, and a date B-tree beneath it, plus a priority queue for scheduled work:
 
 ```text
                  RESERVATION DATA
@@ -1550,6 +1506,8 @@ Queries by date range may still behave according to the old date.
 
 Now the system disagrees with itself.
 
+The authoritative record says check-out is November 7, but the stale date index still says November 4 — two truths:
+
 ```text
   Authoritative record:  checkout = Nov 7
   Stale date index:      still says Nov 4
@@ -1589,9 +1547,7 @@ It's one reason database design, caching, event-driven architecture, and distrib
 
 They're all partly concerned with deciding where information lives, how it is organized, and how changes propagate.
 
-```text
-  ✓ Room 9 complete — many indexes, one consistency problem
-```
+> ✓ Room 9 complete — many indexes, one consistency problem
 
 ---
 
@@ -1655,6 +1611,8 @@ But if capacity grows geometrically, those expensive reallocations occur infrequ
 
 Hence amortized O(1) append.
 
+Three flavors of O(1), and they are not the same. Worst-case is a bound that is never exceeded. Expected is the average under a probability model. Amortized is cheap on average across a sequence, though one operation can still be expensive:
+
 ```text
   Three flavors of "O(1)" (not the same!)
   ───────────────────────────────────────
@@ -1674,146 +1632,61 @@ A particular operation can be expensive while the long-run cost per operation re
 
 For interviews, understanding this conceptual difference is generally more valuable than memorizing formal proofs.
 
-```text
-  ✓ Room 10 complete — worst / expected / amortized are different promises
-```
+> ✓ Room 10 complete — worst / expected / amortized are different promises
 
 ---
 
-# 11. The Data Structure Selection Table
+# 11. The Data Structure Selection Guide
 
-Let's consolidate the main structures before moving to the exercises.
+Let's consolidate the main structures before moving to the oral examination.
 
 These are typical complexity characteristics, assuming standard implementations. Specific libraries, runtimes, workloads, and key types can alter practical performance.
 
-| Structure | Main strength | Main weakness |
-|---|---|---|
-| **Array** | Fast indexing, sequential access, locality | Middle insertions and deletions |
-| **Linked list** | Fast local insertion/removal with a known node | Slow arbitrary lookup, pointer overhead |
-| **Hash map / set** | Fast expected exact-key lookup | No inherent sorted-key navigation |
-| **Balanced search tree** | Ordered search, range operations | More structural and memory overhead |
-| **Binary heap** | Efficient access to min/max priority | Arbitrary lookup is not its strength |
-| **FIFO queue** | Preserves arrival order | No priority ordering |
-| **Stack** | Last-in, first-out processing | Only top element directly accessible |
-| **Graph adjacency list** | Represents and traverses relationships | Performance depends on graph structure and algorithm |
+First, each structure's main strength, then its main weakness:
 
-For the common operations:
+- **Array** — fast indexing, sequential access, and locality; weak at middle insertions and deletions.
+- **Linked list** — fast local insertion and removal with a known node; weak at arbitrary lookup, and pays pointer overhead.
+- **Hash map or set** — fast expected exact-key lookup; no inherent sorted-key navigation.
+- **Balanced search tree** — ordered search and range operations; more structural and memory overhead.
+- **Binary heap** — efficient access to the min or max priority; arbitrary lookup is not its strength.
+- **FIFO queue** — preserves arrival order; no priority ordering.
+- **Stack** — last-in, first-out processing; only the top element is directly accessible.
+- **Graph adjacency list** — represents and traverses relationships; performance depends on graph structure and algorithm.
 
-| Structure | Lookup / access | Insert | Remove |
-|---|---|---|---|
-| Dynamic array | O(1) by index, O(n) search | O(1) amortized append, O(n) middle | O(n) middle |
-| Linked list | O(n) search | O(1) with position node known | O(1) with suitable node references |
-| Hash map | Expected O(1) | Expected O(1) | Expected O(1) |
-| Balanced BST | O(log n) | O(log n) | O(log n) |
-| Binary heap | O(1) peek at root | O(log n) | O(log n) remove root |
+Now the common operations, one structure at a time:
 
-Don't memorize this table blindly.
+- **Dynamic array** — access by index is O(1), search is O(n). Append is amortized O(1); inserting or removing in the middle is O(n).
+- **Linked list** — search is O(n). Insert is O(1) when you already hold the position node, and remove is O(1) with suitable node references.
+- **Hash map** — lookup, insert, and remove are each expected O(1).
+- **Balanced search tree** — lookup, insert, and remove are each O(log n).
+- **Binary heap** — peeking at the root is O(1); insert is O(log n); removing the root is O(log n).
 
-Instead, try to understand *why* the costs arise.
+Don't memorize this blindly.
 
-| Mechanism | Why the cost looks like that |
-|---|---|
-| Array | can *calculate* an index |
-| Linked list | must *follow* references |
-| Hash table | *transforms* a key into a location |
-| Search tree | *eliminates branches* via ordering |
-| Heap | keeps *just enough* order for min/max |
-| Graph | stores *relationships*, not a linear sequence |
+Instead, try to understand *why* the costs arise:
 
-Once you understand those mechanisms, the complexity table becomes far easier to remember.
+- An **array** can *calculate* an index.
+- A **linked list** must *follow* references.
+- A **hash table** *transforms* a key into a location.
+- A **search tree** *eliminates branches* via ordering.
+- A **heap** keeps *just enough* order for min or max.
+- A **graph** stores *relationships*, not a linear sequence.
 
-```text
-  ✓ Room 11 complete — selection table locked in (understand, don't chant)
-```
+Once you understand those mechanisms, the complexity costs become far easier to remember.
+
+> ✓ Room 11 complete — selection guide locked in (understand, don't chant)
 
 ---
 
-# 12. Practical Lab: A Tiny Scheduling System
+# 12. The Oral Examination
 
-Let's build a small mental model of a job scheduler.
+Pause the lecture for each one.
 
-You have six jobs:
-
-| Job | Scheduled execution |
-|---|---|
-| A | 10:30 |
-| B | 09:15 |
-| C | 11:00 |
-| D | 09:45 |
-| E | 08:50 |
-| F | 10:00 |
-
-The application needs to repeatedly retrieve the next job to execute.
-
-> **Gym rules:** reason on paper first. The point is the *cost movement*, not coding a heap tonight.
-
-## Experiment A — An unsorted array
-
-Store all jobs in an array.
-
-Whenever the scheduler needs the next job, scan the array and find the smallest scheduled time.
-
-How much work does one retrieval require in the worst case?
-
-What happens if the queue contains a million jobs?
-
-## Experiment B — A sorted array
-
-Now keep the array sorted by scheduled execution time.
-
-Finding the next job is easy.
-
-But what happens if 10,000 new jobs arrive, each with an arbitrary execution time?
-
-Where does the insertion cost move?
-
-## Experiment C — A min-heap
-
-Now imagine maintaining the jobs in a binary min-heap.
-
-The earliest execution time sits at the root.
-
-Inserting a new job may require moving it upward.
-
-Removing the earliest job may require restoring the heap property.
-
-What are the complexity costs?
-
-Why might this be an attractive structure for a scheduler?
-
-## Experiment D — Cancellation
-
-A customer cancels job `D`.
-
-The scheduler is told:
-
-"Remove job D immediately."
-
-But the heap is organized by execution time, not by job ID.
-
-How efficiently can the scheduler locate that particular job?
-
-What additional structure could you maintain to make cancellation efficient?
-
-And what new consistency problem would that introduce?
-
-This final question is the most interesting one.
-
-It illustrates why real systems often require combinations of data structures rather than isolated textbook examples.
-
-```text
-  ✓ Room 12 complete — scheduler thought experiments done
-```
-
----
-
-# 13. Four Engineering Challenges
-
-Try these without looking at the answers first.
+Answer **out loud** — as if an interviewer were across the table — before you listen to or read the solutions.
 
 They're designed to reinforce practical judgment rather than obscure algorithm trivia.
 
-## Challenge A — The Wrong Customer Index
+### Challenge A — The Wrong Customer Index
 
 **Estimated time: 8 minutes**
 
@@ -1835,7 +1708,7 @@ What costs would additional indexes introduce?
 
 What information would you gather before creating them?
 
-## Challenge B — Designing a Notification Queue
+### Challenge B — Designing a Notification Queue
 
 **Estimated time: 8 minutes**
 
@@ -1859,7 +1732,7 @@ What about finding a notification by ID?
 
 How would you avoid keeping inconsistent representations?
 
-## Challenge C — The Giant Social Graph
+### Challenge C — The Giant Social Graph
 
 **Estimated time: 10 minutes**
 
@@ -1881,7 +1754,7 @@ How would you determine whether a path exists between two customers?
 
 How does the structure of the network affect the amount of work required?
 
-## Challenge D — The Cache That Lies
+### Challenge D — The Cache That Lies
 
 **Estimated time: 8 minutes**
 
@@ -1905,17 +1778,13 @@ What mechanisms might you introduce to keep the cached information acceptably fr
 
 Would your answer change if the cached field controlled access to a paid feature?
 
-```text
-  ✓ Room 13 complete — challenges attempted
-```
-
 ---
 
-# 14. Solutions and Discussion
+# 13. Solutions and Discussion
 
-*Read after attempting the challenges.*
+*Listen or read only after you have answered each challenge out loud.*
 
-## Challenge A — Customer indexes
+### Solution A — Customer indexes
 
 A hash-based lookup is not automatically the best solution for every query.
 
@@ -1933,7 +1802,7 @@ Before indexing, investigate actual query frequency, execution plans, selectivit
 
 The key is selecting indexes according to the operations the application performs.
 
-## Challenge B — Notification queue
+### Solution B — Notification queue
 
 A priority queue ordered by scheduled execution time could help identify the next eligible notification.
 
@@ -1951,7 +1820,7 @@ Real systems may use durable storage, delayed queues, database indexes, or speci
 
 The crucial insight is that scheduling order, identity lookup, cancellation, and durability are different concerns.
 
-## Challenge C — Social graph
+### Solution C — Social graph
 
 An adjacency list is generally attractive for a sparse graph.
 
@@ -1969,7 +1838,7 @@ Practical performance depends on the reachable portion of the graph, branching p
 
 An important lesson follows: **the shape and density of relationships influence which representation is appropriate.**
 
-## Challenge D — Cache consistency
+### Solution D — Cache consistency
 
 The immediate problem is not necessarily the cache's underlying data structure.
 
@@ -1991,30 +1860,29 @@ A cached marketing description can often tolerate more staleness than a cached a
 
 This example demonstrates how data-structure design eventually intersects with distributed systems and application architecture.
 
-```text
-  ✓ Room 14 complete — answers checked
-```
-
 ---
 
-# 15. The Most Important Lesson
+# 14. The Mental Model Worth Keeping
 
 A senior interview may not ask you to implement a red-black tree. It may ask how you'd design a service that retrieves by ID, supports range queries, and processes scheduled work — architecture on the surface, today's access patterns underneath.
 
 Back to the hotel platform: a million reservations, lookup by ID, by customer, by date range, next scheduled job, connectivity between locations. Different questions, different access patterns — exact key, ordered range, priority, relationships. No single representation optimizes all of them.
 
-```text
-  POCKET CARD — CS110-L04
-  ═══════════════════════════════════════════════════════════
-  1. Ask: which operations matter most?
-  2. Array = index + locality; list = local surgery (known node)
-  3. Hash = exact key; tree = order + ranges
-  4. Heap = "what's next?"; graph = relationships
-  5. Real systems combine structures (LRU, multi-index)
-  6. Extra indexes/caches = consistency work
-  7. Worst ≠ expected ≠ amortized
-  ═══════════════════════════════════════════════════════════
-```
+Remember these durable distinctions:
+
+**Operations come first** — ask which operations matter most before you name a structure.
+
+**Array is index plus locality; list is local surgery** — O(1) insertion needs a known node first.
+
+**Hash is exact key; tree is order and ranges** — a hash table is not a range scanner, and B-trees cut disk hops.
+
+**Heap answers "what's next?"; graph answers "how are things related?"** — priority and relationships are different problems.
+
+**Real systems combine structures** — LRU is a map plus a list, and one dataset can sit behind several indexes.
+
+**Extra indexes and caches are consistency work** — every derived representation can go stale.
+
+**Worst-case, expected, and amortized are different promises** — never casually swap "expected" for "guaranteed."
 
 > **The master sticky note**
 >
@@ -2024,16 +1892,93 @@ Not "Map or array?" First: What questions? How often? How large? How often does 
 
 Structures aren't mere containers. They're arrangements that make certain computation cheap: arrays for indexed access, hash tables for exact lookup, balanced trees for ordered search, heaps for priority, graphs for relationships — each with costs and assumptions. Choosing well is engineering judgment.
 
-```text
-  ✓ All rooms visited. Guests found. See you in CS110-L05.
-```
+> ✓ All rooms visited. Guests found.
 
 ---
 
+# 15. Next Lecture — Searching, Sorting, and Finding Shortcuts
+
+We've learned that the way you store information decides which questions are cheap to ask.
+
+But once the data is organized, how do you actually find things in it? When is a sorted collection worth the cost of sorting? And what shortcuts let an algorithm skip most of the work?
+
+In **CS110-L05**, we'll study searching, sorting, and finding shortcuts — how ordering and structure turn a hopeless scan into a few quick decisions.
 
 ---
 
-## Next Lecture — CS110-L05: Searching, Sorting, and Finding Shortcuts
+## Optional Practical Lab — A Tiny Scheduling System
 
-Continue in **CS110 — Foundations of Computation and Algorithms**.
+*The spoken lecture ends here. The remaining material is a screen-first reasoning worksheet.*
 
+Let's build a small mental model of a job scheduler.
+
+You have six jobs:
+
+| Job | Scheduled execution |
+|---|---|
+| A | 10:30 |
+| B | 09:15 |
+| C | 11:00 |
+| D | 09:45 |
+| E | 08:50 |
+| F | 10:00 |
+
+The application needs to repeatedly retrieve the next job to execute.
+
+> **Gym rules:** reason on paper first. The point is the *cost movement*, not coding a heap tonight.
+
+### Experiment A — An unsorted array
+
+Store all jobs in an array.
+
+Whenever the scheduler needs the next job, scan the array and find the smallest scheduled time.
+
+How much work does one retrieval require in the worst case?
+
+What happens if the queue contains a million jobs?
+
+### Experiment B — A sorted array
+
+Now keep the array sorted by scheduled execution time.
+
+Finding the next job is easy.
+
+But what happens if 10,000 new jobs arrive, each with an arbitrary execution time?
+
+Where does the insertion cost move?
+
+### Experiment C — A min-heap
+
+Now imagine maintaining the jobs in a binary min-heap.
+
+The earliest execution time sits at the root.
+
+Inserting a new job may require moving it upward.
+
+Removing the earliest job may require restoring the heap property.
+
+What are the complexity costs?
+
+Why might this be an attractive structure for a scheduler?
+
+### Experiment D — Cancellation
+
+A customer cancels job `D`.
+
+The scheduler is told:
+
+"Remove job D immediately."
+
+But the heap is organized by execution time, not by job ID.
+
+How efficiently can the scheduler locate that particular job?
+
+What additional structure could you maintain to make cancellation efficient?
+
+And what new consistency problem would that introduce?
+
+This final question is the most interesting one.
+
+It illustrates why real systems often require combinations of data structures rather than isolated textbook examples.
+
+> ✓ Lab complete — scheduler thought experiments done

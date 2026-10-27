@@ -10,9 +10,6 @@ prev: CS230-L02
 next: CS230-L04
 ---
 
-
-
-
 # CS230 — Computer Networks and Web Protocols
 
 ## Lecture 03: HTTP: The Protocol That Runs the Web
@@ -25,11 +22,7 @@ next: CS230-L04
 
 It's Monday morning, and your hotel-booking platform has three production incidents. The first is merely confusing.
 
-A developer opens Chrome DevTools and notices that requests for the application's JavaScript bundle are returning:
-
-```http
-HTTP/2 304 Not Modified
-```
+A developer opens Chrome DevTools and notices that requests for the application's JavaScript bundle are returning: `HTTP/2 304 Not Modified`
 
 Yet the application loads perfectly. How can the browser render JavaScript that the server apparently didn't send?
 
@@ -69,15 +62,9 @@ Addresses tell it where the letter should go. But the postal system doesn't dete
 
 It might contain a birthday invitation, a legal notice, or an invoice. Similarly, TCP and QUIC transport application data, while HTTP defines what that data means.
 
-A request might say:
+A request might say: `GET /api/hotels/4812 HTTP/1.1`, `Host: stays.example.com`, and `Accept: application/json`
 
-```http
-GET /api/hotels/4812 HTTP/1.1
-Host: stays.example.com
-Accept: application/json
-```
-
-And the server might respond:
+And the server might respond with `HTTP/1.1 200 OK`, `Content-Type: application/json`, and a small JSON body for hotel 4812 in Berlin with three available rooms:
 
 ```http
 HTTP/1.1 200 OK
@@ -104,23 +91,11 @@ A resource is a conceptual target identified by a URI. The server decides how to
 
 ## 2.1 Resources and representations
 
-This distinction is subtle but useful. Imagine the resource:
+This distinction is subtle but useful. Imagine the resource: `/api/hotels/4812`
 
-```text
-/api/hotels/4812
-```
+One client requests: `Accept: application/json`
 
-One client requests:
-
-```http
-Accept: application/json
-```
-
-Another requests:
-
-```http
-Accept: text/html
-```
+Another requests: `Accept: text/html`
 
 A server supporting both formats could return two different representations of the same conceptual resource. The hotel is the resource.
 
@@ -136,7 +111,7 @@ That pattern is common in modern APIs, but it's only one application of the prot
 
 # 3. HTTP Methods: What Exactly Are You Asking the Server to Do?
 
-Let's investigate the second production incident: the duplicate reservation. Our frontend sends:
+Let's investigate the second production incident: the duplicate reservation. Our frontend sends a `POST` to `/api/reservations` with a JSON body naming the hotel, room, and customer:
 
 ```http
 POST /api/reservations
@@ -161,17 +136,9 @@ HTTP methods have important semantics governing how clients and intermediaries s
 
 A method is considered **safe** when its defined semantics are essentially read-only. The client isn't requesting a business-state change.
 
-For example:
+For example: `GET /api/hotels`
 
-```http
-GET /api/hotels
-```
-
-requests information. But:
-
-```http
-POST /api/reservations
-```
+requests information. But: `POST /api/reservations`
 
 requests an action that changes application state. Safe doesn't mean the server literally performs no writes.
 
@@ -179,11 +146,7 @@ A GET request might produce logs, update metrics, or increment internal counters
 
 Why is safety important? Because browsers, crawlers, caches, and other software may automatically retrieve resources.
 
-Imagine designing this endpoint:
-
-```http
-GET /api/delete-account?userId=123
-```
+Imagine designing this endpoint: `GET /api/delete-account?userId=123`
 
 It deletes a customer's account. Now imagine a crawler following every link it discovers.
 
@@ -193,41 +156,17 @@ The problem isn't that the URL contains the word `delete`. The problem is that y
 
 ## 3.2 Idempotency: An exceptionally useful mathematical idea
 
-An operation is **idempotent** when repeating it has the same intended effect as performing it once. Consider:
+An operation is **idempotent** when repeating it has the same intended effect as performing it once. Consider: `Set room price to €150.`
 
-```text
-Set room price to €150.
-```
+Execute it once: `Price = €150`
 
-Execute it once:
+Execute it ten times: `Price = €150`
 
-```text
-Price = €150
-```
+The intended final state remains the same. Now consider: `Increase room price by €10.`
 
-Execute it ten times:
+Execute it once: `Price = €160`
 
-```text
-Price = €150
-```
-
-The intended final state remains the same. Now consider:
-
-```text
-Increase room price by €10.
-```
-
-Execute it once:
-
-```text
-Price = €160
-```
-
-Execute it ten times:
-
-```text
-Price = €250
-```
+Execute it ten times: `Price = €250`
 
 Not idempotent. The distinction is independent of whether an operation modifies state.
 
@@ -249,17 +188,9 @@ That doesn't require identical responses. The first deletion might return `204 N
 
 A subsequent attempt might return `404 Not Found`. Idempotency concerns the intended effect, not necessarily the response.
 
-Likewise, PATCH *can* be designed to be idempotent, but it isn't guaranteed to be. Compare these two partial updates:
+Likewise, PATCH *can* be designed to be idempotent, but it isn't guaranteed to be. Compare these two partial updates: `{"price": 150}`
 
-```json
-{"price": 150}
-```
-
-and:
-
-```json
-{"increasePriceBy": 10}
-```
+and: `{"increasePriceBy": 10}`
 
 The first may be idempotent. The second is not.
 
@@ -269,7 +200,7 @@ The exact behavior depends on the patch format and application contract.
 
 In distributed systems, a client can lose the response to a request that the server successfully completed. That creates uncertainty.
 
-Suppose:
+Suppose the browser creates a reservation, the server saves it, the response is lost on the way back, and the browser retries — so a second reservation is saved:
 
 ```text
 Browser                         Server
@@ -287,13 +218,7 @@ Browser                         Server
 
 The network cannot tell the browser whether the first operation committed successfully. For consequential operations, applications need stronger business-level guarantees.
 
-One common mechanism is an **idempotency key**. The frontend sends:
-
-```http
-POST /api/reservations
-Idempotency-Key: booking-attempt-92b71
-Content-Type: application/json
-```
+One common mechanism is an **idempotency key**. The frontend sends: `POST /api/reservations`, `Idempotency-Key: booking-attempt-92b71`, and `Content-Type: application/json`
 
 If the request is retried, it uses the same key. The backend maintains a durable record associating that key with the operation's result.
 
@@ -317,22 +242,15 @@ The numbers are familiar to every web developer. The interesting part is knowing
 
 Consider three responses.
 
-```http
-HTTP/1.1 200 OK
-```
+`HTTP/1.1 200 OK`
 
 The request succeeded and the server returned a representation or other response content.
 
-```http
-HTTP/1.1 201 Created
-Location: /api/reservations/9821
-```
+`HTTP/1.1 201 Created`, then `Location: /api/reservations/9821`
 
 The request succeeded and created a resource.
 
-```http
-HTTP/1.1 202 Accepted
-```
+`HTTP/1.1 202 Accepted`
 
 The request has been accepted for processing, but processing has not necessarily finished. That last distinction is especially important for asynchronous backend systems.
 
@@ -340,7 +258,7 @@ Suppose a customer requests a large CSV export. Your API adds a job to a BullMQ 
 
 The export may require several minutes.
 
-Returning `200 OK` with a JSON body saying the export is queued isn't inherently impossible, but `202 Accepted` communicates the asynchronous processing state more precisely. For example:
+Returning `200 OK` with a JSON body saying the export is queued isn't inherently impossible, but `202 Accepted` communicates the asynchronous processing state more precisely. For example, status `202 Accepted`, JSON content type, and a body with job id `exp-981`, status `queued`, and a `statusUrl` to poll:
 
 ```http
 HTTP/1.1 202 Accepted
@@ -379,7 +297,7 @@ A `412 Precondition Failed` has a more specific meaning: a conditional request f
 
 ## 4.3 The suspicious `200 OK`
 
-Here's an API response:
+Here's an API response — notice both the status line and the headers that matter for caching and content type:
 
 ```http
 HTTP/1.1 200 OK
@@ -422,7 +340,7 @@ You aren't required to use it, but a consistent error model is valuable.
 
 HTTP headers are sometimes treated like miscellaneous key-value metadata. In reality, they define much of HTTP's most interesting behavior.
 
-Let's take a request:
+Let's take a conditional request — the browser asks for a script only if its validator no longer matches:
 
 ```http
 GET /api/hotels/4812
@@ -439,7 +357,7 @@ Several negotiations and declarations are taking place. The client is effectivel
 - I understand Brotli and gzip content encodings.
 - Here are credentials for this request.
 
-The server might respond:
+The server might respond with `HTTP/1.1 200 OK`, JSON content type, German content language, Brotli encoding, and a private no-cache directive:
 
 ```http
 HTTP/1.1 200 OK
@@ -464,13 +382,7 @@ These two headers are frequently confused.
 
 **Content-Type** describes the media type of the content in the message being sent.
 
-For example:
-
-```http
-POST /api/reservations
-Content-Type: application/json
-Accept: application/json
-```
+For example: `POST /api/reservations`, `Content-Type: application/json`, and `Accept: application/json`
 
 The first says:
 
@@ -486,17 +398,9 @@ A server unable to provide an acceptable response representation may respond wit
 
 ## 5.2 Compression
 
-Consider a large JSON response:
+Consider a large JSON response: `Accept-Encoding: br, gzip`
 
-```http
-Accept-Encoding: br, gzip
-```
-
-If the server supports Brotli, it may respond:
-
-```http
-Content-Encoding: br
-```
+If the server supports Brotli, it may respond: `Content-Encoding: br`
 
 The response body is compressed. The browser decompresses it before handing the representation to application code.
 
@@ -510,17 +414,9 @@ The mechanisms used to transport HTTP messages differ between HTTP/1.1, HTTP/2, 
 
 HTTP doesn't intrinsically maintain a user's application session between requests. Cookies provide one common mechanism for continuity.
 
-A server may respond:
+A server may respond: `Set-Cookie: session=abc123; Path=/; Secure; HttpOnly; SameSite=Lax`
 
-```http
-Set-Cookie: session=abc123; Path=/; Secure; HttpOnly; SameSite=Lax
-```
-
-The browser stores the cookie subject to browser policy. Subsequent matching requests may carry:
-
-```http
-Cookie: session=abc123
-```
+The browser stores the cookie subject to browser policy. Subsequent matching requests may carry: `Cookie: session=abc123`
 
 The server can associate this identifier with session information. This is how an otherwise independent sequence of HTTP exchanges can participate in a continuous logged-in experience.
 
@@ -534,21 +430,13 @@ For now, notice how much application behavior can emerge from HTTP metadata rath
 
 # 6. Caching: When the Best Request Is the One You Don't Make
 
-Let's return to our first production incident. The browser receives:
-
-```http
-HTTP/2 304 Not Modified
-```
+Let's return to our first production incident. The browser receives: `HTTP/2 304 Not Modified`
 
 Yet the website works. Why?
 
 Because HTTP supports caching, and **a cached representation can be reused without downloading the entire content again**. This is one of HTTP's most important design features.
 
-Let's consider a JavaScript bundle:
-
-```text
-/assets/app.8bc29f.js
-```
+Let's consider a JavaScript bundle: `/assets/app.8bc29f.js`
 
 Suppose it's 400 KB. Thousands of users request it every minute.
 
@@ -562,11 +450,7 @@ HTTP offers several mechanisms.
 
 ## 6.1 Freshness: How long may the response be reused?
 
-A response might contain:
-
-```http
-Cache-Control: public, max-age=3600
-```
+A response might contain: `Cache-Control: public, max-age=3600`
 
 This permits storage in shared caches, subject to the complete HTTP caching rules, and declares a freshness lifetime of 3,600 seconds.
 
@@ -574,7 +458,7 @@ While the stored response remains fresh, a cache may satisfy a matching request 
 
 After it becomes stale, the cache may need to validate the response or retrieve a new one. Caching is not limited to the browser.
 
-There may be several layers:
+There may be several layers between browser and origin — CDN, reverse proxy, application — each able to cache or rewrite:
 
 ```text
 Browser
@@ -619,35 +503,19 @@ It doesn't prevent data from existing in application memory, logs, screenshots, 
 
 ## 6.3 Why content-hashed filenames are so useful
 
-Consider:
-
-```text
-/assets/app.8bc29f.js
-```
+Consider: `/assets/app.8bc29f.js`
 
 The filename includes a value derived from the build output. If the contents change, the build generates a different filename.
 
-For example:
-
-```text
-/assets/app.f291a0.js
-```
+For example: `/assets/app.f291a0.js`
 
 That gives us a beautiful property. The old URL continues to identify the old asset.
 
-The new URL identifies the new asset. We can therefore serve versioned static resources with a long caching lifetime:
-
-```http
-Cache-Control: public, max-age=31536000, immutable
-```
+The new URL identifies the new asset. We can therefore serve versioned static resources with a long caching lifetime: `Cache-Control: public, max-age=31536000, immutable`
 
 The `immutable` directive tells supporting clients that the representation is not expected to change during its freshness lifetime. This can be highly effective for build assets.
 
-But applying the same strategy to:
-
-```text
-/index.html
-```
+But applying the same strategy to: `/index.html`
 
 could be disastrous if that document needs to point users toward newly deployed JavaScript bundles. You might serve an old HTML document that references files no longer available.
 
@@ -659,13 +527,9 @@ A common deployment pattern therefore treats HTML differently from versioned sta
 
 # 7. Conditional Requests: The Strange Beauty of HTTP 304
 
-Suppose the browser previously downloaded:
+Suppose the browser previously downloaded: `GET /assets/app.js`
 
-```http
-GET /assets/app.js
-```
-
-The response included:
+The response included validators and cache directives; listen for `ETag` / `Last-Modified` / `Cache-Control` if you glance at the block:
 
 ```http
 HTTP/1.1 200 OK
@@ -676,23 +540,13 @@ Content-Type: text/javascript
 
 The browser stores the representation. Later, it needs the resource again.
 
-Because the cached response requires validation before reuse, the browser sends:
+Because the cached response requires validation before reuse, the browser sends: `GET /assets/app.js`, then `If-None-Match: "version-42"`
 
-```http
-GET /assets/app.js
-If-None-Match: "version-42"
-```
-
-The server checks the current representation. If the entity tag still matches, it can respond:
-
-```http
-HTTP/1.1 304 Not Modified
-ETag: "version-42"
-```
+The server checks the current representation. If the entity tag still matches, it can respond: `HTTP/1.1 304 Not Modified`, then `ETag: "version-42"`
 
 No response body is needed. The client already possesses the content.
 
-The server merely confirms that the stored representation remains valid. Conceptually:
+The server merely confirms that the stored representation remains valid. Conceptually the browser keeps its copy and skips downloading the bytes again:
 
 ```text
 Browser                              Server
@@ -715,17 +569,9 @@ An **entity tag**, or ETag, is a validator identifying a selected representation
 
 It might be derived from a content hash, revision number, or another server-defined mechanism. The client shouldn't assume it can interpret the value.
 
-HTTP also supports `Last-Modified`, a timestamp-based validator. For example:
+HTTP also supports `Last-Modified`, a timestamp-based validator. For example: `Last-Modified: Wed, 21 Oct 2026 10:00:00 GMT`
 
-```http
-Last-Modified: Wed, 21 Oct 2026 10:00:00 GMT
-```
-
-A subsequent request can use:
-
-```http
-If-Modified-Since: Wed, 21 Oct 2026 10:00:00 GMT
-```
+A subsequent request can use: `If-Modified-Since: Wed, 21 Oct 2026 10:00:00 GMT`
 
 ETags often provide more precise version identification than modification timestamps. A timestamp may lack sufficient resolution to distinguish multiple changes occurring close together.
 
@@ -749,13 +595,9 @@ Here's where HTTP becomes unexpectedly elegant. We usually encounter ETags in th
 
 But they can also help protect concurrent updates. Imagine two hotel administrators editing the same listing.
 
-The current room price is €150. Both retrieve:
+The current room price is €150. Both retrieve: `GET /api/hotels/4812`
 
-```http
-GET /api/hotels/4812
-```
-
-The server responds:
+The server responds — status plus the headers that tell caches what they may reuse:
 
 ```http
 HTTP/1.1 200 OK
@@ -768,7 +610,7 @@ ETag: "revision-7"
 
 Administrator A changes the price to €160. Administrator B changes it to €170.
 
-Without concurrency protection, the operations might proceed:
+Without concurrency protection, two admins can overwrite each other — last write wins, first edit vanishes:
 
 ```text
 Original price: €150
@@ -784,7 +626,7 @@ Database price: €170
 
 Administrator A's change has been silently overwritten. This is a **lost update**.
 
-HTTP provides a useful mechanism: `If-Match`. Administrator A sends:
+HTTP provides a useful mechanism: `If-Match`. Administrator A sends an update only if the current ETag still matches:
 
 ```http
 PUT /api/hotels/4812
@@ -798,7 +640,7 @@ Content-Type: application/json
 
 The server checks whether the current representation still matches revision 7. It does.
 
-The update succeeds, advancing the resource version. Administrator B then sends:
+The update succeeds, advancing the resource version. Administrator B then sends the same style of conditional update with a now-stale ETag:
 
 ```http
 PUT /api/hotels/4812
@@ -810,11 +652,7 @@ Content-Type: application/json
 }
 ```
 
-But the current representation is no longer revision 7. The server can reject the update:
-
-```http
-HTTP/1.1 412 Precondition Failed
-```
+But the current representation is no longer revision 7. The server can reject the update: `HTTP/1.1 412 Precondition Failed`
 
 Now the frontend can tell Administrator B that the resource has changed and offer to refresh or reconcile the conflicting edits. This is an example of **optimistic concurrency control**.
 
@@ -832,13 +670,9 @@ The application and database must enforce it correctly. This is a beautiful exam
 
 Let's return to the third production incident. A customer receives someone else's booking details.
 
-Suppose your API returns:
+Suppose your API returns: `GET /api/my-reservations`
 
-```http
-GET /api/my-reservations
-```
-
-The response contains:
+The response contains personalized JSON — customer 901 and their reservations, such as Hotel Berlin room 73:
 
 ```json
 {
@@ -858,11 +692,7 @@ The precise failure depends on the caching configuration and request handling.
 
 Conforming shared caches have restrictions, particularly for requests containing `Authorization`, but careless application headers or CDN-specific configuration can defeat the intended isolation.
 
-This is why personalized responses require deliberate cache policy design. For example:
-
-```http
-Cache-Control: private, no-store
-```
+This is why personalized responses require deliberate cache policy design. For example: `Cache-Control: private, no-store`
 
 This disallows shared caching and instructs conforming caches not to store the response.
 
@@ -876,29 +706,13 @@ A cache needs to decide when two requests should be considered equivalent for re
 
 The URL is a central part of that decision, along with the request method and any relevant additional cache-key dimensions. Consider a site returning different HTML based on language.
 
-Two users request:
+Two users request: `GET /hotels`
 
-```http
-GET /hotels
-```
+One sends: `Accept-Language: en-US`
 
-One sends:
+The other sends: `Accept-Language: de-DE`
 
-```http
-Accept-Language: en-US
-```
-
-The other sends:
-
-```http
-Accept-Language: de-DE
-```
-
-If the server returns different representations based on language, it can communicate that variation using:
-
-```http
-Vary: Accept-Language
-```
+If the server returns different representations based on language, it can communicate that variation using: `Vary: Accept-Language`
 
 A conforming HTTP cache then takes the specified request-header value into account when deciding whether a stored response matches a later request.
 
@@ -916,11 +730,7 @@ Get those three questions wrong, and caching can become a source of stale data, 
 
 In CS230-L02, we discussed HTTP/1.1, HTTP/2, and HTTP/3 from a networking perspective. Let's briefly connect them to the application protocol itself.
 
-Consider the request:
-
-```http
-GET /api/hotels/4812
-```
+Consider the request: `GET /api/hotels/4812`
 
 Its intended HTTP semantics don't fundamentally change between those versions. The server is still being asked to retrieve a representation.
 
@@ -944,7 +754,7 @@ This improves connection utilization, but TCP-level packet loss can still interf
 
 Runs over QUIC, which provides independently managed streams and integrates TLS-based security. It avoids TCP's connection-wide ordered-byte-stream bottleneck.
 
-Here's the useful abstraction: HTTP semantics — methods, statuses, headers, and caching — sit above the transport machinery. HTTP/1.1 and HTTP/2 commonly ride TCP with TLS, while HTTP/3 rides QUIC over UDP.
+Here's the useful abstraction spoken plainly: HTTP semantics — methods, statuses, headers, and caching — sit above the transport machinery. HTTP/1.1 and HTTP/2 commonly ride TCP with TLS, while HTTP/3 rides QUIC over UDP.
 
 ```text
                 HTTP Semantics
@@ -983,11 +793,7 @@ A DELETE endpoint could also be reasonable under a different domain model, but t
 
 ## 11.1 Search results and caching
 
-Hotel search results change frequently. You might decide to allow very short-lived shared caching for anonymous search results:
-
-```http
-Cache-Control: public, s-maxage=10
-```
+Hotel search results change frequently. You might decide to allow very short-lived shared caching for anonymous search results: `Cache-Control: public, s-maxage=10`
 
 This could reduce backend traffic during popular searches. But you'd need to consider variation by search parameters, currency, language, and any personalized pricing rules.
 
@@ -997,13 +803,7 @@ Final availability must be checked under appropriate transactional guarantees. T
 
 ## 11.2 Reservation creation and retries
 
-Creating a reservation is a consequential operation. You might require:
-
-```http
-POST /api/reservations
-Idempotency-Key: 4f9a71...
-Content-Type: application/json
-```
+Creating a reservation is a consequential operation. You might require: `POST /api/reservations`, `Idempotency-Key: 4f9a71...`, and `Content-Type: application/json`
 
 The backend uses the key to prevent duplicate execution of the same logical booking attempt. If the client loses the response, it can retry using the same key.
 
@@ -1013,28 +813,15 @@ HTTP provides the delivery contract; your business service provides the correctn
 
 ## 11.3 Editing a reservation
 
-A customer opens an editable reservation. The server returns a representation with:
+A customer opens an editable reservation. The server returns a representation with: `ETag: "revision-12"`
 
-```http
-ETag: "revision-12"
-```
-
-The customer modifies the guest name. The frontend submits:
-
-```http
-PUT /api/reservations/9821
-If-Match: "revision-12"
-```
+The customer modifies the guest name. The frontend submits: `PUT /api/reservations/9821`, then `If-Match: "revision-12"`
 
 If another process changed the reservation in the meantime, the backend can reject the stale update with `412`. This provides a clean way to expose optimistic concurrency control through HTTP.
 
 ## 11.4 Operational failures
 
-Suppose a critical upstream hotel-provider integration is unavailable. The booking API should not report:
-
-```http
-200 OK
-```
+Suppose a critical upstream hotel-provider integration is unavailable. The booking API should not report: `200 OK`
 
 while burying a failure inside the JSON body. An appropriate 5xx response and structured error can tell clients and monitoring systems that the request failed at the service level.
 
@@ -1054,11 +841,7 @@ Before reading the solutions, try answering these questions out loud. Imagine th
 
 ### Challenge 1 — The Misleading Cache Directive
 
-A backend engineer wants to prevent responses containing personal financial information from being stored in HTTP caches. They add:
-
-```http
-Cache-Control: no-cache
-```
+A backend engineer wants to prevent responses containing personal financial information from being stored in HTTP caches. They add: `Cache-Control: no-cache`
 
 Is that sufficient? What would you change?
 
@@ -1178,11 +961,7 @@ You can investigate these mechanisms using your browser and terminal. No elabora
 
 ### Lab A — Inspect response headers
 
-Open a terminal and execute:
-
-```bash
-curl -I https://developer.mozilla.org/
-```
+Open a terminal and execute: `curl -I https://developer.mozilla.org/`
 
 On Windows PowerShell, use `curl.exe` if needed. Examine the response headers.
 

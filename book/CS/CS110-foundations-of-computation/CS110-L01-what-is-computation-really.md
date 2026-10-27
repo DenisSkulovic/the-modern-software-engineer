@@ -10,9 +10,6 @@ prev: null
 next: CS110-L02
 ---
 
-
-
-
 # CS110 — Foundations of Computation and Algorithms
 ## Lecture 01: What Is Computation, Really?
 
@@ -22,28 +19,11 @@ next: CS110-L02
 
 ---
 
-### How to read this session
+### How to listen to this lecture
 
-Don't treat this as one long essay. Treat it as **eleven short rooms** in a museum. Walk through one room, look at the picture on the wall, then move on. You can close the file between rooms and still keep the plot.
+This lecture is written for continuous listening first, then for on-screen re-reading. Sticky-note callouts mark the ideas worth pausing on. Thought challenges near the end are meant to be answered **out loud** before you peek at the solutions. There is no terminal lab in this lecture — the workout is reasoning.
 
-```text
-  ROOM MAP
-  ─────────────────────────────────────────────────────────────
-  ① The Case          ② CS vs Coding      ③ Representation
-  ④ Models ≠ World    ⑤ State             ⑥ Possible vs Practical
-  ⑦ AI Agents         ⑧ Six Questions     ⑨ Exercises
-  ⑩ Solutions         ⑪ Takeaways
-  ─────────────────────────────────────────────────────────────
-```
-
-| Room | Theme | Feel |
-|---|---|---|
-| 1–2 | A mystery + what CS actually studies | story |
-| 3–5 | Representation, models, state | the "aha" core |
-| 6–8 | Trade-offs, AI, a reusable checklist | practical |
-| 9–11 | Exercises, answers, takeaways | practice |
-
-> **Reading tip:** Whenever you see a box like this, it's a rest stop — a single idea worth sticking on a sticky note. The surrounding paragraphs are the walk between rest stops.
+By the end, you should be able to separate problems, algorithms, and programs; explain why representation can make a question unanswerable; and use a short checklist before you try to "just compute" something.
 
 ---
 
@@ -73,12 +53,7 @@ Except there's a complication.
 
 Several months ago, somebody decided that storing individual user activity records was wasteful. Why keep millions of events when the dashboard only needs daily totals?
 
-So the system now retains this:
-
-| Date | Unique active users |
-|---|---:|
-| Monday | 100 |
-| Tuesday | 100 |
+So the system now retains this: Monday had 100 unique active users. Tuesday also had 100.
 
 That's it. The underlying activity records have been discarded.
 
@@ -128,13 +103,7 @@ Yet the correct answers differ.
 
 There are also countless intermediate possibilities. Perhaps 40 users returned on Tuesday and 60 were new. That would produce 160 unique users.
 
-The exact total could be anywhere from 100 to 200.
-
-| Overlap | Unique across both days |
-|---|---:|
-| Complete (everyone returns) | 100 |
-| Partial (e.g. 40 return, 60 new) | 160 |
-| None (totally new crowd) | 200 |
+The exact total could be anywhere from 100 to 200. Complete overlap yields 100 unique users across both days. Partial overlap — say forty return and sixty are new — yields 160. No overlap yields 200.
 
 Here is the important observation:
 
@@ -150,9 +119,7 @@ And we didn't need to know a single programming language to do it.
 
 This is where computer science becomes interesting.
 
-```text
-  ✓ Room 1 complete — the mystery: missing information, not missing code
-```
+> ✓ Room 1 complete — the mystery: missing information, not missing code
 
 ---
 
@@ -160,23 +127,21 @@ This is where computer science becomes interesting.
 
 Programming and computer science overlap enormously, but they are not identical.
 
-| | Programming | Computer science |
-|---|---|---|
-| Main activity | Instructing a computer to perform operations | Studying what can be computed, how, and at what cost |
-| Typical question | "How do I write this?" | "Can this be answered at all — and correctly?" |
-| Failure mode | Bug in the code | Wrong model / impossible question / wrong cost trade-off |
+Programming's main activity is instructing a computer to perform operations. Its typical question is "How do I write this?" Its failure mode is often a bug in the code.
+
+Computer science studies what can be computed, how, and at what cost. Its typical question is "Can this be answered at all — and correctly?" Its failure mode is a wrong model, an impossible question, or a bad cost trade-off.
 
 Programming is the activity of instructing a computer to perform operations.
 
 Computer science studies something more fundamental: what problems can be expressed computationally, what procedures can solve them, why those procedures work, and what resources or information they require.
 
-Consider the following three questions:
+Consider the following three questions.
 
-| # | Question | Really about… |
-|---|---|---|
-| 1 | Can the weekly number of unique users be calculated from the data we have? | **Whether the available information is sufficient** |
-| 2 | If it can, what procedure should we use? | **Algorithms and correctness** |
-| 3 | How efficiently can a real computer perform that procedure? | **Computational complexity and implementation** |
+First: can the weekly number of unique users be calculated from the data we have? That is really about **whether the available information is sufficient**.
+
+Second: if it can, what procedure should we use? That is about **algorithms and correctness**.
+
+Third: how efficiently can a real computer perform that procedure? That is about **computational complexity and implementation**.
 
 Those are three different problems.
 
@@ -249,14 +214,6 @@ You've probably written similar things hundreds of times.
 
 But look at what is hidden beneath these few lines.
 
-| Hidden assumption | If it's wrong… |
-|---|---|
-| `userId` identifies a user consistently across the period | Same person counted twice (or merged wrongly) |
-| Timestamps use a consistent time scale | Window boundaries lie |
-| The collection contains the relevant activity events | Silent undercount |
-| Events match the business definition of "activity" | Correct math, wrong metric |
-| The dataset is complete enough for the question | Confident nonsense |
-
 We're assuming that `userId` identifies a user consistently across the entire period.
 
 We're assuming timestamps are expressed using a consistent time scale.
@@ -283,9 +240,7 @@ That's the distinction worth remembering:
 
 Much of software engineering consists of maintaining the connection between those three layers.
 
-```text
-  ✓ Room 2 complete — three layers: problem → algorithm → program
-```
+> ✓ Room 2 complete — three layers: problem → algorithm → program
 
 ---
 
@@ -394,12 +349,7 @@ Not necessarily.
 
 Imagine two systems handling 100 requests.
 
-| | System A | System B |
-|---|---|---|
-| 99 requests | 200 ms each | 100 ms each |
-| 1 request | 200 ms | 10,100 ms |
-| **Average** | **200 ms** | **200 ms** |
-| User experience | Fine | One person had a terrible day |
+System A handles ninety-nine requests at 200 ms each and one more at 200 ms — average 200 ms, and users are fine. System B handles ninety-nine requests at 100 ms each and one request at 10,100 ms — the average is still 200 ms, but one person had a terrible day.
 
 In the first system, every request takes 200 milliseconds.
 
@@ -481,14 +431,7 @@ This point extends beyond databases.
 
 Every program operates on representations of something.
 
-| Representation | Stands in for… |
-|---|---|
-| Integer | a number |
-| String | text |
-| Timestamp | a point in time |
-| JSON object | a customer, booking, API request… |
-| Vector of floats | an ML embedding |
-| Graph | a road network, dependency tree, social network… |
+An integer stands in for a number. A string stands in for text. A timestamp stands in for a point in time. A JSON object may stand in for a customer, a booking, or an API request. A vector of floats may stand in for an ML embedding. A graph may stand in for a road network, a dependency tree, or a social network.
 
 But none of these representations is identical to the real thing.
 
@@ -504,9 +447,7 @@ The difference matters because reality contains more information than our models
 
 Which brings us to a second foundational concept.
 
-```text
-  ✓ Room 3 complete — representation = what you keep vs what you throw away
-```
+> ✓ Room 3 complete — representation = what you keep vs what you throw away
 
 ---
 
@@ -552,11 +493,7 @@ It might be a failure of the model.
 
 We need to distinguish three things:
 
-| Layer | Question |
-|---|---|
-| **Reality** | What is actually happening on the roads? |
-| **Model** | How does the app represent roads and travel times? |
-| **Algorithm** | How does the app search the model for the best route? |
+**Reality** asks what is actually happening on the roads. The **model** asks how the app represents roads and travel times. The **algorithm** asks how the app searches that model for the best route.
 
 ```text
             REALITY
@@ -648,9 +585,7 @@ That's not philosophical decoration.
 
 It's a practical debugging and architecture technique.
 
-```text
-  ✓ Room 4 complete — algorithms solve models, not reality
-```
+> ✓ Room 4 complete — algorithms solve models, not reality
 
 ---
 
@@ -666,13 +601,7 @@ But most applications don't operate in complete isolation.
 
 They remember things.
 
-| System | Remembers… |
-|---|---|
-| Booking system | existing reservations |
-| Auth service | sessions |
-| Game | where objects are |
-| Message queue | which jobs are pending |
-| AI agent | earlier messages, tool results, partial work |
+A booking system remembers existing reservations. An auth service remembers sessions. A game remembers where objects are. A message queue remembers which jobs are pending. An AI agent remembers earlier messages, tool results, and partial work.
 
 This remembered information is called **state**.
 
@@ -697,6 +626,8 @@ function recordActivity(event: ActivityEvent) {
 Obviously, this counts activity events, not unique users.
 
 So we introduce a set of previously observed user identifiers.
+
+Here is a tiny sketch: a `Set` remembers seen user IDs; `recordActivity` adds one, and `getActiveUserCount` returns how many unique IDs we have stored.
 
 ```typescript
 const seenUsers = new Set<string>();
@@ -832,7 +763,7 @@ A process may crash halfway through an operation.
 
 A network response may disappear even though the state change succeeded.
 
-We will explore these situations in later sessions.
+We will explore these situations in later lectures.
 
 For now, the foundational idea is that application behavior often involves a sequence of state transitions rather than isolated calculations.
 
@@ -862,9 +793,7 @@ Sometimes the system isn't unpredictable at all.
 
 You're simply observing an incomplete picture of it.
 
-```text
-  ✓ Room 5 complete — state = memory of the past that shapes the future
-```
+> ✓ Room 5 complete — state = memory of the past that shapes the future
 
 ---
 
@@ -922,11 +851,7 @@ Not recover it exactly. Estimate it.
 
 This is a meaningful engineering trade-off:
 
-| Approach | Answer quality | Resource cost |
-|---|---|---|
-| Exact set of IDs | Exact | Higher memory / processing |
-| HyperLogLog-style sketch | Approximate | Dramatically lower memory |
-| Daily counts only | Often *wrong* for combined windows | Cheap — but information-losing |
+An exact set of IDs gives an exact answer at higher memory and processing cost. A HyperLogLog-style sketch gives an approximate answer at dramatically lower memory. Daily counts alone are cheap, but they are often *wrong* for combined windows because they lose the information you need.
 
 Neither is automatically superior.
 
@@ -936,13 +861,13 @@ For a contractual billing system where customers pay per unique user, the same e
 
 The correct choice depends on the problem's requirements.
 
-And now we have three different questions:
+And now we have three different questions.
 
-| # | Question |
-|---|---|
-| 1 | **Can we determine the answer from the available information?** |
-| 2 | **Can we develop a correct procedure for the model?** |
-| 3 | **Can we execute that procedure within acceptable resource limits?** |
+**Can we determine the answer from the available information?**
+
+**Can we develop a correct procedure for the model?**
+
+**Can we execute that procedure within acceptable resource limits?**
 
 These questions recur throughout computer science.
 
@@ -956,9 +881,7 @@ Possible doesn't necessarily mean practical.
 
 And practical doesn't necessarily mean exact.
 
-```text
-  ✓ Room 6 complete — possible ≠ practical ≠ exact
-```
+> ✓ Room 6 complete — possible ≠ practical ≠ exact
 
 ---
 
@@ -1044,9 +967,7 @@ That's not much of a victory.
 >
 > Smarter models don't invent missing data. Tools and representations still decide what can be known.
 
-```text
-  ✓ Room 7 complete — AI still lives inside computation's rules
-```
+> ✓ Room 7 complete — AI still lives inside computation's rules
 
 ---
 
@@ -1140,35 +1061,21 @@ Notice how little of this is about programming-language syntax.
 
 That's intentional.
 
-```text
-  ✓ Room 8 complete — you now have a reusable checklist
-```
+> ✓ Room 8 complete — you now have a reusable checklist
 
 ---
 
-# 9. Time to Think
+# 9. The Oral Examination
 
-The material is most useful when you actually exercise it.
+We now have enough knowledge to examine computation like an engineer rather than merely recognize its vocabulary.
 
-For the following problems, resist the temptation to immediately ask an AI for the answer.
+Before reading the solutions, try answering these questions out loud. Imagine that a senior engineer is interviewing you and will challenge any hand-waving. No elaborate project setup is required — paper or a text editor is enough.
 
-Try reasoning on paper or in a text editor.
-
-No elaborate project setup is required.
-
-> **Gym rules:** attempt A→D yourself first. Solutions live in Room 10. Peeking early is allowed… but less fun.
-
-## Exercise A — The Impossible Dashboard
+### Challenge A — The Impossible Dashboard
 
 **Estimated time: 8–10 minutes**
 
-A website records the following distinct active-user counts:
-
-| Day | Unique users |
-|---|---:|
-| Monday | 120 |
-| Tuesday | 180 |
-| Wednesday | 150 |
+A website records the following distinct active-user counts: Monday 120, Tuesday 180, Wednesday 150.
 
 You have only these three numbers.
 
@@ -1182,7 +1089,7 @@ Answer the following:
 
 Try to construct concrete examples rather than guessing.
 
-## Exercise B — An Incomplete Traffic Model
+### Challenge B — An Incomplete Traffic Model
 
 **Estimated time: 8–10 minutes**
 
@@ -1215,7 +1122,7 @@ Consider these questions:
 
 The last question is particularly interesting.
 
-## Exercise C — A Better Analytics System
+### Challenge C — A Better Analytics System
 
 **Estimated time: 10–15 minutes**
 
@@ -1246,7 +1153,7 @@ There isn't one universally correct architecture.
 
 The goal is to demonstrate that you understand how requirements influence representation and algorithmic choices.
 
-## Exercise D — Explain It Like a Senior Engineer
+### Challenge D — Explain It Like a Senior Engineer
 
 **Estimated time: 5 minutes**
 
@@ -1264,17 +1171,15 @@ Explain the actual problem, demonstrate it with an example, and state what data 
 
 That's an excellent exercise in communicating technical concepts without unnecessary complexity.
 
-```text
-  ✓ Room 9 complete — stretch complete (solutions next)
-```
+> ✓ Room 9 complete — challenges attempted
 
 ---
 
-# 10. Discussion and Solutions
+# 10. Solutions and Discussion
 
-*Read this section after attempting the exercises.*
+*Read this section after attempting the challenges out loud.*
 
-## Exercise A
+### Solution A — Impossible dashboard
 
 The minimum is **180**.
 
@@ -1290,11 +1195,7 @@ For instance, Monday's 120 users could all be included among Tuesday's 180, whil
 
 Across the three days, there would be 200 distinct users.
 
-| Bound | Value | Intuition |
-|---|---:|---|
-| Minimum | 180 | max of the daily counts (max overlap) |
-| Possible mid value | 200 | partial overlap works |
-| Maximum | 450 | sum of the daily counts (no overlap) |
+Put briefly: the minimum is 180 — the maximum of the daily counts under maximum overlap. A mid value such as 200 is possible with partial overlap. The maximum is 450 — the sum of the daily counts under no overlap.
 
 The exact total requires additional information about user identity or overlap between days.
 
@@ -1310,7 +1211,7 @@ and
 
 This is a useful illustration of how mathematical reasoning can reveal something even when exact reconstruction is impossible.
 
-## Exercise B
+### Solution B — Incomplete traffic model
 
 The system can calculate the shortest path by distance, assuming its road graph is accurate.
 
@@ -1328,7 +1229,7 @@ Traffic conditions will change during the journey, possibly partly because other
 
 This is the distinction between calculating an optimal solution for a static model and predicting behavior in a dynamic environment.
 
-## Exercise C
+### Solution C — Better analytics system
 
 One reasonable design would retain stable account identifiers associated with activity windows.
 
@@ -1348,7 +1249,7 @@ The key insight isn't the choice of Redis versus PostgreSQL.
 
 It's understanding which information the system must preserve to satisfy its guarantees.
 
-## Exercise D
+### Solution D — Senior-engineer explanation
 
 A concise interview answer might sound like this:
 
@@ -1358,13 +1259,11 @@ That's a solid answer.
 
 It identifies the limitation, demonstrates it, and proposes a solution without wandering off into unrelated implementation details.
 
-```text
-  ✓ Room 10 complete — answers checked
-```
+> ✓ Room 10 complete — answers checked
 
 ---
 
-# 11. What You Should Take Away
+# 11. The Mental Model Worth Keeping
 
 Let's finish by returning to the question in the title.
 
@@ -1377,18 +1276,6 @@ But understanding computation requires more than knowing how instructions execut
 It requires understanding the relationship between a problem, the information available to solve it, the model used to represent it, and the algorithm that manipulates that model.
 
 Today's most important ideas were:
-
-```text
-  POCKET CARD — CS110-L01
-  ═══════════════════════════════════════════════════════════
-  1. Problem ≠ algorithm ≠ program
-  2. Representation decides what remains knowable
-  3. Correct algorithm + wrong model = useless answer
-  4. State links past events to present behavior
-  5. Computable / correct / practical are different axes
-  6. AI does not abolish any of the above
-  ═══════════════════════════════════════════════════════════
-```
 
 **1. Problems are not algorithms, and algorithms are not programs.**
 
@@ -1414,7 +1301,7 @@ Some answers cannot be determined from the available input. Other problems have 
 
 An AI agent can help choose algorithms, interpret information, or execute tools. But the surrounding system still determines what information exists, what operations are permitted, and what guarantees can be made.
 
-And perhaps the most useful principle of the entire session is this:
+And perhaps the most useful principle of the entire lecture is this:
 
 > **The master sticky note**
 >
@@ -1422,16 +1309,16 @@ And perhaps the most useful principle of the entire session is this:
 
 That's a foundation we'll build on throughout the course.
 
-```text
-  ✓ All rooms visited. Case closed. See you in CS110-L02.
-```
-
 ---
 
+# 12. Next Lecture — Everything Is Numbers — Until It Isn't
+
+We've established that computation works on *representations* of information — and that the wrong representation can make a question unanswerable even when the code is perfect.
+
+But what do those representations look like inside a machine?
+
+Why can money arithmetic go wrong with floating-point numbers? Why can a large identifier silently lose precision? Why can two identical-looking names fail to match? Why can a night "happen twice" when clocks fall back?
+
+In **CS110-L02**, we'll examine bits, integers, floating-point values, text encodings, and time — and discover why "everything is numbers" is both true and dangerously incomplete.
 
 ---
-
-## Next Lecture — CS110-L02: Everything Is Numbers — Until It Isn't
-
-Continue in **CS110 — Foundations of Computation and Algorithms**.
-

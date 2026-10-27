@@ -29,6 +29,7 @@ Use when a lecture is dense or the user asks for a readability pass:
 - Match the lecture’s existing voice; no emoji clutter or gimmicky filler
 - One job per visual: clarify one idea the surrounding text already teaches
 - Keep screen-heavy labs *after* the spoken lecture ends
+- Follow **manuscript-voice-structure** for fences: voice readers often skip code-block contents, so don’t hide spoken facts inside micro-fences; caption real samples
 
 ## Anti-patterns
 
@@ -36,3 +37,4 @@ Use when a lecture is dense or the user asks for a readability pass:
 - Callouts/tables on every subsection (noise > help)
 - Decorative ASCII that doesn’t clarify the concept
 - Changing `id` / `prev` / `next` / `legacy_ids` without an explicit request
+- One-line status / math / punchline fences that a TTS engine will announce as “code block” and skip

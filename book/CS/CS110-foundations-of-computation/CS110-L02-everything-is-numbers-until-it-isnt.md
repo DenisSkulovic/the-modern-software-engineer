@@ -10,9 +10,6 @@ prev: CS110-L01
 next: CS110-L03
 ---
 
-
-
-
 # CS110 — Foundations of Computation and Algorithms
 ## Lecture 02: Everything Is Numbers — Until It Isn't
 
@@ -22,29 +19,11 @@ next: CS110-L03
 
 ---
 
-### How to read this session
+### How to listen to this lecture
 
-Same museum trick as CS110-L01. Thirteen rooms. Walk one, look at the picture, move on. You can stop between rooms and still keep the plot.
+Written for continuous listening first, then for on-screen re-reading. Sticky-note callouts mark ideas worth pausing on. Near the end, answer the challenges **out loud** before reading solutions. The console experiments live after the spoken lecture ends — keep them for a screen session.
 
-```text
-  ROOM MAP
-  ─────────────────────────────────────────────────────────────
-  ① Three Bugs        ② Bits Need Meaning   ③ Floating-Point
-  ④ Vanishing IDs     ⑤ Text / Unicode      ⑥ Time Zones
-  ⑦ Serialization     ⑧ Compress & Hash     ⑨ The Principle
-  ⑩ Lab               ⑪ Challenges          ⑫ Solutions
-  ⑬ Takeaways
-  ─────────────────────────────────────────────────────────────
-```
-
-| Rooms | Theme | Feel |
-|---|---|---|
-| 1–2 | Three bugs + bits need interpretation | setup |
-| 3–6 | Money, IDs, text, time — the classic traps | the "aha" core |
-| 7–9 | Crossing boundaries + the connecting principle | glue |
-| 10–13 | Lab, challenges, answers, takeaways | practice |
-
-> **Reading tip:** Sticky-note boxes are rest stops. Diagrams are the pictures. The paragraphs are the walk between them.
+By the end, you should be able to explain why bits need an interpretation scheme, why money/IDs/text/time each have classic representation traps, and what four questions to ask whenever data crosses a boundary.
 
 ---
 
@@ -101,9 +80,7 @@ How does a machine that fundamentally manipulates binary information manage to r
 
 Let's investigate.
 
-```text
-  ✓ Room 1 complete — three bugs, one theme
-```
+> ✓ Room 1 complete — three bugs, one theme
 
 ---
 
@@ -155,12 +132,7 @@ That's the first fundamental idea of this session:
 
 We call such schemes *encodings* when they define how information is represented in a particular form.
 
-| Scheme | What it defines |
-|---|---|
-| ASCII | mappings between character values and numerical codes |
-| UTF-8 | how Unicode code points become bytes |
-| IEEE 754 | common floating-point representations and operations |
-| A network protocol | how byte sequences become messages |
+**ASCII** defines mappings between character values and numerical codes. **UTF-8** defines how Unicode code points become bytes. **IEEE 754** defines common floating-point representations and operations. A **network protocol** defines how byte sequences become messages.
 
 The physical computer doesn't see hotel reservations, JSON objects, or customer names.
 
@@ -176,13 +148,7 @@ It needs to distinguish ranges corresponding to logical zero and logical one.
 
 Real hardware is more complicated, of course, but this abstraction makes reliable digital computation practical.
 
-| Bits | Distinct patterns |
-|---:|---:|
-| 1 | 2 |
-| 2 | 4 |
-| 3 | 8 |
-| n | 2ⁿ |
-| 8 | 256 |
+One bit yields two distinct patterns. Two bits yield four. Three bits yield eight. In general, *n* bits yield 2ⁿ patterns — so eight bits yield 256.
 
 A single bit has two possible values.
 
@@ -204,13 +170,7 @@ We could reserve a bit for the sign. However, most modern general-purpose CPUs u
 
 In an 8-bit two's-complement representation:
 
-| Bits | Meaning |
-|---|---:|
-| `00000001` | 1 |
-| `00000000` | 0 |
-| `11111111` | -1 |
-| `10000000` | -128 |
-| `01111111` | 127 |
+Under a common two's-complement reading of eight bits: `00000001` means 1, `00000000` means 0, `11111111` means -1, `10000000` means -128, and `01111111` means 127.
 
 The mathematics behind two's complement is elegant, but the important property for now is practical: addition works using the same basic binary arithmetic circuitry for positive and negative integers.
 
@@ -241,32 +201,17 @@ JavaScript's ordinary `number` type is a particularly interesting case because i
 
 And that brings us to our first production bug.
 
-```text
-  ✓ Room 2 complete — bits need a decoding rule
-```
+> ✓ Room 2 complete — bits need a decoding rule
 
 ---
 
 # 3. The Strange Arithmetic of Floating-Point Numbers
 
-Open a JavaScript console and evaluate:
+Open a JavaScript console and evaluate: `0.1 + 0.2 === 0.3`
 
-```javascript
-0.1 + 0.2 === 0.3
-```
+The result is: `false`
 
-The result is:
-
-```javascript
-false
-```
-
-And:
-
-```javascript
-0.1 + 0.2
-// 0.30000000000000004
-```
+And `0.1 + 0.2` produces approximately `0.30000000000000004`.
 
 This is one of the most famous programming curiosities, so you've probably encountered it many times.
 
@@ -381,11 +326,7 @@ It provides an enormous numerical range while preserving useful precision.
 
 But it cannot represent every real number, or even every ordinary-looking decimal fraction, exactly.
 
-So when JavaScript evaluates:
-
-```javascript
-0.1 + 0.2
-```
+So when JavaScript evaluates: `0.1 + 0.2`
 
 it doesn't add the exact mathematical values 1/10 and 1/5.
 
@@ -422,9 +363,9 @@ It's that **binary floating-point is not a representation designed to guarantee 
 
 For currencies with two decimal places, a common solution is to store values as integer minor units.
 
-| Instead of… | Prefer… |
-|---|---|
-| `const price = 12.50;` | `const priceCents = 1250;` |
+Instead of `const price = 12.50;`, prefer something like `const priceCents = 1250;`.
+
+Store money as integer cents, then add: 1250 plus 275 is exactly 1525.
 
 ```typescript
 const subtotalCents = 1250;
@@ -460,13 +401,7 @@ Floating-point arithmetic is not something to avoid universally.
 
 It is excellent for a huge variety of scientific, graphical, analytical, and engineering computations.
 
-| Domain | Typical need | Usually OK with float? |
-|---|---|---|
-| Financial ledger | exact decimal money | No |
-| Physics / graphics | approximate continuous values | Yes |
-| Network latency estimates | approximate measurements | Yes |
-| Image processing | approximate samples | Yes |
-| Statistics dashboards | often approximate is fine | Often yes |
+A financial ledger needs exact decimal money — floating-point is usually the wrong tool. Physics, graphics, network latency estimates, and image processing typically need approximate continuous values or samples — floating-point is usually fine. Statistics dashboards often tolerate approximation as well.
 
 If you're simulating vehicle movement, estimating network latency, processing images, or calculating statistical values, small numerical approximation errors may be entirely acceptable.
 
@@ -482,9 +417,7 @@ We need to know when we're using them.
 >
 > Floating-point isn't broken. Using it for exact money is.
 
-```text
-  ✓ Room 3 complete — 0.1 + 0.2 explained (and when float is fine)
-```
+> ✓ Room 3 complete — 0.1 + 0.2 explained (and when float is fine)
 
 ---
 
@@ -494,12 +427,7 @@ There is another numerical trap that matters particularly to full-stack develope
 
 JavaScript's `number` can represent integers exactly only within a certain safe range.
 
-The largest safe positive integer is:
-
-```javascript
-Number.MAX_SAFE_INTEGER
-// 9007199254740991
-```
+The largest safe positive integer is: `Number.MAX_SAFE_INTEGER`, then `// 9007199254740991`
 
 That's approximately nine quadrillion.
 
@@ -569,41 +497,21 @@ Leading zeros may matter.
 
 Its purpose is identification, not arithmetic.
 
-| Looks numeric… | But actually… | Safer as… |
-|---|---|---|
-| Phone number | identity, not quantity | string |
-| Account / DB ID | identity | string (or BigInt carefully) |
-| Postal code | identity (leading zeros!) | string |
-| Invoice total in cents | a quantity you add | integer / decimal |
-| Temperature reading | a measurement | float often fine |
+A phone number looks numeric but is an identity, not a quantity — safer as a string. An account or database ID is likewise an identity — safer as a string, or BigInt used carefully. A postal code is an identity that may need leading zeros — string. An invoice total in cents is a quantity you add — integer or decimal. A temperature reading is a measurement — floating-point is often fine.
 
 The same principle applies to many account IDs, external transaction IDs, postal codes, and database identifiers.
 
 Representing an identifier as a string can be more appropriate than representing it as a number.
 
-For large integer quantities requiring exact arithmetic, JavaScript provides `BigInt`:
-
-```javascript
-const id = 9007199254740993n;
-```
+For large integer quantities requiring exact arithmetic, JavaScript provides `BigInt`: `const id = 9007199254740993n;`
 
 But `BigInt` introduces its own integration considerations.
 
-For example:
-
-```javascript
-JSON.stringify({ id: 9007199254740993n });
-```
+For example: `JSON.stringify({ id: 9007199254740993n });`
 
 throws an error by default.
 
-A straightforward cross-service solution is to serialize the identifier as a decimal string:
-
-```json
-{
-  "id": "9007199254740993"
-}
-```
+A straightforward cross-service solution is to serialize the identifier as a decimal string: `{`, `  "id": "9007199254740993"`, and `}`
 
 Now the receiving application can preserve it exactly, and convert it into an appropriate integer type only if needed.
 
@@ -613,9 +521,7 @@ The general lesson is surprisingly important:
 >
 > A value looking like a number doesn't mean that a floating-point numerical type is its correct representation.
 
-```text
-  ✓ Room 4 complete — large IDs are not JavaScript numbers
-```
+> ✓ Room 4 complete — large IDs are not JavaScript numbers
 
 ---
 
@@ -677,11 +583,7 @@ But there's an important distinction between **characters, code points, and byte
 
 A Unicode code point is an assigned numerical value, usually written like this:
 
-| Code point | Meaning |
-|---|---|
-| `U+0041` | Latin capital letter A |
-| `U+20AC` | Euro sign € |
-| `U+1F600` | Grinning face emoji |
+`U+0041` is Latin capital letter A. `U+20AC` is the euro sign €. `U+1F600` is the grinning-face emoji.
 
 But code points aren't necessarily stored directly as fixed-size chunks in every program.
 
@@ -691,31 +593,17 @@ It uses between one and four bytes per code point.
 
 For example:
 
-| Glyph | UTF-8 bytes (approx) |
-|---|---|
-| `A` | 1 |
-| `€` | 3 |
-| `😀` | 4 |
+In UTF-8, `A` is typically one byte, `€` about three bytes, and `😀` about four.
 
 JavaScript strings, meanwhile, are indexed in UTF-16 code units.
 
 And that's where things start getting strange.
 
-Consider:
-
-```javascript
-"Hello".length
-// 5
-```
+Consider: `"Hello".length`, then `// 5`
 
 Nothing surprising.
 
-Now:
-
-```javascript
-"😀".length
-// 2
-```
+Now: `"😀".length`, then `// 2`
 
 Why two?
 
@@ -723,12 +611,7 @@ Because this emoji is represented by a pair of UTF-16 code units, known as a sur
 
 So JavaScript's string length is not necessarily the number of Unicode code points or the number of visually perceived characters.
 
-For a slightly more interesting example:
-
-```javascript
-"🇱🇹".length
-// 4
-```
+For a slightly more interesting example: `"🇱🇹".length`, then `// 4`
 
 ```text
   One flag you see → four units JS counts
@@ -777,12 +660,7 @@ console.log(symbols.length);
 // 1
 ```
 
-| What you might count | Example for `🇱🇹` |
-|---|---:|
-| Bytes (UTF-8) | 8 |
-| UTF-16 code units (`.length`) | 4 |
-| Unicode code points | 2 |
-| Grapheme clusters (what you see) | 1 |
+For the flag emoji `🇱🇹`, UTF-8 may use about eight bytes. JavaScript's `.length` counts four UTF-16 code units. There are two Unicode code points. A person sees one grapheme cluster.
 
 This distinction matters for text editors, character counters, UI truncation, and many forms of user-facing input.
 
@@ -850,10 +728,7 @@ The customer names could appear identical while their underlying representations
 
 One solution is **Unicode normalization**.
 
-```javascript
-a.normalize("NFC") === b.normalize("NFC")
-// true
-```
+`a.normalize("NFC") === b.normalize("NFC")`, then `// true`
 
 Normalization transforms canonically equivalent sequences into a consistent form.
 
@@ -893,9 +768,7 @@ It's a living part of everyday software engineering.
 >
 > What a human sees ≠ what `.length` counts ≠ what bytes store.
 
-```text
-  ✓ Room 5 complete — Amélie explained (normalize before you compare)
-```
+> ✓ Room 5 complete — Amélie explained (normalize before you compare)
 
 ---
 
@@ -998,10 +871,7 @@ As a result, the local time **03:30 occurs twice**.
 
 The two occurrences correspond to different UTC instants:
 
-| Vilnius local time | UTC offset | UTC instant |
-|---|---|---|
-| 25 Oct 2026, 03:30 | UTC+03:00 | 00:30 UTC |
-| 25 Oct 2026, 03:30 | UTC+02:00 | 01:30 UTC |
+On 25 October 2026 at 03:30 in Vilnius, one occurrence with offset UTC+03:00 corresponds to 00:30 UTC. Another occurrence of the same local clock reading with offset UTC+02:00 corresponds to 01:30 UTC.
 
 ```text
   DST "fall back" — clocks rewind
@@ -1057,12 +927,7 @@ JavaScript's modern Temporal API was designed around precisely these distinction
 
 For most web applications, I would start with these rules:
 
-| Kind of thing | Prefer |
-|---|---|
-| **Events** (request arrived, payment authorized) | precise instant, usually UTC |
-| **Hotel stays / birthdays** | calendar-date semantics |
-| **Appointments / recurring local schedules** | local time + time zone (+ ambiguous/nonexistent handling) |
-| **Durations** | be clear: elapsed time vs calendar arithmetic |
+**Events** such as a request arriving or a payment authorizing prefer a precise instant, usually UTC. **Hotel stays and birthdays** prefer calendar-date semantics. **Appointments and recurring local schedules** prefer local time plus a time zone, with explicit handling for ambiguous or nonexistent local times. **Durations** require clarity about elapsed time versus calendar arithmetic.
 
 **Events:** Store a precise instant, usually represented in UTC.
 
@@ -1086,9 +951,7 @@ It's faithfully following a representation whose meaning may not match the busin
 >
 > Instant ≠ calendar date ≠ local clock time. Mix them and October 25 becomes October 24.
 
-```text
-  ✓ Room 6 complete — time has more than one meaning
-```
+> ✓ Room 6 complete — time has more than one meaning
 
 ---
 
@@ -1149,12 +1012,7 @@ The output is:
 }
 ```
 
-| Field | In memory | After `JSON.stringify` |
-|---|---|---|
-| `amount` | `1250` | `1250` |
-| `currency` | `"EUR"` | `"EUR"` |
-| `discount` | `undefined` | **gone** |
-| `score` | `NaN` | `null` |
+In memory, `amount` may be `1250` and still be `1250` after `JSON.stringify`. `currency` as `"EUR"` likewise survives. But `discount` as `undefined` is **gone** after ordinary object serialization, and `score` as `NaN` becomes `null`.
 
 Notice what happened.
 
@@ -1208,23 +1066,13 @@ For a customer identifier, it might require preserving every digit exactly.
 
 ## A cross-service example
 
-Suppose your backend retrieves a PostgreSQL row:
-
-```text
-id: 9007199254740993
-amount: 109.90
-check_in: 2026-10-25
-```
+Suppose your backend retrieves a PostgreSQL row: `id: 9007199254740993`, `amount: 109.90`, and `check_in: 2026-10-25`
 
 You then create an API response.
 
 A careless implementation might convert everything into ordinary JavaScript numbers and `Date` objects.
 
-| Field | Risk if treated as a JS number / Date |
-|---|---|
-| `id` | loses precision past safe integer |
-| `amount` | floating-point money bugs |
-| `check_in` | becomes an instant → wrong calendar day across zones |
+Treat `id` as a JavaScript number and you may lose precision past the safe-integer range. Treat `amount` as a float and you invite money bugs. Treat `check_in` as a `Date` instant and you may land on the wrong calendar day across time zones.
 
 The identifier risks losing precision.
 
@@ -1267,9 +1115,7 @@ This is one of the reasons API design is much more than agreeing on JSON structu
 >
 > `decode(encode(x))` must preserve *meaning*, not just "something JSON-looking."
 
-```text
-  ✓ Room 7 complete — serialization can quietly rewrite your data
-```
+> ✓ Room 7 complete — serialization can quietly rewrite your data
 
 ---
 
@@ -1334,11 +1180,7 @@ It does not preserve enough information to reconstruct arbitrary original inputs
 
 This gives us three different transformations:
 
-| Transformation | Purpose | Can recover the original? |
-|---|---|---|
-| Lossless compression | Reduce size while preserving information | Yes |
-| Lossy compression | Reduce size by discarding selected information | Not exactly |
-| Cryptographic hashing | Produce a compact fingerprint | Not generally |
+**Lossless compression** reduces size while preserving information — you can recover the original. **Lossy compression** reduces size by discarding selected information — you cannot recover exactly. **Cryptographic hashing** produces a compact fingerprint — you generally cannot recover the original.
 
 Why include this in an introductory CS course?
 
@@ -1350,9 +1192,7 @@ A good engineer must understand which information survives and which guarantees 
 
 This is as relevant to API contracts as it is to image formats, database indexing, or cryptographic systems.
 
-```text
-  ✓ Room 8 complete — smaller ≠ always lossy; hash ≠ reversible
-```
+> ✓ Room 8 complete — smaller ≠ always lossy; hash ≠ reversible
 
 ---
 
@@ -1429,29 +1269,193 @@ Precision, time-zone context, type information, missing-value distinctions, or o
 
 Many difficult production bugs become much easier to understand once you start asking those questions.
 
-```text
-  ✓ Room 9 complete — one principle ties the whole session together
-```
+> ✓ Room 9 complete — one principle ties the whole lecture together
 
 ---
 
-# 10. Practical Lab: Five Things Worth Testing
+# 10. The Oral Examination
 
-Now it's time to experiment.
+We now have enough knowledge to examine representation like an engineer rather than merely recognize its vocabulary.
 
-You don't need to build an application.
+Before reading the solutions, try answering these questions out loud. Imagine that a senior engineer is interviewing you and will challenge any hand-waving.
 
-Open the browser console or Node.js.
+### Challenge A — Design a Money Type
 
-The purpose is to observe some representation rules directly and connect the behavior to the explanations above.
+**Estimated time: 10 minutes**
+
+You're designing the billing system for a SaaS product that operates internationally.
+
+You need to represent:
+
+- Exact invoice amounts.
+- Multiple currencies.
+- Discounts.
+- Tax calculations.
+- Currency conversions.
+- Refunds and partial payments.
+
+Would you simply represent all prices as `number`?
+
+If not, what would you use?
+
+Think about storage, transport, arithmetic, rounding, and currency-specific rules.
+
+You don't have to write a full implementation.
+
+Describe the essential design decisions.
+
+### Challenge B — The Dangerous API Contract
+
+**Estimated time: 10 minutes**
+
+An external service returns:
+
+```json
+{
+  "customerId": 9007199254740993,
+  "balance": 104.95,
+  "lastActivity": "2026-10-25 03:30:00",
+  "customerName": "Amélie"
+}
+```
+
+Your job is to integrate it into a TypeScript application.
+
+Identify at least four questions you'd want answered before trusting this contract.
+
+Which fields could introduce silent correctness problems?
+
+How would you redesign the contract if you controlled both sides?
+
+### Challenge C — An AI Agent With Perfect Confidence
+
+**Estimated time: 5–10 minutes**
+
+You have an AI agent that can retrieve account balances and transaction summaries.
+
+A user asks:
+
+"Did anyone withdraw money from my account yesterday?"
+
+The agent only has access to the current balance and yesterday's closing balance.
+
+Can it determine the answer reliably?
+
+Why or why not?
+
+What additional information would make the answer possible?
+
+This is a direct application of the ideas from lectures 1 and 2.
+
+> ✓ Room 10 complete — challenges attempted
+
+---
+
+# 11. Solutions and Discussion
+
+*Read after attempting the oral challenges. Lab walkthroughs appear after the spoken lecture ends.*
+
+### Solution A — Money type
+
+A strong design would distinguish exact amounts from approximate measurements.
+
+One approach is to represent posted monetary amounts in integer minor units, together with an explicit currency.
+
+More sophisticated calculations may require decimal arithmetic with a defined scale and rounding policy.
+
+Exchange rates should preserve sufficient precision for the domain, and rounding should happen at explicitly defined stages.
+
+Different currencies may have different minor-unit conventions.
+
+Whatever representation is chosen, the API contract should preserve its exact meaning across system boundaries.
+
+### Solution B — Dangerous API contract
+
+Important questions include:
+
+- Can the customer ID exceed JavaScript's safe integer range?
+- Is the balance an exact monetary quantity?
+- Which currency does the balance use?
+- Is the activity time UTC, local time, or something else?
+- If local, which time zone?
+- Are customer names normalized or compared according to a defined policy?
+- What does missing or null data mean?
+
+A safer contract would explicitly represent identifiers, monetary values, currency codes, and timestamps using appropriate formats and documented semantics.
+
+### Solution C — AI agent confidence
+
+Two balances alone cannot establish whether a withdrawal occurred.
+
+Deposits and withdrawals can cancel each other out.
+
+A balance may also change because of adjustments, fees, or other operations.
+
+The agent needs appropriate transaction-level evidence, including the period and semantics of the account records.
+
+Confidence cannot substitute for missing information.
+
+> ✓ Room 11 complete — answers checked
+
+---
+
+# 12. The Mental Model Worth Keeping
+
+A great deal of software engineering is translating information between representations — price as typed text, validated number, database column, payment payload, ledger entry, report. Each conversion can preserve meaning or destroy it. The same is true for text, dates, identifiers, and measurements. Schemas, API contracts, and TypeScript types are attempts to express the properties that matter — more or less faithfully.
+
+Remember these durable distinctions:
+
+**Bits need an interpretation scheme.**
+
+**Floating-point is not exact money** — use a domain-fitting representation.
+
+**Digit strings aren't always numbers** — especially identifiers.
+
+**Visible text is not the same as code points, `.length`, or bytes.**
+
+**An instant is not a calendar date, and neither is local civil time.**
+
+**Serialization can drop or rewrite meaning.**
+
+**Lossless compression, lossy compression, and hashing preserve different guarantees.**
+
+**At every boundary:** meaning → representation → guarantees → what could be lost.
+
+> **The master sticky note**
+>
+> Choose representations according to the guarantees your problem requires, not merely according to which data types are convenient.
+
+You don't need to memorize Unicode tables or the exact bit layout of every numerical format.
+
+You do need to recognize when representation choices affect correctness — that's what separates writing working software from explaining why it works, and diagnosing when it stops.
+
+---
+
+# 13. Next Lecture — Algorithms and the Cost of Computation
+
+We've learned that representation decides what remains knowable.
+
+But even when the information exists and the model is sound, a correct procedure may still be too expensive to run.
+
+Why does one approach finish in milliseconds while another seems to grow forever as the input grows? When is "good enough" a responsible engineering choice rather than a shortcut?
+
+In **CS110-L03**, we'll study algorithms and the cost of computation — how to reason about time, space, and trade-offs before you rewrite the whole service in Rust.
+
+---
+
+## Optional Practical Lab — Five Things Worth Testing
+
+*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet.*
+
+Open the browser console or Node.js. You don't need to build an application.
 
 **Estimated time: 15–20 minutes.**
 
-> **Gym rules:** predict each result *before* you run it. Spoilers live in Room 12.
+Predict each result *before* you run it, then connect the behavior to the explanations above.
 
-Try to predict each result before executing the code.
+### Lab A — Floating-point surprise
 
-## Experiment 1 — Floating-point surprise
+In the console, compare `0.1 + 0.2` against `0.3`, then compare `0.125 + 0.25` against `0.375` — one pair has a finite binary fraction; the other does not.
 
 ```javascript
 console.log(0.1 + 0.2);
@@ -1465,7 +1469,9 @@ Why does one example behave differently from the other?
 
 Hint: think about which fractions have finite binary representations.
 
-## Experiment 2 — The unsafe identifier
+### Lab B — The unsafe identifier
+
+Assign the adjacent integers around `Number.MAX_SAFE_INTEGER`, compare them with `===`, check `Number.isSafeInteger`, then keep the larger one as a BigInt with an `n` suffix.
 
 ```javascript
 const a = 9007199254740992;
@@ -1484,7 +1490,9 @@ Explain why this behavior is dangerous when handling database identifiers.
 
 Would TypeScript's static type system automatically prevent it?
 
-## Experiment 3 — How long is a character?
+### Lab C — How long is a character?
+
+Build a small array of tricky strings — plain A, accented e, combining accents, an emoji, a flag — then measure `.length` versus grapheme segmentation.
 
 ```javascript
 const texts = [
@@ -1516,7 +1524,9 @@ What would happen if a frontend validation rule allowed a maximum of ten charact
 
 Would that necessarily match what the user perceives as ten characters?
 
-## Experiment 4 — Serialization isn't innocent
+### Lab D — Serialization isn't innocent
+
+Build an object with `undefined`, `NaN`, `Infinity`, and a boolean, then round-trip it through `JSON.stringify` and `JSON.parse` and notice what survived.
 
 ```javascript
 const input = {
@@ -1542,7 +1552,7 @@ Now try adding a BigInt property.
 
 What changes?
 
-## Experiment 5 — One local time, two instants
+### Lab E — One local time, two instants
 
 Consider:
 
@@ -1565,230 +1575,25 @@ What information did the numeric UTC offset add?
 
 And what information does the time-zone identifier provide that an offset alone doesn't?
 
-```text
-  ✓ Room 10 complete — lab done (or at least attempted)
-```
+### Lab F — Explain your observations
 
----
+Write or speak a short diagnosis covering:
 
-# 11. Engineering Challenges
+1. Why `0.1 + 0.2` differed from the power-of-two example.
+2. Why large adjacent integers compared equal as `number`.
+3. Which text-length measure matched what a person sees.
+4. Which JSON values survived and which did not.
+5. Why one Vilnius local time mapped to two UTC instants.
 
-These are closer to the kind of reasoning I would expect from an experienced developer during an interview or architecture discussion.
+### Lab notes — expected behaviors
 
-Try answering them without searching for a textbook definition.
+**Floating-point.** The fractions 0.125 and 0.25 have finite binary representations because their denominators are powers of two. Their sum, 0.375, is also exactly representable. The decimal fractions 0.1 and 0.2 do not. Approximation and rounding produce the observed difference.
 
-## Challenge A — Design a Money Type
+**Unsafe identifiers.** JavaScript's `number` cannot distinguish all sufficiently large adjacent integers. The values 9007199254740992 and 9007199254740993 evaluate to the same JavaScript number. TypeScript doesn't automatically fix this because `number` has the same runtime representation. A string or BigInt-based approach can preserve the identifier exactly, provided serialization and deserialization also preserve it.
 
-**Estimated time: 10 minutes**
+**Unicode.** Bytes, UTF-16 code units, Unicode code points, and grapheme clusters are different quantities. For user-facing character counts, grapheme segmentation may be more appropriate than `.length`. For storage or transport limits, byte counts may matter instead.
 
-You're designing the billing system for a SaaS product that operates internationally.
+**JSON.** Properties with `undefined` values are omitted from ordinary object serialization. Non-finite numerical values such as `NaN` and infinity become `null`. Boolean `false` survives unchanged. BigInt serialization throws by default unless explicitly handled.
 
-You need to represent:
-
-- Exact invoice amounts.
-- Multiple currencies.
-- Discounts.
-- Tax calculations.
-- Currency conversions.
-- Refunds and partial payments.
-
-Would you simply represent all prices as `number`?
-
-If not, what would you use?
-
-Think about storage, transport, arithmetic, rounding, and currency-specific rules.
-
-You don't have to write a full implementation.
-
-Describe the essential design decisions.
-
-## Challenge B — The Dangerous API Contract
-
-**Estimated time: 10 minutes**
-
-An external service returns:
-
-```json
-{
-  "customerId": 9007199254740993,
-  "balance": 104.95,
-  "lastActivity": "2026-10-25 03:30:00",
-  "customerName": "Amélie"
-}
-```
-
-Your job is to integrate it into a TypeScript application.
-
-Identify at least four questions you'd want answered before trusting this contract.
-
-Which fields could introduce silent correctness problems?
-
-How would you redesign the contract if you controlled both sides?
-
-## Challenge C — An AI Agent With Perfect Confidence
-
-**Estimated time: 5–10 minutes**
-
-You have an AI agent that can retrieve account balances and transaction summaries.
-
-A user asks:
-
-"Did anyone withdraw money from my account yesterday?"
-
-The agent only has access to the current balance and yesterday's closing balance.
-
-Can it determine the answer reliably?
-
-Why or why not?
-
-What additional information would make the answer possible?
-
-This is a direct application of the ideas from Sessions 1 and 2.
-
-```text
-  ✓ Room 11 complete — challenges attempted
-```
-
----
-
-# 12. Solutions and Discussion
-
-*Read after trying the experiments and challenges.*
-
-## Floating-point
-
-The fractions 0.125 and 0.25 have finite binary representations because their denominators are powers of two.
-
-Their sum, 0.375, is also exactly representable.
-
-The decimal fractions 0.1 and 0.2 do not have finite binary representations.
-
-The floating-point approximation and rounding rules produce the observed difference.
-
-## Unsafe identifiers
-
-JavaScript's `number` cannot distinguish all sufficiently large adjacent integers.
-
-The values 9007199254740992 and 9007199254740993 evaluate to the same JavaScript number.
-
-TypeScript doesn't automatically fix this because `number` has the same runtime representation.
-
-A string or BigInt-based approach can preserve the identifier exactly, provided serialization and deserialization also preserve it.
-
-## Unicode
-
-The output demonstrates that bytes, UTF-16 code units, Unicode code points, and grapheme clusters are different quantities.
-
-For user-facing character counts, grapheme segmentation may be more appropriate than `.length`.
-
-For storage or transport limits, byte counts may matter instead.
-
-The correct measurement depends on the requirement.
-
-## JSON
-
-Properties with `undefined` values are omitted from ordinary object serialization.
-
-Non-finite numerical values such as `NaN` and infinity become `null`.
-
-Boolean `false` survives unchanged.
-
-BigInt serialization throws by default unless explicitly handled.
-
-The experiment demonstrates that serialization cannot be assumed to preserve every JavaScript value.
-
-## Time zones
-
-On the stated date, Vilnius moves its clocks backward.
-
-The two local 03:30 times correspond to different UTC instants.
-
-The occurrence with offset +03:00 happens first.
-
-The time-zone identifier provides the applicable civil-time rules, while the offset identifies the difference from UTC for a particular occurrence.
-
-## Money representation
-
-A strong design would distinguish exact amounts from approximate measurements.
-
-One approach is to represent posted monetary amounts in integer minor units, together with an explicit currency.
-
-More sophisticated calculations may require decimal arithmetic with a defined scale and rounding policy.
-
-Exchange rates should preserve sufficient precision for the domain, and rounding should happen at explicitly defined stages.
-
-Different currencies may have different minor-unit conventions.
-
-Whatever representation is chosen, the API contract should preserve its exact meaning across system boundaries.
-
-## API contract
-
-Important questions include:
-
-- Can the customer ID exceed JavaScript's safe integer range?
-- Is the balance an exact monetary quantity?
-- Which currency does the balance use?
-- Is the activity time UTC, local time, or something else?
-- If local, which time zone?
-- Are customer names normalized or compared according to a defined policy?
-- What does missing or null data mean?
-
-A safer contract would explicitly represent identifiers, monetary values, currency codes, and timestamps using appropriate formats and documented semantics.
-
-## AI agent
-
-Two balances alone cannot establish whether a withdrawal occurred.
-
-Deposits and withdrawals can cancel each other out.
-
-A balance may also change because of adjustments, fees, or other operations.
-
-The agent needs appropriate transaction-level evidence, including the period and semantics of the account records.
-
-Confidence cannot substitute for missing information.
-
-```text
-  ✓ Room 12 complete — answers checked
-```
-
----
-
-# 13. The Point of Today's Lecture
-
-A great deal of software engineering is translating information between representations — price as typed text, validated number, database column, payment payload, ledger entry, report. Each conversion can preserve meaning or destroy it. The same is true for text, dates, identifiers, and measurements. Schemas, API contracts, and TypeScript types are attempts to express the properties that matter — more or less faithfully.
-
-```text
-  POCKET CARD — CS110-L02
-  ═══════════════════════════════════════════════════════════
-  1. Bits need an interpretation scheme
-  2. Float ≠ exact money; use a domain-fitting representation
-  3. Digit strings aren't always numbers (IDs!)
-  4. Visible text ≠ code points ≠ .length ≠ bytes
-  5. Instant ≠ date ≠ local time
-  6. Serialization can drop or rewrite meaning
-  7. Lossless / lossy / hash preserve different guarantees
-  8. At every boundary: meaning → representation → guarantees → loss
-  ═══════════════════════════════════════════════════════════
-```
-
-> **The master sticky note**
->
-> Choose representations according to the guarantees your problem requires, not merely according to which data types are convenient.
-
-You don't need to memorize Unicode tables or the exact bit layout of every numerical format.
-
-You do need to recognize when representation choices affect correctness — that's what separates writing working software from explaining why it works, and diagnosing when it stops.
-
-```text
-  ✓ All rooms visited. Numbers betrayed; you survived. See you in CS110-L03.
-```
-
----
-
-
----
-
-## Next Lecture — CS110-L03: Algorithms and the Cost of Computation
-
-Continue in **CS110 — Foundations of Computation and Algorithms**.
+**Time zones.** On the stated date, Vilnius moves its clocks backward. The two local 03:30 times correspond to different UTC instants. The occurrence with offset +03:00 happens first. The time-zone identifier provides the applicable civil-time rules; the offset identifies the difference from UTC for a particular occurrence.
 

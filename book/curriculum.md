@@ -78,9 +78,9 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (they are cours
 | `CS230-L02` | Networking for Software Engineers | `manuscript` | `2.0.0` | `WEB201-S02` |
 | `CS230-L03` | HTTP: The Protocol That Runs the Web | `manuscript` | `2.0.0` | `WEB201-S03` |
 | `CS230-L04` | DNS: The Internet's Distributed Naming System | `manuscript` | `2.0.0` | `` |
-| `CS230-L05` | IP Addressing, Subnets, Routing, and NAT | `stub` | `2.0.0` | `` |
-| `CS230-L06` | The Life of a Network Connection | `stub` | `2.0.0` | `` |
-| `CS230-L07` | TLS and the Architecture of Trust | `stub` | `2.0.0` | `` |
+| `CS230-L05` | IP Addressing, Subnets, Routing, and NAT | `manuscript` | `2.0.0` | `` |
+| `CS230-L06` | The Life of a Network Connection | `manuscript` | `2.0.0` | `` |
+| `CS230-L07` | TLS and the Architecture of Trust | `manuscript` | `2.0.0` | `` |
 | `CS230-L08` | Proxies, Load Balancers, and Modern Web Transport | `stub` | `2.0.0` | `` |
 | `CS230-L09` | Network Forensics for Software Engineers | `stub` | `2.0.0` | `` |
 

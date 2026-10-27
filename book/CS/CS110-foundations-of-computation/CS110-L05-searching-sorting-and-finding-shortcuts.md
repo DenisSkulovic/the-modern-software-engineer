@@ -10,42 +10,20 @@ prev: CS110-L04
 next: null
 ---
 
-
-
-
 # CS110 — Foundations of Computation and Algorithms
 ## Lecture 05: Searching, Sorting, and Finding Shortcuts
 
 *Binary search, sorting, recursion, divide and conquer, greedy algorithms, graph search, and the surprisingly creative art of avoiding unnecessary computation.*
 
-**Estimated study time:** 75–90 minutes, including experiments and exercises.
+**Estimated study time:** 60–80 minutes, including the optional practical lab.
 
 ---
 
-### How to read this session
+### How to listen to this lecture
 
-Sixteen rooms. The theme today: **don't search where the answer cannot be.**
+Written for continuous listening first, then for on-screen re-reading. The theme today is simple: **don't search where the answer cannot be.** Sticky-note callouts mark ideas worth pausing on, and diagrams show where work got skipped. Near the end, answer the challenges **out loud** before reading the solutions. The coding experiments live after the spoken lecture ends — keep them for a screen session.
 
-```text
-  ROOM MAP
-  ─────────────────────────────────────────────────────────────
-  ① Railway greed      ② Binary search        ③ Invariants
-  ④ Search the answer  ⑤ Why sort?            ⑥ Merge / D&C
-  ⑦ Sorting lower bound ⑧ Greedy yes/no       ⑨ BFS·DFS·Dijkstra
-  ⑩ Dynamic programming ⑪ Six patterns        ⑫ Elegant vs boring
-  ⑬ Lab               ⑭ Challenges           ⑮ Solutions
-  ⑯ Takeaways
-  ─────────────────────────────────────────────────────────────
-```
-
-| Rooms | Theme | Feel |
-|---|---|---|
-| 1 | Cheap next ticket ≠ cheapest trip | mystery |
-| 2–4 | Binary search + invariants + search-on-answer | the sharp knife |
-| 5–10 | Sort, D&C, lower bounds, greedy, graphs, DP | toolkit |
-| 11–16 | Patterns, judgment, lab, challenges | practice |
-
-> **Reading tip:** Sticky notes name the *shortcut*. Diagrams show where work got skipped.
+By the end, you should be able to explain why a cheap next step can lead to an expensive journey, why binary search is really about maintaining a promise, how sorting, divide and conquer, greedy choices, graph search, and memoization each avoid unnecessary work, and why the elegant algorithm sometimes loses to the boring one.
 
 ---
 
@@ -59,15 +37,7 @@ A customer wants to travel from Berlin to Vilnius. They're flexible about the ro
 
 Your application has access to a simplified network of possible connections.
 
-For illustration, let's invent these fares:
-
-| Connection | Price |
-|---|---:|
-| Berlin → Warsaw | €10 |
-| Warsaw → Vilnius | €90 |
-| Berlin → Kaunas | €25 |
-| Kaunas → Vilnius | €20 |
-| Berlin → Vilnius | €80 |
+For illustration, let's invent these fares. Berlin to Warsaw costs €10. Warsaw to Vilnius costs €90. Berlin to Kaunas costs €25. Kaunas to Vilnius costs €20. And Berlin straight to Vilnius costs €80.
 
 These are hypothetical fares, not actual railway prices.
 
@@ -79,6 +49,8 @@ Your developer implements a seemingly reasonable algorithm:
 4. Repeat until reaching Vilnius.
 
 What could possibly go wrong?
+
+The next diagram sets the greedy route, Berlin to Warsaw to Vilnius for €100, beside the better routes: through Kaunas for €45, or direct for €80.
 
 ```text
   GREEDY PATH                         BETTER PATHS
@@ -139,22 +111,23 @@ The cheapest next step may be part of a terrible overall route.
 
 And recognizing this distinction is central to algorithm design.
 
-Today we're going to investigate several powerful ways of solving problems more intelligently:
+Today we're going to investigate several powerful ways of solving problems more intelligently. Six shortcuts, in the order we'll meet them.
 
-| Shortcut | Idea |
-|---|---|
-| Sorting | expose useful structure |
-| Eliminating search space | don't look where the answer can't be |
-| Divide and conquer | smaller problems → combine |
-| Exploit math properties | skip brute force |
-| Reuse results | memoization / DP |
-| Search networks carefully | BFS / DFS / Dijkstra |
+**Sorting** exposes useful structure.
+
+**Eliminating search space** means not looking where the answer can't be.
+
+**Divide and conquer** turns one big problem into smaller problems whose answers you combine.
+
+**Exploiting mathematical properties** lets you skip brute force.
+
+**Reusing results**, through memoization and dynamic programming, stops you from solving the same problem twice.
+
+And **searching networks carefully**, with breadth-first search, depth-first search, and Dijkstra, gets you routes instead of accidents.
 
 But we'll begin with one of the simplest and most elegant algorithms ever invented.
 
-```text
-  ✓ Room 1 complete — local cheapest ≠ global cheapest
-```
+> ✓ Room 1 complete — local cheapest ≠ global cheapest
 
 ---
 
@@ -198,6 +171,8 @@ Therefore, you can discard the entire lower half of the search space.
 
 Half a billion records eliminated after one comparison.
 
+The next diagram contrasts the two strategies: linear search checks records one by one, up to a billion times, while binary search drops half the candidates at every step and needs about thirty steps for a billion.
+
 ```text
   Binary search vs linear search
   ──────────────────────────────
@@ -233,12 +208,13 @@ Every comparison can eliminate approximately half the remaining candidates.
 
 Let's see how many comparisons are needed.
 
-| Number of records | Approximate halvings required |
-|---|---:|
-| 1,024 | 10 |
-| 1 million | 20 |
-| 1 billion | 30 |
-| 1 trillion | 40 |
+About ten halvings for 1,024 records.
+
+About twenty for a million.
+
+About thirty for a billion.
+
+About forty for a trillion.
 
 One trillion records.
 
@@ -280,9 +256,7 @@ The structure preserves useful information.
 
 The algorithm exploits it.
 
-```text
-  ✓ Room 2 complete — one comparison, half a billion gone
-```
+> ✓ Room 2 complete — one comparison, half a billion gone
 
 ---
 
@@ -294,7 +268,7 @@ You probably already understand the basic idea, so we won't spend pages explaini
 
 Instead, let's examine the part that separates a reliable implementation from a subtly broken one.
 
-Consider this function:
+Consider this function. It's called `lowerBound`: it keeps a left and right boundary, repeatedly looks at the middle, and moves `left` past the middle if the middle value is too small, or pulls `right` back to the middle otherwise.
 
 ```typescript
 function lowerBound(
@@ -328,7 +302,7 @@ It returns the first position at which the value is greater than or equal to the
 
 If no such element exists, it returns the array's length.
 
-For example:
+For example, take the sorted array two, four, four, four, seven, nine. Asking for four returns index one, the first four. Asking for five returns index four, where seven sits. Asking for ten returns six, the array's length.
 
 ```typescript
 const values = [2, 4, 4, 4, 7, 9];
@@ -344,9 +318,11 @@ But why does it work?
 
 ## The invariant
 
-At every step, the algorithm maintains a promise about the interval `[left, right)`.
+At every step, the algorithm maintains a promise about the interval from `left` up to, but not including, `right`.
 
 The notation means that `left` is included and `right` is excluded.
+
+The next diagram shows that candidate range and the two update rules: a too-small middle moves `left` past it, anything else moves `right` down to it, until the two meet at the insertion point.
 
 ```text
   Invariant: answer lives in [left, right)
@@ -404,22 +380,23 @@ If someone asks why your binary search works, explaining the invariant is much s
 
 For such a simple idea, binary search has an impressive history of incorrect implementations.
 
-Common mistakes include:
+Common mistakes include six traps.
 
-| Trap | Symptom |
-|---|---|
-| Wrong interval boundaries | off-by-one / missed element |
-| Infinite loops | `left` never meets `right` |
-| Skipping the target | wrong branch update |
-| Duplicate mishandling | finds *a* match, not the bound you wanted |
-| Wrong insertion position | returns existence, not lower/upper bound |
-| Midpoint overflow (fixed-width ints) | silent wrong index |
+**Wrong interval boundaries** show up as off-by-one errors or a missed element.
+
+**Infinite loops** happen when `left` never meets `right`.
+
+**Skipping the target** comes from updating the wrong branch.
+
+**Duplicate mishandling** finds *a* match instead of the bound you wanted.
+
+**Wrong insertion position** returns whether something exists, not a lower or upper bound.
+
+And **midpoint overflow** in fixed-width integers silently produces a wrong index.
 
 In languages with fixed-width integer indices, even calculating the midpoint carelessly can produce integer overflow.
 
-A common safer expression is:
-
-`left + floor((right - left) / 2)`
+A common safer expression is `left + floor((right - left) / 2)`.
 
 For JavaScript's ordinary practical array indexing ranges, the overflow issue isn't usually relevant in the same way, but the general lesson remains.
 
@@ -427,9 +404,7 @@ Small boundary details can invalidate an otherwise sound algorithm.
 
 That's why choosing clear interval conventions and maintaining invariants is so valuable.
 
-```text
-  ✓ Room 3 complete — binary search = shrinking a promise
-```
+> ✓ Room 3 complete — binary search = shrinking a promise
 
 ---
 
@@ -449,9 +424,7 @@ Your question is:
 
 **What is the smallest daily workload capacity that allows all jobs to be completed within five days?**
 
-Imagine the jobs have these workload sizes:
-
-`[7, 2, 5, 10, 8]`
+Imagine the jobs have these workload sizes: seven, two, five, ten, and eight.
 
 You could attempt various possible capacities.
 
@@ -473,17 +446,13 @@ And 18.
 
 Increasing the capacity cannot make a previously feasible schedule impossible, assuming the rules remain the same.
 
-That means the answer to:
-
-"Is capacity X sufficient?"
-
-has a **monotonic** structure.
+That means the answer to the question "Is capacity X sufficient?" has a **monotonic** structure.
 
 For small capacities, the answer is no.
 
 After some threshold, the answer becomes yes.
 
-Conceptually:
+The next diagram lines up capacities from eight upward with a no or yes for each, and marks the first yes as the binary-search target.
 
 ```text
 Capacity:  8   9  10  11  12  13  14  15  16 ...
@@ -494,9 +463,7 @@ Feasible:  N   N   N   N   Y   Y   Y   Y   Y ...
 
 The numbers here are illustrative.
 
-The important pattern is:
-
-`false, false, false, ..., true, true, true`
+The important pattern is a run of false answers followed by a run of true answers.
 
 We're looking for the first `true`.
 
@@ -510,11 +477,7 @@ But this time, we're not searching an array.
 
 We're searching a range of possible answers.
 
-We implement a function:
-
-`canFinishWithCapacity(capacity)`
-
-It determines whether the work can be completed within the allowed number of days.
+We implement a function, `canFinishWithCapacity`, that determines whether the work can be completed within the allowed number of days.
 
 Then binary search finds the smallest capacity for which the function returns true.
 
@@ -522,15 +485,7 @@ This technique is commonly called **binary search on the answer**.
 
 It's useful because many optimization problems are difficult to solve directly but easy to verify for a proposed threshold.
 
-Examples include:
-
-| Optimization shape | Binary-searchable? |
-|---|---|
-| Minimum required capacity | if monotonic |
-| Maximum feasible load | if monotonic |
-| Smallest acceptable resource allocation | if monotonic |
-| Minimum speed to meet a deadline | if monotonic |
-| Largest value under a monotonic constraint | if monotonic |
+Examples include finding the minimum required capacity, the maximum feasible load, the smallest acceptable resource allocation, the minimum speed to meet a deadline, or the largest value under a constraint. In every case, the trick works only if the property is monotonic.
 
 The essential skill isn't memorizing the phrase "binary search on the answer."
 
@@ -548,9 +503,7 @@ It's identifying the mathematical structure hiding inside the problem.
 >
 > Hard to solve, easy to check? Look for a monotonic threshold.
 
-```text
-  ✓ Room 4 complete — binary search on the answer
-```
+> ✓ Room 4 complete — binary search on the answer
 
 ---
 
@@ -564,7 +517,7 @@ We sort.
 
 Sorting is one of the most studied problems in computer science, partly because it appears everywhere and partly because it reveals fundamental ideas about algorithm design.
 
-Consider a collection of reservations:
+Consider a collection of four reservations, each with an id and a check-in date. R3 checks in on November 9th, R1 and R2 both on November 2nd, and R4 on November 15th.
 
 ```typescript
 const reservations = [
@@ -577,7 +530,7 @@ const reservations = [
 
 You need to display them chronologically.
 
-In modern JavaScript, you might write:
+In modern JavaScript, you might call `toSorted` with a comparator that compares check-in dates as strings.
 
 ```typescript
 const sorted = reservations.toSorted(
@@ -610,9 +563,7 @@ You can find better sorting algorithms by being more strategic.
 
 And a particularly powerful strategy is **divide and conquer**.
 
-```text
-  ✓ Room 5 complete — sort pays upfront so search can skip work later
-```
+> ✓ Room 5 complete — sort pays upfront so search can skip work later
 
 ---
 
@@ -656,29 +607,31 @@ And it's a beautiful example of divide and conquer.
 
 ## Why does it work?
 
-A merge-sort algorithm consists of three conceptual steps:
+A merge-sort algorithm consists of three conceptual steps.
 
-```text
-  1. DIVIDE    split into smaller parts
-  2. CONQUER   sort each part
-  3. COMBINE   merge sorted parts → sorted whole
-```
+First, **divide**: split the problem into smaller parts.
+
+Second, **conquer**: sort each part.
+
+Third, **combine**: merge the sorted parts into a sorted whole.
 
 The key is that combining two sorted collections is much easier than sorting an arbitrary collection from scratch.
 
 Let's look at a small example.
 
-Original array:
+The original array is eight, three, six, two, seven, one.
 
-`[8, 3, 6, 2, 7, 1]`
-
-Divide:
-
-`[8, 3, 6]` and `[2, 7, 1]`
+Divide it into eight, three, six, and two, seven, one.
 
 Continue dividing until we have single-element collections.
 
-Then merge:
+Then merge. On the left side, three and eight merge into three, eight. Then three, eight and six merge into three, six, eight.
+
+On the other side, two and seven merge into two, seven. Then two, seven and one merge into one, two, seven.
+
+Finally, three, six, eight merges with one, two, seven and becomes one, two, three, six, seven, eight.
+
+The next diagram traces that split-and-merge shape, from the original array down to singles and back up to the sorted whole.
 
 ```text
   [8, 3, 6, 2, 7, 1]
@@ -692,24 +645,6 @@ Then merge:
          │
     [1, 2, 3, 6, 7, 8]
 ```
-
-`[3] + [8] → [3, 8]`
-
-`[3, 8] + [6] → [3, 6, 8]`
-
-On the other side:
-
-`[2] + [7] → [2, 7]`
-
-`[2, 7] + [1] → [1, 2, 7]`
-
-Finally:
-
-`[3, 6, 8] + [1, 2, 7]`
-
-becomes:
-
-`[1, 2, 3, 6, 7, 8]`
 
 The exact intermediate grouping depends on how odd-sized arrays are split, but the principle remains the same.
 
@@ -725,16 +660,7 @@ Every division approximately halves the collection.
 
 So the number of levels grows as O(log n).
 
-```text
-  Levels ≈ log n
-  Work per level ≈ O(n)
-  ─────────────────────
-  Total ≈ O(n log n)
-```
-
-Multiply the work per level by the number of levels:
-
-`O(n) × O(log n) = O(n log n)`
+Multiply the work per level by the number of levels: `O(n) × O(log n) = O(n log n)`.
 
 That's the time complexity of merge sort.
 
@@ -766,7 +692,7 @@ Each recursive call must work on a smaller collection.
 
 Without progress, recursion can continue indefinitely or overflow the call stack.
 
-Consider:
+Consider a tiny function called `countdown`: it returns immediately when `n` is zero or less, otherwise prints `n` and calls itself with one less.
 
 ```typescript
 function countdown(n: number): void {
@@ -805,9 +731,7 @@ For merge sort, the recursion depth is logarithmic, so stack depth is generally 
 
 The broader lesson is that elegant mathematical structure doesn't eliminate runtime constraints.
 
-```text
-  ✓ Room 6 complete — divide, conquer, merge (O(n log n))
-```
+> ✓ Room 6 complete — divide, conquer, merge (O(n log n))
 
 ---
 
@@ -835,11 +759,7 @@ For three items, six.
 
 For four items, twenty-four.
 
-In general, there are:
-
-`n!`
-
-possible permutations.
+In general, there are `n!` possible permutations.
 
 That's `n` factorial.
 
@@ -853,24 +773,13 @@ A sequence of binary decisions forms a decision tree.
 
 A decision tree with height `h` can distinguish at most `2^h` outcomes.
 
-Therefore, to distinguish `n!` possible orderings, we need:
+Therefore, to distinguish `n!` possible orderings, we need `2^h ≥ n!`.
 
-`2^h ≥ n!`
-
-Taking logarithms:
-
-`h ≥ log₂(n!)`
+Taking logarithms, `h ≥ log₂(n!)`.
 
 And the growth of `log₂(n!)` is Θ(n log n).
 
-```text
-  Information argument (sketch)
-  ─────────────────────────────
-  n! possible orderings
-  each comparison ≤ 1 bit of "which way?"
-  need ≥ log₂(n!) ≈ Θ(n log n) comparisons
-  in the worst case for comparison sorting
-```
+Put another way, each comparison yields at most one bit of "which way?", and we need at least `log₂(n!)` bits, which is about n log n comparisons in the worst case.
 
 So any comparison-based sorting algorithm has a worst-case lower bound of Ω(n log n) comparisons.
 
@@ -910,9 +819,7 @@ And that gives us another important algorithmic principle:
 >
 > Additional knowledge about the input can make a problem dramatically easier.
 
-```text
-  ✓ Room 7 complete — Ω(n log n) for comparisons; exploit structure to beat it
-```
+> ✓ Room 7 complete — Ω(n log n) for comparisons; exploit structure to beat it
 
 ---
 
@@ -965,6 +872,8 @@ Then repeat with meetings that start after the chosen one finishes.
 Why might that work?
 
 Because choosing the meeting that finishes earliest leaves as much room as possible for future meetings.
+
+The next diagram sketches four overlapping meetings on a timeline. The rule is to pick the earliest finisher among those still available, then repeat among the meetings compatible with it.
 
 ```text
   Unweighted interval scheduling (greed works)
@@ -1024,9 +933,7 @@ Heuristics can be useful.
 
 But we should know when we're using one.
 
-```text
-  ✓ Room 8 complete — greed needs a correctness property
-```
+> ✓ Room 8 complete — greed needs a correctness property
 
 ---
 
@@ -1113,14 +1020,7 @@ Then it repeatedly selects the unsettled node with the smallest tentative total 
 
 Let's walk through our hypothetical railway example.
 
-From Berlin, we know:
-
-| Destination | Best known cost |
-|---|---:|
-| Berlin | €0 |
-| Warsaw | €10 |
-| Kaunas | €25 |
-| Vilnius | €80 |
+From Berlin, we know the best known cost to each destination. Berlin itself costs €0. Warsaw costs €10. Kaunas costs €25. Vilnius costs €80, by the direct ticket.
 
 We first settle Berlin.
 
@@ -1138,9 +1038,7 @@ Next, we choose Kaunas, with tentative cost €25.
 
 From Kaunas, the connection to Vilnius costs €20.
 
-Total cost through Kaunas:
-
-`25 + 20 = €45`
+Total cost through Kaunas: twenty-five plus twenty, so €45.
 
 That's better than €80.
 
@@ -1150,11 +1048,7 @@ Eventually, Vilnius is selected with that lowest tentative cost.
 
 We've found the cheapest route in this simplified nonnegative weighted graph.
 
-```text
-  Naive greed: pick cheapest *edge* from here
-  Dijkstra:    pick smallest *total cost from start*
-               among unsettled frontier nodes
-```
+Compare the two greedy styles. Naive greed picks the cheapest *edge* from where you stand. Dijkstra picks the smallest *total cost from the start* among the unsettled frontier nodes.
 
 ## What made Dijkstra different?
 
@@ -1217,16 +1111,17 @@ This connects back to CS110-L01.
 
 Before designing an algorithm, we must understand the actual problem.
 
-| Algorithm | Optimizes… | Needs… |
-|---|---|---|
-| BFS | fewest edges (hops) | unweighted (or equal weights) |
-| DFS | exploration / structure | not shortest-path by itself |
-| Dijkstra | total nonnegative cost | nonnegative edge weights |
-| Real planner | whatever you defined | schedules, constraints, objective |
+So let's pin each tool to what it optimizes and what it needs.
 
-```text
-  ✓ Room 9 complete — match the search to the objective
-```
+**BFS** optimizes the fewest edges, and needs an unweighted graph, or equal weights.
+
+**DFS** is about exploration and structure. It is not a shortest-path algorithm by itself.
+
+**Dijkstra** optimizes total cost, and needs nonnegative edge weights.
+
+A **real planner** optimizes whatever you defined, and needs schedules, constraints, and an objective.
+
+> ✓ Room 9 complete — match the search to the objective
 
 ---
 
@@ -1270,13 +1165,11 @@ Despite its intimidating name, the central idea is often simple:
 
 ## An elementary example
 
-Consider the Fibonacci sequence:
-
-`0, 1, 1, 2, 3, 5, 8, 13...`
+Consider the Fibonacci sequence: zero, one, one, two, three, five, eight, thirteen, and onward.
 
 Each value is the sum of the previous two.
 
-A naive recursive implementation might be:
+A naive recursive implementation returns `n` directly when `n` is below two, and otherwise returns the sum of the two previous Fibonacci values, each computed recursively.
 
 ```typescript
 function fibonacci(n: number): number {
@@ -1291,6 +1184,8 @@ The code is beautiful.
 
 But the execution is wasteful.
 
+The next diagram shows the call tree for `fib(5)`. Notice that `fib(3)` and `fib(2)` show up again in different branches: the same subtrees are computed more than once.
+
 ```text
   fib(5)
    ├─ fib(4)
@@ -1303,7 +1198,7 @@ But the execution is wasteful.
 
 To calculate `fibonacci(40)`, it repeatedly recalculates many of the same smaller Fibonacci values.
 
-A memoized version remembers them:
+A memoized version remembers them. It keeps a `Map` of results; before computing, it checks the cache, and after computing, it stores the answer.
 
 ```typescript
 const memo = new Map<number, number>();
@@ -1359,12 +1254,13 @@ But the ability to recognize repeated work is extremely valuable.
 
 And you'll notice that this principle already appears in professional backend engineering.
 
-| DP-ish engineering habit | Same intuition |
-|---|---|
-| Caching calculated results | don't recompute |
-| Incremental aggregates | reuse previous state |
-| Compiled templates | pay once |
-| Avoiding repeated DB queries | overlapping work is expensive |
+Caching calculated results is the same intuition: don't recompute.
+
+Incremental aggregates reuse previous state.
+
+Compiled templates pay the cost once.
+
+And avoiding repeated database queries recognizes that overlapping work is expensive.
 
 These aren't necessarily textbook dynamic programming, but they exploit a related engineering intuition:
 
@@ -1374,9 +1270,7 @@ The challenge, of course, is knowing when the result remains valid.
 
 And that's where state, caching, and consistency enter the picture.
 
-```text
-  ✓ Room 10 complete — remember answers to overlapping subproblems
-```
+> ✓ Room 10 complete — remember answers to overlapping subproblems
 
 ---
 
@@ -1390,14 +1284,19 @@ You don't need to memorize fifty algorithms.
 
 For most full-stack engineering work and a substantial share of coding interviews, recognizing a few recurring patterns is much more valuable.
 
-| Pattern | Core idea | Typical use |
-|---|---|---|
-| **Hash-based lookup** | Organize keys for fast expected membership checks | Deduplication, joins, caches, matching |
-| **Sorting + binary search** | Establish order, then eliminate large ranges | Date ranges, thresholds, indexed lookups |
-| **Two pointers / sliding window** | Maintain a moving region without rescanning everything | Sequences, substrings, bounded windows |
-| **Divide and conquer** | Split a problem, solve smaller pieces, combine | Sorting, searching, recursive structures |
-| **Greedy selection** | Make a locally optimal choice when correctness conditions permit | Scheduling, some graph algorithms |
-| **Graph search / dynamic programming** | Explore relationships or reuse subproblem results | Routing, dependencies, planning, optimization |
+Here are the six patterns.
+
+**Hash-based lookup** organizes keys for fast expected membership checks. You'll use it for deduplication, joins, caches, and matching.
+
+**Sorting plus binary search** establishes order, then eliminates large ranges. Think date ranges, thresholds, and indexed lookups.
+
+**Two pointers and sliding windows** maintain a moving region without rescanning everything. They suit sequences, substrings, and bounded windows.
+
+**Divide and conquer** splits a problem, solves smaller pieces, and combines the results. It powers sorting, searching, and recursive structures.
+
+**Greedy selection** makes a locally optimal choice when correctness conditions permit. Scheduling and some graph algorithms use it.
+
+And **graph search with dynamic programming** explores relationships or reuses subproblem results, for routing, dependencies, planning, and optimization.
 
 Let's spend a moment on one pattern we haven't yet discussed.
 
@@ -1416,6 +1315,8 @@ When the window moves forward by one hour:
 - One old hour leaves the window.
 - One new hour enters.
 
+The next diagram shows a 24-hour window sliding forward by one hour, and the update rule: the new sum equals the old sum, minus the outgoing hour, plus the incoming hour.
+
 ```text
   Hours:  [h0 h1 h2 … h23] h24 h25 …
            └──── window ────┘
@@ -1426,9 +1327,7 @@ When the window moves forward by one hour:
 
 Why recalculate the entire sum?
 
-We can update it incrementally:
-
-`newSum = oldSum - outgoingValue + incomingValue`
+We can update it incrementally: `newSum = oldSum - outgoingValue + incomingValue`.
 
 That's a sliding window.
 
@@ -1452,15 +1351,13 @@ The broader principle is that neighboring solutions often share most of their in
 
 Recognizing that overlap allows us to reuse previous work.
 
-```text
-  ✓ Room 11 complete — six patterns on the pocket card
-```
+> ✓ Room 11 complete — six patterns, one toolkit
 
 ---
 
 # 12. When the Elegant Algorithm Loses to the Boring One
 
-There's one last trap worth investigating before the exercises.
+There's one last trap worth investigating before the oral examination.
 
 Suppose you're asked to find whether a target exists in a collection.
 
@@ -1497,10 +1394,7 @@ We pay once to organize the data.
 
 Then every lookup benefits.
 
-```text
-  One lookup:     scan O(n)  beats  sort+search O(n log n)
-  Many lookups:   pay once to organize → each search is cheap
-```
+For one lookup, a scan at O(n) beats sort plus search at O(n log n). For many lookups, you pay once to organize, and each search is cheap.
 
 This is a recurring architectural question:
 
@@ -1524,21 +1418,11 @@ One small but useful runtime detail.
 
 JavaScript's default `sort()` behavior converts elements to strings and compares them according to string ordering.
 
-For example:
-
-```typescript
-[1, 10, 2].sort();
-// [1, 10, 2]
-```
+For example, calling `sort()` with no comparator on `[1, 10, 2]` leaves it as `[1, 10, 2]`, because the string "10" sorts before "2".
 
 That's usually not what you want for numerical sorting.
 
-Use a comparator:
-
-```typescript
-[1, 10, 2].sort((a, b) => a - b);
-// [1, 2, 10]
-```
+Use a comparator: `[1, 10, 2].sort((a, b) => a - b)` produces `[1, 2, 10]`.
 
 Also remember that `sort()` mutates the original array.
 
@@ -1550,13 +1434,247 @@ But stability, mutation, and comparison semantics are separate concerns.
 
 A senior TypeScript developer should understand these behaviors even if they don't know which sorting algorithm a particular JavaScript engine uses internally.
 
-```text
-  ✓ Room 12 complete — elegant ≠ always faster for your workload
-```
+> ✓ Room 12 complete — elegant ≠ always faster for your workload
 
 ---
 
-# 13. Practical Lab: Let's Make the Computer Do Less Work
+# 13. The Oral Examination
+
+We now have enough tools to choose a search strategy like an engineer rather than reciting algorithm names.
+
+Before reading the solutions, try answering these questions out loud. Imagine that a senior engineer is interviewing you and will challenge any hand-waving. Speak complete explanations, not fragments.
+
+### Challenge A — The Reservation Search
+
+*Suggested time: 8 minutes.*
+
+Your application stores 500,000 reservations in memory.
+
+They're sorted by check-in date.
+
+You need to retrieve all reservations whose check-in date falls between November 10 and November 15.
+
+You can assume dates use a consistent sortable representation.
+
+1. Would you scan the entire array?
+2. How could binary search improve the operation?
+3. What happens if there are 10,000 matching reservations?
+4. Does O(log n) search mean the entire query can return 10,000 results in O(log n)?
+5. What happens to performance if reservations are frequently inserted into this sorted array?
+
+### Challenge B — The Interviewer's Trap
+
+*Suggested time: 8 minutes.*
+
+You're given an unsorted array of one million integers.
+
+You need to answer whether a particular value exists.
+
+An interviewer says: "Binary search is faster than linear search, so why don't you sort the array first?"
+
+How would you respond?
+
+Now suppose the same array will receive 200,000 membership queries.
+
+Does your answer change?
+
+Would you prefer sorting or building a hash-based Set?
+
+What factors would influence your choice?
+
+### Challenge C — The Scheduling Problem
+
+*Suggested time: 10 minutes.*
+
+You have a collection of meeting requests.
+
+Each meeting has a start time, end time, and revenue.
+
+You want to maximize revenue without scheduling overlapping meetings.
+
+A colleague proposes: "Always select the meeting that finishes earliest."
+
+Is this guaranteed to produce the maximum revenue?
+
+If not, construct a counterexample.
+
+How might remembering the best solution to smaller scheduling subproblems help?
+
+You don't need to implement the full algorithm.
+
+Focus on understanding why a greedy strategy may fail and how dynamic programming could become relevant.
+
+### Challenge D — Graph Search in Production
+
+*Suggested time: 10 minutes.*
+
+You're implementing dependency resolution for a build system.
+
+Project A depends on B and C.
+
+B depends on D.
+
+C also depends on D.
+
+1. How would you represent these relationships?
+2. How would you ensure D is built only once?
+3. What happens if A depends on B and B depends on A?
+4. Would BFS or DFS help detect a dependency cycle?
+5. Why is a simple visited Set insufficient by itself for detecting every directed cycle correctly?
+
+The final question is particularly important.
+
+It introduces the distinction between nodes that have been completely processed and nodes that are still active in the current traversal.
+
+> ✓ Room 13 complete — challenges answered out loud
+
+---
+
+# 14. Solutions and Discussion
+
+*Read this section after answering out loud. The coding lab appears after the spoken lecture ends.*
+
+### Solution A — Reservation ranges
+
+Because the array is sorted, binary search can find the beginning of the requested date range.
+
+A second boundary search can locate the end.
+
+The two searches require O(log n) comparisons each.
+
+But retrieving the matching records still requires O(k) work, where `k` is the number of matching reservations.
+
+So the total is:
+
+**O(log n + k)**
+
+This is an important complexity pattern for range queries.
+
+You can't return 10,000 records without performing work proportional to the output size.
+
+Frequent insertion into a sorted array may be expensive because maintaining order can require shifting elements.
+
+For a heavily updated production dataset, an ordered index or database-backed structure may be preferable.
+
+### Solution B — Sorting versus searching
+
+For one lookup, sorting first is generally wasteful.
+
+A linear scan costs O(n).
+
+Sorting and then binary searching costs O(n log n) overall.
+
+For many repeated lookups, preprocessing can be worthwhile.
+
+A hash-based Set provides expected O(n) construction and expected O(1) membership checks, making it attractive for repeated exact membership queries.
+
+Sorting may be preferable when ordered traversal or range searches are also needed, or when memory constraints and data characteristics favor that approach.
+
+The correct choice depends on the workload.
+
+### Solution C — Weighted scheduling
+
+Selecting the earliest-finishing meeting maximizes the number of compatible meetings in the classic unweighted problem.
+
+But it doesn't necessarily maximize revenue.
+
+Imagine these requests:
+
+- Meeting A: 09:00–10:00, revenue €10.
+- Meeting B: 10:00–11:00, revenue €10.
+- Meeting C: 09:00–11:00, revenue €100.
+
+The earliest-finishing strategy could select A and B, earning €20.
+
+But selecting C earns €100.
+
+A dynamic-programming solution can consider whether to include each meeting and reuse optimal results for compatible earlier or later subproblems.
+
+This is the classic weighted interval-scheduling problem.
+
+### Solution D — Dependency graphs
+
+Represent the projects as a directed graph.
+
+An edge from A to B means A depends on B.
+
+A build system can use graph traversal to identify dependencies and avoid rebuilding the same project unnecessarily.
+
+But cycles require special attention.
+
+Suppose A depends on B and B depends on A.
+
+Neither can be built first under those dependency rules.
+
+A common DFS-based cycle-detection method tracks three conceptual states:
+
+- Unvisited.
+- Currently being explored.
+- Completely processed.
+
+If traversal encounters a node that is already active in the current recursion path, it has discovered a directed cycle.
+
+A simple visited Set isn't sufficient by itself because revisiting a completely processed node can be perfectly legitimate.
+
+For example, both B and C may depend on D.
+
+Encountering D through two different branches doesn't necessarily indicate a cycle.
+
+This is why graph algorithms often need more precise state than merely "seen" versus "unseen."
+
+> ✓ Room 14 complete — answers checked
+
+---
+
+# 15. The Mental Model Worth Keeping
+
+Back to Berlin and Vilnius. A reasonable greedy algorithm — fast, simple, terrible. The fix wasn't faster code. It was better problem structure.
+
+Remember these durable distinctions:
+
+**Local optimum is not global optimum** — the cheapest next railway ticket need not yield the cheapest journey, and greedy needs a correctness argument.
+
+**Binary search needs order or monotonicity** — each comparison must justify discarding a whole region.
+
+**An invariant is a promise** — boundaries are where the bugs live.
+
+**Sorting pays upfront so later operations can skip work** — but only if the workload makes that payment worthwhile.
+
+**Comparison sorting cannot beat n log n** — beating it requires assuming something about the data.
+
+**Greedy needs a proof, and Dijkstra is not "cheapest next edge"** — Dijkstra chooses the smallest total cost from the start, and only for nonnegative weights.
+
+**Match the search to the objective** — BFS for fewest hops, Dijkstra for nonnegative cost, a real planner for schedules and prices.
+
+**Don't repeat work** — memoize overlapping subproblems, slide windows over overlapping ranges, and lean on indexes and caches.
+
+**Workload decides** — one lookup is not the same problem as a hundred thousand.
+
+> **The master sticky note**
+>
+> A good algorithm doesn't simply search faster. It uses knowledge about the problem to avoid searching where the answer cannot be.
+
+That is why binary search, sorting, and graph algorithms remain valuable even when an assistant can generate the code. Someone still has to recognize which problem to solve, which assumptions hold, and which result is correct.
+
+That also closes CS110. You now have the vocabulary of computation, representation, cost, structure, and shortcuts.
+
+---
+
+# 16. Next Course — Programming Languages, Memory, and Execution
+
+CS110 ends here: what can be computed, how we represent it, what it costs, how we store it, and how we avoid unnecessary search.
+
+The next layer is how languages and runtimes turn those ideas into running programs.
+
+What is a type? Where do values live in memory? What happens when a function calls another function? Why can two correct-looking programs behave so differently under the same algorithm?
+
+In **CS220-L01**, the next course begins — programming languages, memory, and execution. For other natural next courses, see the recommended study order in `README.md`.
+
+---
+
+## Optional Practical Lab — Let's Make the Computer Do Less Work
+
+*The spoken lecture ends here. The remaining material is a screen-first experiment worksheet.*
 
 Now for a little experimentation.
 
@@ -1566,11 +1684,11 @@ The goal is to observe algorithmic behavior, not build another application.
 
 **Suggested time: 15–20 minutes.**
 
-> **Gym rules:** predict before you run. Spoilers live in Room 15 for the challenges; these labs are for your own eyes.
+> **Gym rules:** predict before you run. The challenge solutions were in the spoken lecture; these labs are for your own eyes.
 
 ## Experiment A — Binary search with duplicates
 
-Start with:
+Start with a sorted array that contains repeats: one, three, three, three, five, eight, eight, twelve.
 
 ```typescript
 const values = [
@@ -1580,7 +1698,7 @@ const values = [
 
 Implement the `lowerBound` function from earlier.
 
-Predict the result for these targets:
+Predict the result for these four targets: three, four, eight, and thirteen.
 
 ```typescript
 lowerBound(values, 3);
@@ -1650,253 +1768,3 @@ Observe how the growth changes.
 Avoid pushing naive recursion to unnecessarily large values.
 
 Its execution time grows rapidly.
-
-```text
-  ✓ Room 13 complete — lab done (or at least attempted)
-```
-
----
-
-# 14. Four Interview-Style Challenges
-
-These exercises are intended to make you think before writing code.
-
-## Challenge A — The Reservation Search
-
-**Suggested time: 8 minutes**
-
-Your application stores 500,000 reservations in memory.
-
-They're sorted by check-in date.
-
-You need to retrieve all reservations whose check-in date falls between November 10 and November 15.
-
-You can assume dates use a consistent sortable representation.
-
-Questions:
-
-1. Would you scan the entire array?
-2. How could binary search improve the operation?
-3. What happens if there are 10,000 matching reservations?
-4. Does O(log n) search mean the entire query can return 10,000 results in O(log n)?
-5. What happens to performance if reservations are frequently inserted into this sorted array?
-
-## Challenge B — The Interviewer's Trap
-
-**Suggested time: 8 minutes**
-
-You're given an unsorted array of one million integers.
-
-You need to answer whether a particular value exists.
-
-An interviewer says:
-
-"Binary search is faster than linear search, so why don't you sort the array first?"
-
-How would you respond?
-
-Now suppose the same array will receive 200,000 membership queries.
-
-Does your answer change?
-
-Would you prefer sorting or building a hash-based Set?
-
-What factors would influence your choice?
-
-## Challenge C — The Scheduling Problem
-
-**Suggested time: 10 minutes**
-
-You have a collection of meeting requests.
-
-Each meeting has a start time, end time, and revenue.
-
-You want to maximize revenue without scheduling overlapping meetings.
-
-A colleague proposes:
-
-"Always select the meeting that finishes earliest."
-
-Is this guaranteed to produce the maximum revenue?
-
-If not, construct a counterexample.
-
-How might remembering the best solution to smaller scheduling subproblems help?
-
-You don't need to implement the full algorithm.
-
-Focus on understanding why a greedy strategy may fail and how dynamic programming could become relevant.
-
-## Challenge D — Graph Search in Production
-
-**Suggested time: 10 minutes**
-
-You're implementing dependency resolution for a build system.
-
-Project A depends on B and C.
-
-B depends on D.
-
-C also depends on D.
-
-Questions:
-
-1. How would you represent these relationships?
-2. How would you ensure D is built only once?
-3. What happens if A depends on B and B depends on A?
-4. Would BFS or DFS help detect a dependency cycle?
-5. Why is a simple visited Set insufficient by itself for detecting every directed cycle correctly?
-
-The final question is particularly important.
-
-It introduces the distinction between nodes that have been completely processed and nodes that are still active in the current traversal.
-
-```text
-  ✓ Room 14 complete — challenges attempted
-```
-
----
-
-# 15. Solutions and Discussion
-
-*Read this section after attempting the exercises.*
-
-## Challenge A — Reservation ranges
-
-Because the array is sorted, binary search can find the beginning of the requested date range.
-
-A second boundary search can locate the end.
-
-The two searches require O(log n) comparisons each.
-
-But retrieving the matching records still requires O(k) work, where `k` is the number of matching reservations.
-
-So the total is:
-
-**O(log n + k)**
-
-This is an important complexity pattern for range queries.
-
-You can't return 10,000 records without performing work proportional to the output size.
-
-Frequent insertion into a sorted array may be expensive because maintaining order can require shifting elements.
-
-For a heavily updated production dataset, an ordered index or database-backed structure may be preferable.
-
-## Challenge B — Sorting versus searching
-
-For one lookup, sorting first is generally wasteful.
-
-A linear scan costs O(n).
-
-Sorting and then binary searching costs O(n log n) overall.
-
-For many repeated lookups, preprocessing can be worthwhile.
-
-A hash-based Set provides expected O(n) construction and expected O(1) membership checks, making it attractive for repeated exact membership queries.
-
-Sorting may be preferable when ordered traversal or range searches are also needed, or when memory constraints and data characteristics favor that approach.
-
-The correct choice depends on the workload.
-
-## Challenge C — Weighted scheduling
-
-Selecting the earliest-finishing meeting maximizes the number of compatible meetings in the classic unweighted problem.
-
-But it doesn't necessarily maximize revenue.
-
-Imagine these requests:
-
-- Meeting A: 09:00–10:00, revenue €10.
-- Meeting B: 10:00–11:00, revenue €10.
-- Meeting C: 09:00–11:00, revenue €100.
-
-The earliest-finishing strategy could select A and B, earning €20.
-
-But selecting C earns €100.
-
-A dynamic-programming solution can consider whether to include each meeting and reuse optimal results for compatible earlier or later subproblems.
-
-This is the classic weighted interval-scheduling problem.
-
-## Challenge D — Dependency graphs
-
-Represent the projects as a directed graph.
-
-An edge from A to B means A depends on B.
-
-A build system can use graph traversal to identify dependencies and avoid rebuilding the same project unnecessarily.
-
-But cycles require special attention.
-
-Suppose A depends on B and B depends on A.
-
-Neither can be built first under those dependency rules.
-
-A common DFS-based cycle-detection method tracks three conceptual states:
-
-- Unvisited.
-- Currently being explored.
-- Completely processed.
-
-If traversal encounters a node that is already active in the current recursion path, it has discovered a directed cycle.
-
-A simple visited Set isn't sufficient by itself because revisiting a completely processed node can be perfectly legitimate.
-
-For example, both B and C may depend on D.
-
-Encountering D through two different branches doesn't necessarily indicate a cycle.
-
-This is why graph algorithms often need more precise state than merely "seen" versus "unseen."
-
-```text
-  ✓ Room 15 complete — answers checked
-```
-
----
-
-# 16. The Bigger Picture
-
-Exploit structure — sorted data, graphs, monotonic predicates — so you search less blindly.
-
-Separate local choices from global objectives. The cheapest next railway ticket need not yield the cheapest journey; greedy needs a correctness argument.
-
-Divide problems with merge sort and recursion, with correct base cases and progress. Don't repeat work: memoization, DP, sliding windows, indexes, caches.
-
-Match the algorithm to the objective: BFS for unweighted hop count, Dijkstra for nonnegative costs, a real planner for schedules and prices. Workload matters. Correctness is not optional.
-
-Berlin to Vilnius began with a reasonable greedy algorithm — fast, simple, terrible. The fix wasn't faster code. It was better problem structure: local versus global, a graph of cities and connections, a defined cost, and an algorithm whose correctness matched those assumptions.
-
-```text
-  POCKET CARD — CS110-L05
-  ═══════════════════════════════════════════════════════════
-  1. Local optimum ≠ global optimum
-  2. Binary search eliminates half — needs order / monotonicity
-  3. Maintain an invariant; boundaries are the bugs
-  4. Sort pays so later ops can skip work
-  5. D&C / merge: O(n log n); comparisons can't beat Ω(n log n)
-  6. Greedy needs a proof; Dijkstra ≠ "cheapest next edge"
-  7. Memoize overlapping subproblems; sliding windows reuse sums
-  8. Workload decides: one lookup ≠ a hundred thousand
-  ═══════════════════════════════════════════════════════════
-```
-
-> **The master sticky note**
->
-> A good algorithm doesn't simply search faster. It uses knowledge about the problem to avoid searching where the answer cannot be.
-
-That is why binary search, sorting, and graph algorithms remain valuable even when an assistant can generate the code. Someone still has to recognize which problem to solve, which assumptions hold, and which result is correct.
-
-```text
-  ✓ All rooms visited. Tickets cheaper. See you in CS220-L01.
-```
-
----
-
-
----
-
-## End of CS110
-
-**CS110 — Foundations of Computation and Algorithms** is complete. See the recommended study order in `README.md` for natural next courses.
-

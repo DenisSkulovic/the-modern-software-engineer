@@ -23,12 +23,47 @@ Train both skills: listening creates familiarity; oral challenges create intervi
 ## Speakable formatting
 
 - Prefer short spoken enumerations and bold term lead-ins over dense markdown tables in the spoken path
-- ASCII diagrams and code are fine when a preceding sentence states what they show
-- Keep HTTP/shell samples; don’t turn the lecture into a slide deck
+- ASCII diagrams and real multi-line samples are fine when a preceding sentence states what they show
+- Keep HTTP/shell samples when they teach; don’t turn the lecture into a slide deck
 - Separate **resolution / protocol semantics** from **connectivity / tooling** when the topic invites that confusion
+
+## Code fences and voice readers
+
+Many TTS / “listen to page” tools **do not read fenced code**. They announce something like “CODE BLOCK” and skip the contents. Write so a listener who never sees the fence still follows the idea.
+
+### Prefer not fencing
+
+Do **not** use a fenced block for content that is really one spoken phrase. Put it in prose or inline backticks instead:
+
+- Single status lines (`HTTP/2 304 Not Modified`, `200 OK`)
+- Single headers (`Accept: application/json`, `ETag: "version-42"`)
+- One-line URLs, host:port pairs, short equations, ping timings
+- Checkpoint / sticky one-liners (`✓ Room 3 complete — …`)
+- One-token punchlines (`false`, `NaN`, a single JSON field)
+
+Good: The browser received `HTTP/2 304 Not Modified`.
+Bad: a lone ```http fence containing only that status line.
+
+### When a fence is appropriate
+
+Use fences for material that is genuinely multi-line or too dense for comfortable inline reading:
+
+- Multi-line HTTP request/response exchanges
+- Real code, shell sessions, JSON/YAML documents
+- Multi-line ASCII diagrams
+
+**Always** put a short spoken caption **immediately before** the fence. The caption is the listening path; the fence is the screen aid. Prefer natural prose that **names the substance** (status, method, headers, what the function does) — not meta filler like “on screen, the next code block shows…”.
+
+If the fence is long or cryptic, the caption should summarize the takeaway in plain language (e.g. “the body is empty; only the status and validators changed”), so skipping the block does not erase the point.
+
+### Labs after the spoken end
+
+Lab worksheets may keep more fences (copy-paste commands). Still caption each experiment. Prefer one fence per coherent snippet over a parade of single-command fences when a short paragraph would do.
 
 ## Anti-patterns
 
 - Labs, DevTools steps, or long command worksheets inside the spoken spine
 - “End of course” footers while later lectures exist in the same course
 - Hand-wavy challenges with no expectation to speak a full explanation
+- Micro-fences for status lines, headers, math, or punchlines the listener must hear
+- Fences with no preceding spoken caption in the listening path

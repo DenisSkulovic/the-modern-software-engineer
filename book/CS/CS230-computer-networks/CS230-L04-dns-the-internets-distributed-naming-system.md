@@ -10,9 +10,6 @@ prev: CS230-L03
 next: CS230-L05
 ---
 
-
-
-
 # CS230 — Computer Networks and Web Protocols
 
 ## Lecture 04: DNS — The Internet's Distributed Naming System
@@ -859,14 +856,14 @@ It will be getting there.
 
 ### Lab A — Inspect address records
 
-On Linux or macOS, use `dig`:
+On Linux or macOS, use `dig` to ask for A and AAAA records for `example.com`:
 
 ```bash
 dig example.com A
 dig example.com AAAA
 ```
 
-On Windows PowerShell:
+On Windows PowerShell, the same idea with `Resolve-DnsName` and `-Type A` / `-Type AAAA`:
 
 ```powershell
 Resolve-DnsName example.com -Type A
@@ -876,6 +873,8 @@ Resolve-DnsName example.com -Type AAAA
 Examine the response type, returned addresses, TTL values, and DNS response status. Does the domain support both address families?
 
 ### Lab B — Explore delegation
+
+Query NS and SOA records, then run `dig +trace` to walk delegation toward the name.
 
 ```bash
 dig example.com NS
@@ -889,6 +888,8 @@ Remember that `dig +trace` performs its own resolution investigation. It does no
 
 ### Lab C — Compare recursive resolvers
 
+Ask the same A question of two public resolvers — for example `1.1.1.1` and `8.8.8.8` — and compare answers and remaining TTLs.
+
 ```bash
 dig @1.1.1.1 example.com A
 dig @8.8.8.8 example.com A
@@ -900,11 +901,7 @@ Compare the answers and remaining TTLs. Different results do not automatically i
 
 Curl's `--resolve` option lets you supply a particular address for a hostname and port while retaining the requested hostname for HTTPS processing.
 
-Example syntax:
-
-```bash
-curl -v --resolve example.com:443:YOUR_IP_ADDRESS https://example.com/
-```
+Example syntax: `curl -v --resolve example.com:443:YOUR_IP_ADDRESS https://example.com/`
 
 Replace `YOUR_IP_ADDRESS` with an appropriate address obtained from your investigation. Test only an endpoint you are authorized to access.
 

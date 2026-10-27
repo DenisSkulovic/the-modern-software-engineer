@@ -20,6 +20,9 @@ venv/
 *.pem
 *.key
 
+# One-shot agent scratch (throwaway helpers — do not commit)
+book/tools/_scratch/
+
 # Optional: uncomment to keep personal study notes off GitHub
 # book/students/*/ledger.yaml
 # book/students/*/progress.md

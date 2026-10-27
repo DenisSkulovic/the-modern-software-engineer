@@ -10,9 +10,6 @@ prev: CS230-L01
 next: CS230-L03
 ---
 
-
-
-
 # CS230 — Computer Networks and Web Protocols
 
 ## Lecture 02: Networking for Software Engineers
@@ -37,11 +34,7 @@ Both servers have access to excellent network infrastructure, with gigabit conne
 
 You run a large file transfer test against each, and both demonstrate impressive throughput.
 
-Then you make a tiny API request:
-
-```http
-GET /api/user/4812
-```
+Then you make a tiny API request: `GET /api/user/4812`
 
 The response contains barely 800 bytes.
 
@@ -87,27 +80,11 @@ They are related, but not interchangeable.
 
 ## 2.1 Bandwidth
 
-Network bandwidth is typically expressed in bits per second. A connection advertised as:
-
-```text
-1 Gbps
-```
-
-has a nominal data rate of one billion bits per second. Since eight bits make one byte, the theoretical conversion is approximately:
-
-```text
-1 Gbps = 125 MB/s
-```
+Network bandwidth is typically expressed in bits per second. A connection advertised as `1 Gbps` has a nominal data rate of one billion bits per second. Since eight bits make one byte, the theoretical conversion is approximately `1 Gbps = 125 MB/s`.
 
 Actual application throughput will generally be lower because of protocol overhead, competing traffic, network limitations, and other factors. But the rough capacity is substantial.
 
-Now consider a 1 KB API response. Even on a much slower 100 Mbps link, transmitting 1 KB takes roughly:
-
-```text
-1,000 bytes × 8 / 100,000,000 bits/s
-
-≈ 0.08 milliseconds
-```
+Now consider a 1 KB API response. Even on a much slower 100 Mbps link, transmitting 1 KB takes roughly: `1,000 bytes × 8 / 100,000,000 bits/s`, then `≈ 0.08 milliseconds`
 
 In other words, the actual transmission time for this tiny payload is nearly irrelevant.
 
@@ -154,7 +131,7 @@ Client                          Server
 
 If the network's round-trip time is 100 milliseconds, even an almost instantaneous server-side operation can require approximately 100 milliseconds for the request and response to travel.
 
-Now suppose the client needs to perform five dependent operations:
+Now suppose the client needs five dependent operations in sequence: fetch the user, then that user's organization, then permissions, then available products, then product pricing — each step waiting on the previous response:
 
 ```text
 Fetch user
@@ -168,11 +145,7 @@ Fetch available products
 Fetch product pricing
 ```
 
-Each request depends on information returned by the previous one. With a 100-millisecond RTT, the network alone can introduce approximately:
-
-```text
-5 × 100 ms = 500 ms
-```
+Each request depends on information returned by the previous one. With a 100-millisecond RTT, the network alone can introduce approximately: `5 × 100 ms = 500 ms`
 
 That's before meaningful server-side processing. If the operations were independent and could run concurrently, the situation would be quite different.
 
@@ -234,21 +207,11 @@ Consequently, transmitting a 5 MB response requires many packets. The sender and
 
 ## 3.2 IP addresses versus ports
 
-Let's imagine your browser connects to:
-
-```text
-203.0.113.42:443
-```
+Let's imagine your browser connects to: `203.0.113.42:443`
 
 The IP address identifies the network destination.
 
-The port identifies a transport endpoint at that destination. This lets one server expose multiple services:
-
-```text
-203.0.113.42:443    HTTPS
-203.0.113.42:22     SSH
-203.0.113.42:5432   PostgreSQL
-```
+The port identifies a transport endpoint at that destination. This lets one server expose multiple services: `203.0.113.42:443    HTTPS`, `203.0.113.42:22     SSH`, and `203.0.113.42:5432   PostgreSQL`
 
 These are conventional example assignments, not a recommendation to expose PostgreSQL publicly.
 
@@ -256,11 +219,7 @@ For a TCP connection, the combination of source and destination addresses and po
 
 ## 3.3 What is a socket?
 
-A socket is an operating-system abstraction through which applications perform network communication. When a Node.js server executes:
-
-```typescript
-server.listen(3000);
-```
+A socket is an operating-system abstraction through which applications perform network communication. When a Node.js server executes: `server.listen(3000);`
 
 it asks the runtime and operating system to establish a listening endpoint.
 
@@ -284,22 +243,11 @@ But reliability requires machinery. And machinery has costs.
 
 ## 4.1 Sequence numbers and acknowledgments
 
-Imagine our application sends 4,000 bytes over TCP. For illustration, divide the data into four segments:
-
-```text
-Segment A: bytes    0–999
-Segment B: bytes 1000–1999
-Segment C: bytes 2000–2999
-Segment D: bytes 3000–3999
-```
+Imagine our application sends 4,000 bytes over TCP. For illustration, divide the data into four segments: A covers bytes 0–999, B covers 1000–1999, C covers 2000–2999, and D covers 3000–3999.
 
 These are relative byte positions for the example, not literal TCP initial sequence numbers.
 
-Now suppose segment B disappears. The receiver obtains:
-
-```text
-A → C → D
-```
+Now suppose segment B disappears. The receiver obtains: `A → C → D`
 
 TCP needs to reconstruct the original byte stream. It knows which byte ranges have arrived because data is tracked using sequence numbers.
 
@@ -307,11 +255,7 @@ The receiver can acknowledge the contiguous data it has received and indicate wh
 
 With TCP selective acknowledgment support, it can also inform the sender about later byte ranges received out of order.
 
-The sender can then retransmit the missing information. Eventually, the receiving application sees:
-
-```text
-A → B → C → D
-```
+The sender can then retransmit the missing information. Eventually, the receiving application sees: `A → B → C → D`
 
 in the correct order.
 
@@ -363,11 +307,7 @@ Buffers fill. Without some form of regulation, data could be discarded or the re
 
 TCP solves this through **flow control**.
 
-The receiver advertises how much additional data it is prepared to accept, represented through the TCP receive window. Suppose the receiver effectively tells the sender:
-
-```text
-I currently have room for another 64 KB.
-```
+The receiver advertises how much additional data it is prepared to accept, represented through the TCP receive window. Suppose the receiver effectively tells the sender: `I currently have room for another 64 KB.`
 
 The sender must respect that constraint. As the receiving application consumes data, buffer space becomes available, and the advertised window may grow.
 
@@ -418,12 +358,7 @@ Importantly, the sender must respect both:
 - The receiver's flow-control window.
 - The congestion-control window.
 
-A simplified model is:
-
-```text
-Allowed outstanding data
-    ≈ min(receive window, congestion window)
-```
+A simplified model is: `Allowed outstanding data`, then `    ≈ min(receive window, congestion window)`
 
 Other constraints, including connection state and implementation behavior, also matter.
 
@@ -445,14 +380,7 @@ As acknowledgments return successfully, the sender increases the amount of data 
 
 During classical TCP slow start, the congestion window can grow approximately exponentially across round trips.
 
-A simplified illustration:
-
-```text
-Round trip 1:  10 segments
-Round trip 2:  20 segments
-Round trip 3:  40 segments
-Round trip 4:  80 segments
-```
+A simplified illustration: round trip 1 might allow about 10 segments, then 20, then 40, then 80 as the window grows.
 
 These numbers are illustrative, not a universal initial-window requirement or exact prediction.
 
@@ -502,24 +430,11 @@ The equation is:
 BDP = Bandwidth \times RTT
 \]
 
-Suppose we have:
+Suppose we have: `Bandwidth: 100 Mbps`, then `RTT:       100 ms`
 
-```text
-Bandwidth: 100 Mbps
-RTT:       100 ms
-```
+Convert the bandwidth: `100 Mbps = 12.5 MB/s`
 
-Convert the bandwidth:
-
-```text
-100 Mbps = 12.5 MB/s
-```
-
-Multiply by the RTT:
-
-```text
-12.5 MB/s × 0.1 s = 1.25 MB
-```
+Multiply by the RTT: `12.5 MB/s × 0.1 s = 1.25 MB`
 
 The result:
 
@@ -533,15 +448,7 @@ Even if the physical link could deliver 100 Mbps, the effective transfer rate ma
 Throughput \lesssim \frac{Window}{RTT}
 \]
 
-Using our figures:
-
-```text
-65,536 bytes / 0.1 seconds
-
-≈ 655,360 bytes/s
-
-≈ 5.24 Mbps
-```
+Using our figures: `65,536 bytes / 0.1 seconds`, `≈ 655,360 bytes/s`, and `≈ 5.24 Mbps`
 
 That's a startling difference. We have a network capable of 100 Mbps, but the in-flight-data limitation yields an approximate ceiling near 5 Mbps.
 
@@ -563,19 +470,11 @@ It also clarifies why a bandwidth upgrade may accomplish little when the true li
 
 Let's investigate one of the strangest network problems.
 
-You have a decent home internet connection. When the network is idle:
-
-```text
-Ping: 15 ms
-```
+You have a decent home internet connection. When the network is idle: `Ping: 15 ms`
 
 You start uploading a huge file to cloud storage.
 
-Now your video call begins stuttering. You measure again:
-
-```text
-Ping: 450 ms
-```
+Now your video call begins stuttering. You measure again: `Ping: 450 ms`
 
 Yet the upload is transferring data successfully at a respectable rate.
 
@@ -601,25 +500,7 @@ And application architecture matters too. A service that behaves well when RTT i
 
 ## 8.2 Jitter: Latency that refuses to behave consistently
 
-Another important property is **jitter**, or variation in packet delay. Suppose network RTT measurements are:
-
-```text
-20 ms
-21 ms
-19 ms
-24 ms
-22 ms
-```
-
-That's relatively stable. Now consider:
-
-```text
-20 ms
-380 ms
-31 ms
-170 ms
-22 ms
-```
+Another important property is **jitter**, or variation in packet delay. Suppose network RTT measurements are 20, 21, 19, 24, and 22 milliseconds — relatively stable. Now consider 20, 380, 31, 170, and 22 milliseconds.
 
 The average isn't the most interesting feature. The variability is.
 
@@ -637,11 +518,7 @@ Suppose a network drops only 0.5% of packets. That sounds tiny.
 
 Surely a 99.5% success rate should be excellent? Not necessarily.
 
-First, a large transfer involves many packets. If a transfer sends 10,000 packets and losses were independent with a probability of 0.5%, the expected number of lost packets would be:
-
-```text
-10,000 × 0.005 = 50
-```
+First, a large transfer involves many packets. If a transfer sends 10,000 packets and losses were independent with a probability of 0.5%, the expected number of lost packets would be: `10,000 × 0.005 = 50`
 
 Real packet losses are not necessarily independent; congestion can cause correlated bursts of loss.
 
@@ -657,14 +534,7 @@ Consequently, occasional network loss can create large latency outliers. This le
 
 ## 9.1 Average latency isn't enough
 
-Imagine your API reports:
-
-```text
-Average:  80 ms
-p50:      45 ms
-p95:     180 ms
-p99:    1200 ms
-```
+Imagine your API reports an average of 80 ms, a median (p50) of 45 ms, p95 of 180 ms, and p99 of 1200 ms.
 
 The median user experience is excellent.
 
@@ -702,17 +572,9 @@ Let's examine a few tools.
 
 ## 10.1 Ping: Is there a measurable round trip?
 
-On Windows:
+On Windows: `ping -n 20 example.com`
 
-```powershell
-ping -n 20 example.com
-```
-
-On Linux:
-
-```bash
-ping -c 20 example.com
-```
+On Linux: `ping -c 20 example.com`
 
 Ping typically sends ICMP echo requests and measures the time until replies arrive. Useful observations include:
 
@@ -731,29 +593,13 @@ Ping measures one particular kind of network exchange. Use it as evidence, not a
 
 ## 10.2 Traceroute: Which path are packets taking?
 
-On Windows:
+On Windows: `tracert -d example.com`
 
-```powershell
-tracert -d example.com
-```
-
-On Linux, if installed:
-
-```bash
-traceroute example.com
-```
+On Linux, if installed: `traceroute example.com`
 
 Traceroute-style tools exploit the IP packet hop limit to discover intermediate network devices.
 
-They can reveal a sequence of routers between your machine and the destination. You might see something like:
-
-```text
-1    1 ms     Home router
-2    8 ms     ISP router
-3   15 ms     Transit router
-4   38 ms     Another network
-5   41 ms     Destination
-```
+They can reveal a sequence of routers between your machine and the destination. You might see something like: hop 1 at 1 ms (home router), hop 2 at 8 ms (ISP), hop 3 at 15 ms (transit), hop 4 at 38 ms (another network), hop 5 at 41 ms (destination).
 
 This is illustrative output.
 
@@ -765,17 +611,9 @@ Routing decisions depend on network topology, commercial relationships, availabi
 
 ### Don't misread intermediate hops
 
-Suppose hop 7 reports:
+Suppose hop 7 reports: `250 ms`
 
-```text
-250 ms
-```
-
-but hop 8 reports:
-
-```text
-30 ms
-```
+but hop 8 reports: `30 ms`
 
 It would be premature to conclude that hop 7 introduces 220 milliseconds of forwarding delay.
 
@@ -789,21 +627,13 @@ Traceroute is useful for investigating reachability and possible routing anomali
 
 ## 10.3 Test the actual application connection
 
-If you suspect HTTPS connectivity, test TCP port 443 directly. On Windows PowerShell:
-
-```powershell
-Test-NetConnection example.com -Port 443
-```
+If you suspect HTTPS connectivity, test TCP port 443 directly. On Windows PowerShell: `Test-NetConnection example.com -Port 443`
 
 This can help distinguish a basic TCP connection failure from higher-level application problems.
 
-For HTTP-level information, curl is useful:
+For HTTP-level information, curl is useful: `curl -v https://example.com`
 
-```bash
-curl -v https://example.com
-```
-
-On Windows, `curl.exe` invokes the executable directly. To inspect timing on Windows:
+On Windows, `curl.exe` invokes the executable directly. To inspect timing on Windows, print DNS lookup, connect, TLS, TTFB, and total seconds while discarding the body:
 
 ```powershell
 curl.exe -sS -o NUL -w "DNS=%{time_namelookup}s Connect=%{time_connect}s TLS=%{time_appconnect}s TTFB=%{time_starttransfer}s Total=%{time_total}s`n" https://example.com
@@ -811,15 +641,7 @@ curl.exe -sS -o NUL -w "DNS=%{time_namelookup}s Connect=%{time_connect}s TLS=%{t
 
 The timing values are cumulative from the beginning of the transfer.
 
-Comparing them can help identify where time is being spent. For example:
-
-```text
-DNS:      0.020 s
-Connect:  0.110 s
-TLS:      0.200 s
-TTFB:     0.550 s
-Total:    0.560 s
-```
+Comparing them can help identify where time is being spent. For example: DNS 0.020 s, connect 0.110 s, TLS 0.200 s, TTFB 0.550 s, total 0.560 s.
 
 The initial DNS phase took approximately 20 milliseconds.
 
@@ -969,19 +791,9 @@ I would inspect browser or curl timings and compare them with server-side measur
 
 ### Solution 2 — The window limitation
 
-Using:
+Using: `Throughput ≈ Window / RTT`
 
-```text
-Throughput ≈ Window / RTT
-```
-
-we obtain:
-
-```text
-131,072 bytes / 0.08 seconds
-= 1,638,400 bytes/second
-≈ 13.1 Mbps
-```
+we obtain: `131,072 bytes / 0.08 seconds`, `= 1,638,400 bytes/second`, and `≈ 13.1 Mbps`
 
 The sender would be limited to approximately 13.1 Mbps under this simplified window-bound model, even if the network could support far more. Additional bandwidth alone would not resolve that limitation.
 
@@ -993,23 +805,11 @@ Appropriate remedies could include Smart Queue Management, fair queueing, traffi
 
 ### Solution 4 — The distributed dashboard
 
-Each sequential operation costs approximately:
+Each sequential operation costs approximately: `70 ms network RTT + 10 ms processing = 80 ms`
 
-```text
-70 ms network RTT + 10 ms processing = 80 ms
-```
+Eight operations require: `8 × 80 ms = 640 ms`
 
-Eight operations require:
-
-```text
-8 × 80 ms = 640 ms
-```
-
-If the requests are independent and can run concurrently, the elapsed time may approach the duration of the slowest individual operation:
-
-```text
-≈ 80 ms
-```
+If the requests are independent and can run concurrently, the elapsed time may approach the duration of the slowest individual operation: `≈ 80 ms`
 
 Actual results depend on resource contention, scheduling, service behavior, and network conditions. This illustrates why the shape of a dependency graph can be more important than the performance of an individual service.
 
@@ -1043,11 +843,7 @@ For a senior software engineer, understanding networking isn't about configuring
 
 # 15. Next Lecture — HTTP: The Protocol That Runs the Web
 
-Now that we understand the machinery transporting application data, it's time to investigate the protocol that gives those bytes meaning. Consider a simple request:
-
-```http
-GET /api/hotels/4812
-```
+Now that we understand the machinery transporting application data, it's time to investigate the protocol that gives those bytes meaning. Consider a simple request: `GET /api/hotels/4812`
 
 It looks innocent. But why can that response be cached while another cannot?
 
@@ -1069,11 +865,7 @@ Here's a compact experiment you can perform on your PC. It requires no infrastru
 
 ### Lab A — Measure idle latency
 
-Open a terminal and run a series of pings to a reachable destination. On Windows:
-
-```powershell
-ping -n 30 1.1.1.1
-```
+Open a terminal and run a series of pings to a reachable destination. On Windows: `ping -n 30 1.1.1.1`
 
 Record the minimum, average, and maximum RTT.
 

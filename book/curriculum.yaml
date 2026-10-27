@@ -177,21 +177,21 @@ courses:
     slug: ip-addressing-subnets-routing-and-nat
     legacy_ids: []
     source: CS/CS230-computer-networks/CS230-L05-ip-addressing-subnets-routing-and-nat.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS230-L06
     title: The Life of a Network Connection
     slug: the-life-of-a-network-connection
     legacy_ids: []
     source: CS/CS230-computer-networks/CS230-L06-the-life-of-a-network-connection.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS230-L07
     title: TLS and the Architecture of Trust
     slug: tls-and-the-architecture-of-trust
     legacy_ids: []
     source: CS/CS230-computer-networks/CS230-L07-tls-and-the-architecture-of-trust.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS230-L08
     title: Proxies, Load Balancers, and Modern Web Transport

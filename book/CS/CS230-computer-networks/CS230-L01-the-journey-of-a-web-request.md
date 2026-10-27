@@ -10,9 +10,6 @@ prev: null
 next: CS230-L02
 ---
 
-
-
-
 # CS230 — Computer Networks and Web Protocols
 
 ## Lecture 01: The Journey of a Web Request
@@ -51,11 +48,7 @@ By the end of this lecture, you should be able to narrate a full page load as a 
 
 # 2. Before the Network: What Did the User Actually Ask For?
 
-Our customer enters:
-
-```text
-https://stays.example.com/search?city=Berlin&guests=2#results
-```
+Our customer enters: `https://stays.example.com/search?city=Berlin&guests=2#results`
 
 This looks like a single address. Technically, it contains several separate instructions:
 
@@ -88,6 +81,8 @@ https://stays.example.com/search?city=Berlin&guests=2#results
 ### The fragment
 
 `#results` is **not transmitted to the server** as part of the HTTP request target. The client interprets it — scroll to an element, or participate in frontend routing. Change only `#results` to `#reviews` and the browser may update presentation without requesting another document.
+
+Parse the URL with the browser `URL` constructor and log `origin`, `pathname`, `search`, and `hash` separately.
 
 ```javascript
 const url = new URL(
@@ -163,7 +158,7 @@ The root doesn't know our hotel app; it refers to `.com`. The TLD refers to `exa
 
 ## 4.3 DNS records: Not every answer is an address
 
-An **A** record maps a name to an IPv4 address. An **AAAA** record maps a name to an IPv6 address. A **CNAME** record is an alias pointing to another name.
+An **A** record maps a name to an IPv4 address. An **AAAA** record maps a name to an IPv6 address. A **CNAME** record is an alias pointing to another name. Here the hotel hostname is a CNAME into a CDN name that then answers with A and AAAA addresses:
 
 ```text
 stays.example.com
@@ -197,11 +192,7 @@ We have an address. The laptop is on Wi-Fi in Vilnius; the destination might be 
 
 ## 5.1 Packets, not magical continuous connections
 
-At the IP layer, information travels in packets — addressing plus payload. Large responses are divided into units suitable for transmission. Routers forward toward destinations using routing information:
-
-```text
-Laptop → Wi-Fi → ISP → Transit/peering → Destination → CDN edge or server
-```
+At the IP layer, information travels in packets — addressing plus payload. Large responses are divided into units suitable for transmission. Routers forward toward destinations using routing information: `Laptop → Wi-Fi → ISP → Transit/peering → Destination → CDN edge or server`
 
 Each router doesn't need a complete picture of the internet — only enough to choose a next hop. Complex global behavior from many local forwarding decisions.
 
@@ -229,16 +220,15 @@ TCP does not understand HTTP, JSON, or application messages. It transports bytes
 
 ## 6.1 A connection needs two endpoints
 
-```text
-Client: 192.168.1.42:53144
-Server: 203.0.113.42:443
-```
+`Client: 192.168.1.42:53144`, then `Server: 203.0.113.42:443`
 
 IP address plus port. Server uses 443 (conventional HTTPS); the client's OS chooses a temporary local port. Private client addresses typically go through NAT. A TCP connection is identified by the two addresses, two ports, and transport context — how one machine keeps many conversations separate.
 
 A **socket** is the OS interface and endpoint abstraction for these services. A Node.js server listening on a port works through OS networking facilities, not by inspecting electrical signals on a cable.
 
 ## 6.2 The famous three-way handshake
+
+Client and server exchange SYN, then SYN-ACK, then ACK — after that the TCP connection is established:
 
 ```text
 Client                                  Server
@@ -274,6 +264,8 @@ TLS must (1) establish keys securely and (2) authenticate the intended server. E
 
 ## 7.2 The TLS 1.3 handshake
 
+In outline: the browser sends ClientHello; the server answers with ServerHello, certificate material, and Finished; the client Finished completes setup; then protected application traffic can flow:
+
 ```text
 Browser                                  Server
 ClientHello (crypto, key agreement, prefs)
@@ -296,11 +288,9 @@ Over an established TCP connection, a normal full TLS 1.3 handshake generally le
 
 ## 7.3 What TLS does and doesn't protect
 
-TLS protects communication between browser and the endpoint it connects to — often a CDN edge that **terminates TLS**, inspects or caches the request, then opens a separate protected connection to origin:
+TLS protects communication between browser and the endpoint it connects to — often a CDN edge that **terminates TLS**, inspects or caches the request, then opens a separate protected connection to origin. Spoken simply: browser to CDN is TLS A; CDN to application is a different TLS B:
 
-```text
-Browser ──TLS A──► CDN / Proxy ──TLS B──► Application
-```
+`Browser ──TLS A──► CDN / Proxy ──TLS B──► Application`
 
 Different keys; the browser's TLS does not necessarily extend to the Node.js process or database. "HTTPS enabled" is not a complete security analysis — know where encryption terminates and how subsequent hops are protected.
 
@@ -367,12 +357,7 @@ HTTP/2 uses binary framing, compressed headers, and multiplexed streams. Concept
 
 # 9. The Server You Contact Is Probably Not Your Application Server
 
-In development, a Node.js process may receive traffic directly. Production often has layers in front:
-
-```text
-Browser → CDN / Reverse Proxy → (cache hit?) → WAF → Load Balancer / Gateway
-       → Application → Redis / PostgreSQL / external services
-```
+In development, a Node.js process may receive traffic directly. Production often has layers in front: `Browser → CDN / Reverse Proxy → (cache hit?) → WAF → Load Balancer / Gateway`, then `       → Application → Redis / PostgreSQL / external services`
 
 Conceptual, not mandatory. What matters: several independent systems may participate in one browser request.
 
@@ -398,12 +383,9 @@ Customer receives a cached document from the CDN. Request never reaches Node.js.
 
 # 10. Inside the Application: Where the Famous 43 Milliseconds Came From
 
-Assume the request reaches the app:
+Assume the request reaches the app: `HTTP → Routing → Middleware → Auth → Validation → Business logic`, then `    → DB / deps → Serialize → Response`
 
-```text
-HTTP → Routing → Middleware → Auth → Validation → Business logic
-    → DB / deps → Serialize → Response
-```
+A tiny Express-style handler: require a `city` query param, otherwise return 400; otherwise load hotels and respond with JSON.
 
 ```typescript
 app.get("/api/hotels", async (req, res) => {
@@ -423,6 +405,8 @@ You measure controller execution: **43 ms**. Useful for that portion of the life
 ---
 
 # 11. The HTTP Response: The Server Finally Answers
+
+A successful response might begin with status `HTTP/1.1 200 OK`, then headers such as `Content-Type`, `Content-Encoding`, and `Cache-Control`, followed by the HTML body.
 
 ```http
 HTTP/1.1 200 OK
@@ -460,7 +444,7 @@ The server need not finish the entire response before the browser receives bytes
 
 # 12. The Browser Has Received HTML. Why Isn't the Website Ready?
 
-Receiving HTML ≠ displaying an interactive application.
+Receiving HTML ≠ displaying an interactive application. The first document may be almost empty: a stylesheet link, a module script, and a blank `#app` div — the booking UI arrives only after those assets run:
 
 ```html
 <!doctype html>
@@ -491,7 +475,7 @@ Browsers optimize and reuse work; they still must interpret and lay out content.
 
 ## 12.3 JavaScript enters the picture
 
-Obtain JS, parse/compile, execute. Vue initializes, builds UI, may fetch:
+Obtain JS, parse/compile, execute. Vue initializes, builds UI, then may fetch `/api/hotels?city=Berlin`, parse JSON, and assign `hotels.value`:
 
 ```typescript
 const response = await fetch("/api/hotels?city=Berlin");
@@ -502,6 +486,8 @@ hotels.value = data.hotels;
 HTML done; results still wait on the API. If that takes 500 ms — or only starts after a large bundle downloads and runs — delays stack.
 
 ## 12.4 A webpage is a dependency graph
+
+HTML fans out into CSS, JavaScript (which may init, call an API, then render), fonts, and images — some in parallel, some on the critical path:
 
 ```text
 HTML
@@ -578,6 +564,8 @@ HTTP/3 should not always beat HTTP/2. Network conditions, implementations, inter
 
 # 15. Reconstructing the Entire Journey
 
+Put the pieces in order for a cold visit: interpret the URL, check local state, possibly DNS, then TCP or QUIC, TLS where applicable, HTTP request and response, then frontend work before the UI is ready:
+
 ```text
 BROWSER: interpret URL → local state/policies → need network?
     ▼
@@ -619,11 +607,7 @@ Observations that seemed contradictory are now clues:
 
 ## 16.1 Why the first visit is slow
 
-HTML arrives reasonably quickly. Large JS bundle → startup → only then fetch hotel data. Third-party resources too. Critical path:
-
-```text
-HTML → download JS → execute startup → fetch results → render
-```
+HTML arrives reasonably quickly. Large JS bundle → startup → only then fetch hotel data. Third-party resources too. Critical path: `HTML → download JS → execute startup → fetch results → render`
 
 Bundles larger than needed; expensive modules on the initial path; too much synchronous init; API starts late. The 43 ms timer was never the right explanation for a four-second load.
 
@@ -779,6 +763,8 @@ Enable the **Protocol** column. Look for `h2`, `h3`, `http/1.1`. Different origi
 
 ### Lab C — Navigation timing in JavaScript
 
+In DevTools, read the navigation timing entry and print DNS, connect, TLS, TTFB, and total durations.
+
 ```javascript
 const navigation =
   performance.getEntriesByType("navigation")[0];
@@ -812,6 +798,8 @@ Milliseconds. Cautions: TLS is an API approximation; `waitingAfterRequest` inclu
 **Thought experiment:** DNS/connection/TLS all 0 ms, waiting 380 ms, transfer 12 ms. Reasonable: no fresh DNS/connection work on this path; substantial time after the request starts. **Not** proven: Node.js spent 380 ms. Timing narrows investigation; it rarely proves root cause alone.
 
 ### Lab D — From the terminal
+
+From the terminal: resolve the name with `nslookup` or `dig`, then probe HTTPS with `curl -I` / `curl -v`, and optionally print timing fields with `curl -w`.
 
 ```bash
 nslookup example.com
