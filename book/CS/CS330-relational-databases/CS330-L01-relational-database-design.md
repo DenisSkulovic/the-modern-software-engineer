@@ -13,6 +13,8 @@ next: CS330-L02
 
 
 
+
+
 # CS330 — Relational Databases and Transactions
 ## Lecture 01: Relational Database Design
 
@@ -29,6 +31,119 @@ Written for continuous listening first, then for on-screen re-reading. Theme: **
 By the end, you should be able to say why a flat reservation table fails when the business grows, how keys separate identity from business uniqueness, what normalization prevents and when snapshots are required, how constraints enforce relationships (and what they cannot), and how expand–migrate–contract keeps production online.
 
 ---
+
+# Part I — Intuition
+
+*Before deciding what tables to create, imagine the hotel's actual world. A database schema is a map of that world, and a bad map can confidently tell us the wrong story.*
+
+### The picture to carry in your head
+
+Imagine a small hotel with twelve rooms, one receptionist, and a thick paper reservation book. Each booking takes one line: the customer's name, their room, their dates, and the agreed price. If you were writing software for this hotel on its first day, you might copy that book into a single table. That seems sensible. It even works.
+
+Now imagine the hotel becomes part of a travel-booking platform. It changes its name. Several rooms are renovated and renamed. Customers book three rooms at a time. Nightly prices change daily. Some guests cancel one room without cancelling the entire trip, and accountants need to reconstruct exactly what someone agreed to pay six months ago.
+
+The book no longer has enough boxes for reality. That's the heart of relational database design: **not how many columns we can create, but which facts belong to which things, and how those facts change independently**.
+
+## 1. A name is not a hotel
+
+Suppose your first table stores the hotel name inside every reservation row. We have a hundred reservations at the hotel called Riverside Inn. When the hotel is renamed Riverside House, someone edits those hundred records to update the name.
+
+But which question were those records supposed to answer? If we want to know the hotel's current name, updating a hundred copies of it seems wasteful. If we want to know what the customer saw on their original confirmation, rewriting the historical name may actually destroy information we wanted to keep.
+
+A single field was being asked to represent two different facts: **what the hotel is called now** and **what the customer was told then**. The design failed because it couldn't distinguish them.
+
+Let's give each real thing a separate identity. There is a hotel, there is a customer, and there is a reservation linking them. The hotel has its current name. The reservation has its own identity, stay dates, and agreed booking details. A reservation refers to the hotel rather than repeating every current hotel attribute.
+
+The first picture shows the relationships. One hotel can have many reservations. One customer can make many reservations. Each reservation points to the hotel and customer it belongs to.
+
+```mermaid
+flowchart TB
+  H["Hotel<br/>id: 42<br/>current name: Riverside House"]
+  C["Customer<br/>id: 17"]
+  R1["Reservation 801<br/>hotel_id: 42<br/>customer_id: 17"]
+  R2["Reservation 802<br/>hotel_id: 42"]
+  H --> R1
+  H --> R2
+  C --> R1
+```
+
+The numbers are identifiers. They aren't the names shown to customers; they're stable handles for the entities our system needs to distinguish. This explains why an identifier deserves its own place in the model.
+
+**Checkpoint:** If the hotel changes its current name, which record normally needs updating? The hotel record. Old bookings can still refer to that same hotel ID.
+
+## 2. Why separate tables are useful, not merely tidy
+
+Imagine you store the customer's email beside every booking. The customer changes email addresses. If you update only nine of their ten reservations, the database now disagrees with itself. Which address is current?
+
+This is an *update anomaly*. It's a surprisingly simple problem: we copied one fact into many places and now must keep the copies synchronized.
+
+There are related failures. Maybe you can't store a hotel before its first reservation because hotels exist only inside booking rows. Or deleting the last reservation also deletes the only remaining record of the hotel. Those are design problems, not SQL syntax errors.
+
+A well-chosen relational model stores stable business facts in appropriate places and links them through keys. This reduces accidental duplication and gives us clearer rules about what may exist independently.
+
+But separating everything into a thousand tables isn't the goal. We're trying to **represent the actual relationships and dependencies of the business**, not win a contest for maximum normalization.
+
+## 3. Which information should we copy on purpose?
+
+Now for a twist. The hotel normally charges 180 euros per night. A customer booked in June with a promotional price of 120 euros. By October, the hotel's new rate is 240 euros.
+
+If we calculate the customer's old invoice by looking up today's hotel rate, we'll produce a wildly incorrect invoice. And if we update every booking whenever the current rate changes, we'll erase the historical agreement.
+
+So although we don't want arbitrary duplicates of the hotel's current name or customer email, we *do* want a preserved booking-price snapshot. It's not a faulty copy of today's price. It's a different fact: **what was agreed at the time of this booking**.
+
+The second picture separates current state from historical agreement. A change in today's catalogue does not rewrite yesterday's contract.
+
+```mermaid
+flowchart LR
+  H["Hotel / room category<br/>Current nightly rate: €240"] --> Q["New price quote<br/>computed now"]
+  B["Reservation 801<br/>Agreed nightly rate: €120<br/>Booked in June"] --> I["Historical invoice<br/>uses agreed terms"]
+```
+
+This is one of the most valuable database-design distinctions. Some repeated-looking information is a mistake. Some is a legitimate snapshot. You decide by asking what each value is supposed to mean over time.
+
+**Checkpoint:** Should a new room rate silently change a confirmed booking from six months ago? No. The old booking's agreed terms need their own durable representation.
+
+## 4. Relationships have shapes
+
+Consider a new requirement: one customer wants to reserve three rooms in one purchase. Our original rule was that one reservation equals one room. It no longer fits the business.
+
+We might now distinguish a booking order from the individual reserved room items. One order belongs to a customer, and several items belong to the order. Each item carries its own room category, dates, and price details. If one item is cancelled, the rest of the order can remain intact.
+
+Notice that we didn't just add a new array to a JavaScript object. We asked what the *business entities* are and how many of one thing can belong to another. Those counts and relationships are often called **cardinality**.
+
+A hotel might have many rooms. A reservation order might have many items. A particular physical room might be associated with many stays over time, but not overlapping confirmed assignments if that is the inventory model. Those are different kinds of rules.
+
+Relational databases give us tools to enforce parts of these relationships. A foreign key can require that the referenced hotel exists. A unique constraint can prevent duplicated identifiers or selected combinations of facts. But some rules, such as availability across overlapping date ranges, require more careful constraints or transactional coordination.
+
+The data model describes reality. The constraints help prevent us from recording an impossible version of it.
+
+## 5. Even a correct model eventually changes
+
+The hotel company will inevitably invent another requirement. Perhaps bookings may be transferred between customers. Perhaps some room categories offer connected rooms. Perhaps the business must retain the exact legal name appearing on a historical invoice.
+
+A database schema is therefore not a permanent stone tablet. It is a working model that needs controlled evolution.
+
+We cannot always change it in one dramatic deployment, because yesterday's backend may still be running while tomorrow's version rolls out. Real migrations often proceed in stages: introduce a compatible new structure, begin writing it, carefully move old data, then remove obsolete structures only once nobody needs them.
+
+That is the intuition behind safe schema migration. The challenge isn't simply to end with a beautiful schema. It's to **move from one model to another while the business continues operating**.
+
+### The minute-long mental replay
+
+Start with the hotel reservation book. Separate things with independent identities: customer, hotel, booking, perhaps booking items. Link them through stable keys rather than repeatedly copying current attributes. Keep historical snapshots when the past agreement is itself a fact worth preserving. Enforce what the database can enforce, and change the structure carefully as the business evolves.
+
+When the Deep Dive begins discussing entities, primary and foreign keys, normalization, denormalization, constraints, and migrations, place them around this one question: **which fact belongs where, and what should happen when reality changes?**
+
+### Three questions before the Deep Dive
+
+1. **Why not put the hotel name into every reservation as the only representation of the hotel?** Changing one current fact would require coordinated edits in many rows, and the system would confuse current identity with historical information.
+2. **Is storing an agreed booking price a normalization mistake?** Not necessarily. It is a historical business fact, distinct from the current catalogue rate.
+3. **Does a foreign key guarantee that a room isn't double-booked?** No. It establishes a reference relationship, not every time-dependent inventory rule.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
 
 # 1. The Reservation That Changed Its Price After the Guest Checked Out
 

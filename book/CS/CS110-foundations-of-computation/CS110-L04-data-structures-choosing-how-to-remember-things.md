@@ -13,6 +13,8 @@ next: CS110-L05
 
 
 
+
+
 # CS110 — Foundations of Computation and Algorithms
 ## Lecture 04: Data Structures: Choosing How to Remember Things
 

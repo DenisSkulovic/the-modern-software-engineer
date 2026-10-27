@@ -13,6 +13,8 @@ next: SE450-L05
 
 
 
+
+
 # SE450 — Kubernetes and Platform Engineering
 ## Lecture 04: Scheduling, Resources, and Autoscaling
 

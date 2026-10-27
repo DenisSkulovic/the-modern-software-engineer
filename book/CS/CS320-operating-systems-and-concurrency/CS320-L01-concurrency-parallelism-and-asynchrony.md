@@ -13,6 +13,8 @@ next: CS320-L02
 
 
 
+
+
 # CS320 — Operating Systems, Concurrency, and Runtimes
 ## Lecture 01: Concurrency, Parallelism, and Asynchrony
 
@@ -29,6 +31,96 @@ Written for continuous listening first, then for on-screen re-reading. Theme: **
 By the end, you should be able to say why two correct booking requests can oversell a room, how one JavaScript thread still races across `await`, what atomic updates and locks protect, why `Promise.all` and unbounded concurrency are dangerous without guardrails, and which questions to ask before trusting asynchronous orchestration.
 
 ---
+
+# Part I — Intuition
+
+*One hotel receptionist, two customers, and a chef who can keep several dishes moving without cooking them at the same instant. This is the picture behind concurrency, parallelism, and asynchronous JavaScript.*
+
+### The picture to carry in your head
+
+Imagine a small hotel with one receptionist and one room left for tonight. Two customers arrive, almost together. The receptionist checks the booking ledger for the first customer, notices that the room is available, then steps away to ask the manager for approval. While she is gone, another receptionist checks the same ledger and also finds the room available. Both later confirm a booking.
+
+Neither receptionist made an arithmetic mistake. Both read the same correct number: one room available. The problem is that the world changed between reading the number and deciding what to do with it. **When tasks overlap, the order in which they touch shared state becomes part of correctness.**
+
+The first diagram shows why a perfectly sensible two-step process can fail. The first check and the final reservation aren't one protected decision.
+
+```mermaid
+sequenceDiagram
+    participant A as Booking A
+    participant D as Shared inventory
+    participant B as Booking B
+    A->>D: Read available rooms
+    D-->>A: 1
+    B->>D: Read available rooms
+    D-->>B: 1
+    A->>D: Confirm booking
+    B->>D: Confirm booking
+    Note over D: Two commitments for one room
+```
+
+### 1. Doing several things versus doing several things at once
+
+Picture a cook managing three dishes. She puts soup on the stove, places bread in the oven, then chops vegetables. Several tasks are **in progress**, but only one chopping action happens at a time. That's concurrency: organizing overlapping activities so progress can continue whenever another task is waiting.
+
+Now add a second cook. One chops vegetables while the other kneads dough at exactly the same moment. That's parallelism: two computations genuinely executing simultaneously.
+
+These ideas are related but not interchangeable. One cook can coordinate many dishes. Two cooks can perform more work in parallel, but they might also get in each other's way if both need the same cutting board.
+
+JavaScript's event loop is rather like the first cook. A normal Node.js event-loop thread executes one JavaScript callback at a time. When an asynchronous network operation is initiated, the program can arrange to resume later and work on other callbacks meanwhile. That makes many network conversations manageable without assigning a dedicated continuously running JavaScript thread to every request.
+
+But if one callback performs a huge synchronous calculation, the cook is stuck chopping vegetables for a very long time. Other callbacks wait. Calling the calculation from a promise doesn't magically create a second cook.
+
+**Checkpoint:** If a Node.js server handles a thousand waiting HTTP requests, does that prove a thousand JavaScript functions are executing simultaneously? No. Many operations are waiting outside the current JavaScript execution thread.
+
+### 2. The dangerous moment is the pause
+
+Return to the hotel. Suppose the receptionist says, “There's one room; I'll reserve it after the manager replies.” The approval process causes a pause. Another booking can change inventory while she waits.
+
+An `await` can create a similar opportunity. Before the await, the application observes some state. After the await, it resumes in a world where other requests, callbacks, or services may have modified the state. Single-threaded JavaScript execution does not prevent this kind of logical race.
+
+The fix isn't to make everyone run faster. The fix is to define which operations must behave as **one indivisible decision**. A database can conditionally claim the last unit of inventory, accepting exactly one contender. Or a suitable transaction can coordinate the inventory update with creation of the booking record.
+
+A lock is another possible tool when its scope really covers all contenders. But a mutex protecting one Node.js process doesn't automatically coordinate ten different application instances. The protection must live at the same boundary as the shared business fact.
+
+### 3. Too many cooks can ruin the kitchen
+
+Now imagine one hundred customers arriving and every receptionist immediately contacting the same manager. Even if there are many receptionists, the manager can answer only a limited number of calls. The queue grows.
+
+That is what happens when code launches unlimited asynchronous requests against a database or supplier API. `Promise.all` is convenient, but a thousand promises may create a thousand competing operations. The downstream service doesn't suddenly gain extra capacity.
+
+We therefore often limit how many operations may proceed simultaneously. Think of a restaurant allowing only a reasonable number of active orders into its kitchen. A bounded queue protects the cooks and makes overload visible.
+
+Cancellation matters too. If a customer walks out, an expensive order still being prepared may no longer be useful. But cancelling the customer's wait isn't necessarily the same as undoing a payment or reservation that already happened. Those operations need explicit business rules.
+
+The second diagram places the three concepts side by side. They answer different questions: is work overlapping, is it simultaneous, and is shared state protected?
+
+```mermaid
+flowchart TB
+    A["Several jobs arrive"] --> B["Concurrency: overlap their progress"]
+    B --> C["Parallelism: use additional workers when helpful"]
+    C --> D["Coordination: protect shared business decisions"]
+    D --> E["Limits: don't overwhelm the shared dependency"]
+```
+
+### 4. The minute-long replay
+
+Two customers request the last room. Both can progress concurrently, even if individual JavaScript callbacks execute one at a time. A pause creates an opening for the state to change. Without an atomic reservation decision, both may act on the same old observation. Adding more threads could make them run simultaneously, but wouldn't fix the business invariant by itself.
+
+Meanwhile, thousands of waiting requests can be coordinated efficiently because waiting for I/O is different from consuming CPU. The moment every request competes for one limited dependency, however, concurrency needs a boundary.
+
+That is the picture you should carry into L01. The terminology—microtasks, event loop, locks, semaphores, deadlocks, worker threads—explains individual parts of this scene rather than representing separate mysteries.
+
+### Three questions before the Deep Dive
+
+1. **Can a single-threaded program have a booking race?** Yes. Tasks can interleave around asynchronous suspension or external state changes.
+2. **Does `Promise.all` turn CPU-heavy JavaScript into parallel execution?** No. CPU parallelism requires suitable workers, processes, or other parallel machinery.
+3. **Where should the last-room guarantee be enforced?** At the authoritative shared-state boundary, not merely by checking a value earlier.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
 
 # 1. The Last Room Was Sold Twice
 

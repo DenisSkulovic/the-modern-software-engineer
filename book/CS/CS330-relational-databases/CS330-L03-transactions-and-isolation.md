@@ -13,6 +13,8 @@ next: null
 
 
 
+
+
 # CS330 — Relational Databases and Transactions
 
 ## Lecture 03: Transactions: When Correct Operations Produce Incorrect Results
@@ -30,6 +32,136 @@ Written for continuous listening first, then for on-screen re-reading. The theme
 By the end, you should be able to explain what ACID does and does not promise, why Read Committed and Repeatable Read can still permit write skew, when Serializable, `FOR UPDATE`, optimistic versions, and atomic conditional updates each fit, how to bound retries without replaying irreversible side effects, and which questions to ask before trusting a concurrent workflow.
 
 ---
+
+# Part I — Intuition
+
+*Two customers want the same last room. Each follows the correct booking procedure. Both receive confirmation. How can the database do everything it was asked to do and still produce an impossible result?*
+
+### The picture to carry in your head
+
+It's Friday evening. A hotel has one Deluxe room left for Saturday. Alice clicks **Book** from Berlin. At almost the same moment, Bob clicks **Book** from Stockholm. Our service handles both requests.
+
+The developer has written a careful procedure: check availability, confirm that one room remains, create the reservation, and save it. There's even a database transaction around each request. All steps succeed.
+
+The problem is the word *each*. Alice's request is correct when viewed alone. Bob's request is correct when viewed alone. But together they sell two reservations for one room. The program has a problem with **how two correct-looking operations can overlap in time**.
+
+This is the fundamental purpose of transaction isolation: not to make one operation look pretty in code, but to control which combinations of concurrent operations may produce a committed result.
+
+## 1. Two stories can be individually true and jointly impossible
+
+Imagine a small reception desk with a chalkboard displaying the number of available rooms. It says **one**.
+
+Alice's clerk reads the board. One room remains. Good. Before Alice's clerk changes anything, Bob's clerk reads the same board. One room remains. Good.
+
+Alice's clerk writes a confirmed reservation. Bob's clerk writes a confirmed reservation. Both report success. The two clerks weren't lying about what they saw. But neither saw the other one's in-progress work before making the decision.
+
+The first picture shows the overlap. Neither request has to crash, read corrupt data, or violate a simple field type to create a bad business outcome.
+
+```mermaid
+sequenceDiagram
+  participant A as Alice's transaction
+  participant DB as Reservation database
+  participant B as Bob's transaction
+  A->>DB: Check availability
+  DB-->>A: 1 room available
+  B->>DB: Check availability
+  DB-->>B: 1 room available
+  A->>DB: Insert Alice's booking
+  B->>DB: Insert Bob's booking
+  Note over A,B: Both can appear individually valid<br/>but the combined outcome oversells
+```
+
+**Checkpoint:** Did either clerk necessarily make an arithmetic mistake? No. The mistake was relying on observations that became unsafe when the requests overlapped.
+
+## 2. A transaction isn't a magic pause button
+
+We often learn transactions through a simple example: transfer money between two accounts. Subtract from one, add to the other. If the operation fails halfway through, roll back so we don't leave money missing.
+
+That's important. A transaction can make a group of database changes succeed or fail as an appropriate unit. This is the **atomicity** idea: don't leave half of this transaction's committed changes behind.
+
+But atomicity doesn't automatically mean **nobody else can act between the time I read a value and the time I make a decision based on it**.
+
+Multiple transactions may operate concurrently. Databases deliberately allow substantial overlap because forcing every request on a large system to wait for every other request would be expensive.
+
+The challenge is choosing which overlapping actions may be observed and when conflicting work must wait, fail, or retry. That is the domain of **isolation**.
+
+The database can have a perfectly functioning transaction mechanism and still permit a business anomaly if the application chooses insufficient coordination for the invariant it needs.
+
+## 3. Give the last-room decision one authoritative moment
+
+How might we fix the receptionist problem?
+
+One approach is to make room allocation a single conditional operation. Instead of separately checking the chalkboard and later writing a reservation, ask the database to reduce the available count **only if a room is still available**.
+
+Think of a machine that dispenses the final numbered ticket. Alice and Bob can press the button together, but the machine must decide who receives the last ticket. It can't issue ticket number one twice.
+
+If the database has one inventory counter for the relevant date and category, an atomic conditional decrement can establish that decision, provided the full reservation operation uses a suitable transaction and the inventory model correctly represents what is being sold.
+
+Another approach is to lock an appropriate inventory row before inspecting and changing it. Then a competing transaction must wait or otherwise resolve the conflict before it can make its own decision. Other designs use a stricter isolation mode and retry transactions that the database rejects as incompatible with a serial history.
+
+These techniques differ, and the right one depends on how inventory is represented. A physical room assigned across date ranges isn't identical to a simple stock counter. But the core requirement is the same: **the business decision must have an authoritative point where competing claims cannot both succeed incorrectly**.
+
+The second picture replaces the two separate check-and-insert decisions with one guarded allocation step. One claimant gets the ticket; the other gets an explicit rejection or must retry the appropriate transaction.
+
+```mermaid
+flowchart TB
+  A["Alice requests last room"] --> I["Atomic guarded inventory allocation"]
+  B["Bob requests last room"] --> I
+  I --> W["One claimant succeeds<br/>available: 1 → 0"]
+  I --> L["Other claimant observes no room<br/>no confirmed allocation"]
+```
+
+**Checkpoint:** Is putting the word `transaction` around a check followed by an insert always enough? No. We need an isolation or atomic enforcement strategy that actually protects the booking invariant.
+
+## 4. Seeing the world at different moments
+
+Suppose Alice starts reading reservation data just before Bob commits an update. Should Alice see Bob's change during the rest of her transaction? The answer depends on how the database provides views of data to concurrent operations.
+
+Many relational databases support versions of records so readers and writers can make progress without always blocking one another. This idea is called **multi-version concurrency control**, or MVCC.
+
+Think of a photographer taking pictures of the hotel's booking board. Alice may consult a view representing one moment; Bob may change the live board afterward. A stable picture helps Alice reason consistently about what she saw, but it doesn't necessarily make her decision safe against every competing transaction.
+
+Some isolation modes provide newer views for successive statements. Others hold a transaction-level snapshot. Stronger modes may reject executions that cannot be understood as a valid sequential ordering of committed transactions.
+
+You don't need the names of every isolation level yet. First understand the reason they exist: **a transaction's view of other concurrent work affects which decisions are safe**.
+
+## 5. What about the payment provider?
+
+Now assume Alice wins the last room. Our booking service also needs to charge her card through an external payment provider.
+
+You might think we should hold one database transaction open while making the payment request, waiting for the provider, and sending a confirmation email. That sounds like keeping the whole business process together.
+
+But a PostgreSQL transaction cannot roll back an arbitrary payment provider's completed operation. Nor can a database lock guarantee that a network request returns promptly. Holding locks across remote waits can cause contention and failures.
+
+So database atomicity and the wider business workflow have different boundaries. We need a durable plan for payment attempts, uncertain responses, retries, cancellation, and recovery. Idempotency matters because a repeated network request must not accidentally perform the same charge twice.
+
+The transaction protects the relevant database state. A reliable workflow protects the cross-system process. They cooperate; neither substitutes for the other.
+
+## 6. A retry isn't the same as pretending the first attempt never happened
+
+Suppose two concurrent booking transactions conflict under a strict isolation mode. The database may abort one transaction. That is not a broken database; it may be the database preserving a stronger guarantee.
+
+The application can retry the complete database decision when appropriate, using fresh information and bounded attempts. But if the failed transaction already called an external payment API, blindly re-running the entire callback could charge the customer twice.
+
+This is why retry boundaries matter. The database may undo its own changes; it cannot rewind the world outside it. We need explicit handling of side effects and uncertain outcomes.
+
+### The minute-long mental replay
+
+Alice and Bob see the same last room. Each checks availability and tries to book. A transaction makes its internal changes atomic, but that alone may not coordinate the two observations. We need an authoritative allocation mechanism—perhaps a guarded update, an appropriate lock, or serializable isolation with retries—so both claims cannot commit incorrectly. Meanwhile, payment and notification happen through a wider workflow that a database transaction cannot magically undo.
+
+When the Deep Dive introduces ACID, MVCC, isolation levels, row locks, write skew, serializability, and retries, keep the reception desk in mind: **who is allowed to claim the final ticket, and what makes that decision real?**
+
+### Three questions before the Deep Dive
+
+1. **Can two transactions both commit successfully while the resulting business state is wrong?** Yes, when their isolation and enforcement strategy doesn't protect the relevant invariant.
+2. **What does an atomic guarded inventory update achieve?** It makes the shared allocation condition and decrement one authoritative operation, rather than a vulnerable check followed by an unrelated later change.
+3. **Can rolling back PostgreSQL automatically undo a payment already processed by an external provider?** No. External effects need their own protocols and recovery design.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
 
 # 1. The Hotel That Sold Its Last Room Twice
 

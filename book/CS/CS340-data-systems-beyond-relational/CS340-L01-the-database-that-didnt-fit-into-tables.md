@@ -10,6 +10,8 @@ prev: null
 next: CS340-L02
 ---
 
+
+
 # CS340 — Data Systems Beyond Relational Databases
 
 ## Lecture 01: The Database That Didn't Fit Into Tables

@@ -119,35 +119,35 @@ courses:
     slug: logic-proofs-and-invariants
     legacy_ids: []
     source: CS/CS120-mathematical-and-statistical-thinking/CS120-L01-logic-proofs-and-invariants.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS120-L02
     title: Probability, Randomness, and Risk
     slug: probability-randomness-and-risk
     legacy_ids: []
     source: CS/CS120-mathematical-and-statistical-thinking/CS120-L02-probability-randomness-and-risk.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS120-L03
     title: Statistics, Distributions, and Sampling
     slug: statistics-distributions-and-sampling
     legacy_ids: []
     source: CS/CS120-mathematical-and-statistical-thinking/CS120-L03-statistics-distributions-and-sampling.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS120-L04
     title: Experiments, Evidence, and Causality
     slug: experiments-evidence-and-causality
     legacy_ids: []
     source: CS/CS120-mathematical-and-statistical-thinking/CS120-L04-experiments-evidence-and-causality.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS120-L05
     title: Mathematical Models of Real Systems
     slug: mathematical-models-of-real-systems
     legacy_ids: []
     source: CS/CS120-mathematical-and-statistical-thinking/CS120-L05-mathematical-models-of-real-systems.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
 - code: CS220
   title: Programming Languages, Memory, and Execution
@@ -283,7 +283,7 @@ courses:
   status: in_progress
   slug: operating-systems-and-concurrency
   dir: CS/CS320-operating-systems-and-concurrency
-  notes: Preserve L01–L03 manuscripts; L04–L08 are focused OS/runtime deep dives and a forensics capstone.
+  notes: Preserve L01–L05 manuscripts; L06–L08 remain focused OS/runtime deep-dive stubs and a forensics capstone.
     L03 language-semantics material may belong more naturally in CS220 in a future revision — do not relocate
     during stub generation.
   lectures:
@@ -316,14 +316,14 @@ courses:
     slug: scheduling-cpu-time-and-contention
     legacy_ids: []
     source: CS/CS320-operating-systems-and-concurrency/CS320-L04-scheduling-cpu-time-and-contention.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS320-L05
     title: Virtual Memory, Paging, and Memory Pressure
     slug: virtual-memory-paging-and-memory-pressure
     legacy_ids: []
     source: CS/CS320-operating-systems-and-concurrency/CS320-L05-virtual-memory-paging-and-memory-pressure.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS320-L06
     title: From System Calls to Asynchronous I/O

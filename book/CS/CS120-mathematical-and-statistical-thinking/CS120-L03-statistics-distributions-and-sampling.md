@@ -10,6 +10,8 @@ prev: CS120-L02
 next: CS120-L04
 ---
 
+
+
 # CS120 — Mathematical and Statistical Thinking for Software Engineers
 
 ## Lecture 03: Statistics, Distributions, and Sampling

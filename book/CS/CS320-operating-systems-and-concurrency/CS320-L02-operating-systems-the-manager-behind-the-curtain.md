@@ -13,6 +13,8 @@ next: CS320-L03
 
 
 
+
+
 # CS320 — Operating Systems, Concurrency, and Runtimes
 ## Lecture 02: Operating Systems: The Manager Behind the Curtain
 
@@ -29,6 +31,105 @@ Written for continuous listening first, then for on-screen re-reading. Theme: **
 By the end, you should be able to say what a process is, why virtual memory and cgroups make host-free RAM and host-idle CPUs misleading, how namespaces make `localhost` ambiguous in Docker, why a writable container layer is not durable storage, and which questions to ask when a deployment fails for reasons that never appear in your TypeScript.
 
 ---
+
+# Part I — Intuition
+
+*Your application thinks it owns a computer. The operating system is the manager quietly deciding which resources it may actually use.*
+
+### The picture to carry in your head
+
+Imagine opening a food hall containing twenty restaurants. Each restaurant has its own menus, employees, storage shelves, and cash registers. Customers inside one restaurant shouldn't be able to wander behind the counter of the next. Yet all twenty establishments share the building's electricity, water, loading dock, and physical space.
+
+The building manager makes this arrangement work. Restaurants can operate independently because someone coordinates the shared resources and enforces boundaries.
+
+Your laptop or server is similar. Several programs run as if each has a private working environment, but they share the underlying processor, memory, storage, and network hardware. The **operating system kernel** is the privileged machinery coordinating that sharing.
+
+The opening diagram shows the important distinction: an application's apparent private world and the finite machine beneath it.
+
+```mermaid
+flowchart TB
+    A["Node.js application process"] --> K["OS kernel: schedules and mediates resources"]
+    B["Database process"] --> K
+    C["Background worker"] --> K
+    K --> P["CPU cores"]
+    K --> M["Physical memory"]
+    K --> F["Files and network devices"]
+```
+
+### 1. A process is a private workplace, not another computer
+
+Imagine that your Node.js service starts. The operating system gives it a process: a running program with its own execution state, virtual address space, and access to resources represented through operating-system handles.
+
+Your service might see a large address space and treat addresses as if they belong exclusively to it. The database process sees its own address space. That separation keeps ordinary programs from casually reading or overwriting each other's memory.
+
+But the physical RAM is shared. The CPU cores are shared. Files and network hardware are shared. The kernel keeps track of the mappings and permissions that allow each process to function.
+
+This is the trick behind the apparent independence of applications. A program experiences a private world, while the operating system manages a common physical world.
+
+### 2. When your application needs something, it asks
+
+Our Node.js program wants to read a file. It cannot simply command the physical storage device with unrestricted authority. Instead, it uses an operating-system interface that requests the operation.
+
+Such requests are called **system calls**. They are how programs ask the kernel to open files, create network sockets, allocate certain resources, or perform other protected operations.
+
+The kernel returns a handle—on Unix-like systems, often a **file descriptor**—that the process can use for subsequent operations. File descriptors aren't the file contents. They're references to kernel-managed open resources, which may represent files, sockets, pipes, and more.
+
+Like the food hall's loading-dock reservations, these handles are finite resources that have to be managed. Leak enough sockets or file descriptors and a program can fail even while CPU and ordinary heap memory remain plentiful.
+
+**Checkpoint:** If an application has enough JavaScript heap memory but cannot open another network connection, could it still be out of some resource? Yes. For example, the process or host could have exhausted available file descriptors.
+
+### 3. Scheduling and memory are two kinds of illusions
+
+Now imagine the building manager letting each restaurant believe that a shared loading dock is always available. In reality, the manager gives each business a turn.
+
+The CPU is similar. Several runnable threads can compete for fewer CPU cores. The scheduler decides which gets time. When one thread is waiting for I/O, another may run. When the machine is busy, a runnable thread might still have to wait.
+
+Memory has a different illusion. Each process sees **virtual addresses**, but those aren't themselves physical RAM locations. The kernel and hardware cooperate to translate virtual addresses to physical memory or other valid backing. Some pages may not yet be resident in RAM; touching them may require the operating system to establish a mapping or retrieve data.
+
+A **page fault** is the mechanism that handles such situations. It isn't automatically a fatal error. Many page faults are ordinary, handled events. Only some indicate invalid access or require expensive storage I/O.
+
+These details help explain why a process can be slow despite the machine appearing to have plenty of resources overall.
+
+### 4. A container is a fenced restaurant, not an entire new building
+
+Next, our application moves into Docker. The developer believes it now has a whole computer to itself. But a conventional Linux container shares the host kernel.
+
+The container gets isolated views of selected resources through **namespaces** and resource accounting or limits through **control groups**, commonly called cgroups. It may see its own process IDs, filesystem mounts, and network environment. It doesn't automatically get dedicated physical CPU cores or unlimited RAM.
+
+Suppose the host has 32 gigabytes of free RAM, but the container has a one-gigabyte memory limit. If the container's charged memory usage exceeds what the kernel can reclaim within that limit, the kernel may terminate a process even though host memory remains available.
+
+Or suppose our application listens on `127.0.0.1` inside its container. That loopback address refers to the container's network context, not magically to the host or another container. Publishing a port doesn't necessarily make a service bound only to container loopback reachable from outside.
+
+The second diagram shows the most useful perspective: a container changes the process's view and permitted resource budget, but doesn't change what physical machine ultimately executes the work.
+
+```mermaid
+flowchart TB
+    A["Application inside container"] --> N["Isolated views: namespaces"]
+    A --> Q["Resource accounting and limits: cgroups"]
+    N --> K["Shared Linux kernel"]
+    Q --> K
+    K --> H["Host CPU / RAM / storage / network"]
+```
+
+### 5. A machine can be healthy while your process isn't
+
+Imagine an application that works on your laptop but crashes in production. You might instinctively inspect the source code. Sometimes the code is perfectly fine for the environment you developed in, but production grants different permissions, memory limits, filesystems, or connectivity.
+
+The operating system is enforcing its side of the contract. Your program may be asking for a resource it doesn't have, trying to access a path that isn't mounted, or failing to close handles when requests finish.
+
+Instead of asking only, “Is the code correct?”, ask: “What world does this process believe it lives in, and which resources does the kernel actually allow it to use?”
+
+### Three questions before the Deep Dive
+
+1. **Is a process a separate computer?** No. It's an isolated execution context using shared physical resources through the kernel.
+2. **Why can a container be OOM-killed while host RAM is available?** The container may hit its own accounted memory limit.
+3. **Why does `localhost` sometimes stop working after containerization?** Loopback and listening addresses belong to a particular network context.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
 
 # 1. The Server That Worked Perfectly Until You Deployed It
 

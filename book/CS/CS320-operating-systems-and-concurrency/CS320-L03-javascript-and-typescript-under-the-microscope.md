@@ -13,6 +13,8 @@ next: CS320-L04
 
 
 
+
+
 # CS320 — Operating Systems, Concurrency, and Runtimes
 ## Lecture 03: JavaScript and TypeScript Under the Microscope
 
@@ -29,6 +31,105 @@ Written for continuous listening first, then for on-screen re-reading. The theme
 By the end, you should be able to explain why zero is not the same as missing, why object identity is not structural equality, why extracting a method can lose `this`, why `forEach` ignores async promises, how TypeScript narrowing and `satisfies` help without validating external JSON, and which guarantees sit outside the type checker.
 
 ---
+
+# Part I — Intuition
+
+*Your program looks perfectly clear to a human, but JavaScript takes the rules you wrote literally—even when those rules aren't the ones you had in mind.*
+
+### The picture to carry in your head
+
+Imagine a hotel receptionist receiving three instructions from headquarters.
+
+The first says, “If the service fee is absent, use the default of twenty euros.” The second says, “Identify a reservation by its customer and hotel details.” The third says, “Send a welcome message to each guest.”
+
+All three sound reasonable. And all three can go wrong when the program confuses **a value**, **an identity**, and **an instruction to wait**. These aren't obscure language puzzles. They are the kinds of mistakes that survive code review precisely because the code looks familiar.
+
+Think of JavaScript as a very literal contract interpreter. It won't substitute your business intention for the operations you actually expressed. TypeScript can inspect much of that contract before execution, but the resulting JavaScript still follows the runtime's rules.
+
+The first diagram shows how our three apparently sensible intentions can diverge from what JavaScript actually does.
+
+```mermaid
+flowchart TB
+    A["Developer's intention"] --> B["Value rule: zero or absent?"]
+    A --> C["Identity rule: same fields or same object?"]
+    A --> D["Timing rule: launched or finished?"]
+    B --> E["Unexpected service fee"]
+    C --> F["Failed reservation comparison"]
+    D --> G["Notification job ends too early"]
+```
+
+### 1. Zero is a value, not a missing instruction
+
+Imagine a hotel whose service fee is explicitly zero. Perhaps the customer is entitled to a waiver. The pricing code reads the fee and applies a fallback value using `fee || 20`.
+
+JavaScript treats zero as falsy, so that expression returns twenty. The program didn't forget basic arithmetic; it used a logical operator with semantics that don't match the domain requirement.
+
+The rule “missing means use a default” is not the same as “falsy means use a default.” For a nullable value, the nullish-coalescing operator often expresses the intended distinction more accurately: `fee ?? 20` preserves zero but substitutes the default for `null` or `undefined`.
+
+And even those two absence values aren't identical in every context. An omitted property, a property explicitly holding `undefined`, and a property holding `null` can behave differently during serialization and validation.
+
+**Checkpoint:** A customer discount is explicitly zero. Should a defaulting rule designed only for absent discounts replace it? No. Zero is a legitimate value.
+
+### 2. Two identical-looking reservations may not be the same object
+
+Now the receptionist compares two reservation forms. They display the same customer, hotel, and dates. A human says, “These forms describe the same reservation.”
+
+But in JavaScript, two separately created object values aren't strictly equal merely because their visible fields match. Object equality normally compares identity—whether references point to the same object—not whether two objects have equal contents.
+
+Conversely, two variables can refer to the same object. If one changes a date, the other observes the change. Copying a reference isn't copying an independent reservation. Even object spread makes only a shallow copy: nested objects may still be shared.
+
+The distinction is simple once you picture it. Two pieces of paper can contain identical writing and still be two different pieces of paper. Two people can also be holding references to the **same** piece of paper, so one person's edits affect what the other reads.
+
+The same principle explains why UI updates, caches, and reducers sometimes behave unexpectedly: the developer assumes an independent value where the program actually holds a shared reference.
+
+### 3. Starting a task is not finishing a task
+
+Finally, headquarters asks the notification service to email every guest. A developer calls an asynchronous function for each guest inside `forEach`, then records the batch as completed.
+
+But `forEach` doesn't await asynchronous callbacks. It invokes them according to its ordinary iteration semantics and doesn't wait for the promises they may return. The outer function can finish while messages are still pending.
+
+If the requirement is to process guests sequentially, use an explicit sequential awaiting structure. If messages can run concurrently, collect the promises and wait for them using an appropriate combinator. If one failure must not abort reporting the others, choose error-handling semantics that reflect that.
+
+The crucial distinction is between **scheduling work**, **waiting for work**, and **handling the outcome**. JavaScript's syntax can make these look deceptively similar, but they aren't the same promise.
+
+### 4. TypeScript sees contracts, not every runtime fact
+
+TypeScript can reject many mismatched operations before execution. It can narrow types after checks and help represent valid application states.
+
+But it cannot automatically verify untrusted JSON just because the developer declared an interface. Type information is not an invisible validator attached to objects in production.
+
+Imagine the API promises a completed reservation object. If the actual network response has a missing confirmation code, the TypeScript declaration alone doesn't repair it. The application must validate incoming data and handle unexpected states.
+
+So treat type checking as one useful checkpoint, and runtime validation as another. Neither substitutes for correct business behavior.
+
+The second picture separates the three moments at which our beliefs about a value need to be justified.
+
+```mermaid
+flowchart LR
+    A["Written program"] --> B["Type checker: declared relationships"]
+    B --> C["JavaScript runtime: actual values"]
+    C --> D["External world: actual API and database facts"]
+```
+
+### 5. The minute-long replay
+
+The service fee was zero, but the fallback operator treated it like absence. Two reservation objects had the same fields, but that didn't make their identities equal. A notification loop launched asynchronous work, but didn't await its completion. And a TypeScript declaration described expected data without validating the real network response.
+
+These mistakes aren't one single language feature. They belong to one enduring mental model: **the runtime follows the semantics of the operations you wrote, not the business intentions you silently attached to them**.
+
+L03's Deep Dive explains coercion, equality, copying, `this`, prototypes, promises, modules, narrowing, and runtime trust boundaries. Each is another place where an intuitive expectation can diverge from a precise language rule.
+
+### Three questions before the Deep Dive
+
+1. **Is zero the same as absent?** No. Choose fallback logic that preserves legitimate zero values.
+2. **Are two matching object literals strictly equal?** Not normally; separate objects have distinct identities.
+3. **Does an async callback inside `forEach` make the loop await its result?** No. Launching work and waiting for it are separate decisions.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
 
 # 1. The Deployment That Passed TypeScript and Broke Three Different Things
 
