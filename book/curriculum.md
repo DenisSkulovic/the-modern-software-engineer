@@ -1,6 +1,6 @@
 # The Modern Software Engineer — Course Catalogue
 
-**Version:** 2.0 — 2026-10-26  
+**Version:** 2.0 — 2026-10-27  
 **Default manuscript edition:** `2.0.0`  
 **Machine-readable source of truth:** [`curriculum.yaml`](curriculum.yaml)  
 **Programme guide / study order:** [`README.md`](README.md)  
@@ -42,7 +42,7 @@ Library/content state — not whether you have studied the lecture. See [`STATUS
 
 Lecture IDs look like `CS330-L03`. Electives use the same scheme (they are courses with `type: planned` or `elective`, not a separate numbering universe).
 
-## Core courses (15 · 66 lectures)
+## Core courses (16 · 73 lectures)
 
 ### CS — Computer Science
 
@@ -103,6 +103,20 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (they are cours
 | `CS330-L01` | Relational Database Design | `manuscript` | `2.0.0` | `BACK301-S02` |
 | `CS330-L02` | SQL and Query Performance | `manuscript` | `2.0.0` | `BACK301-S03` |
 | `CS330-L03` | Transactions: When Correct Operations Produce Incorrect Results | `manuscript` | `2.0.0` | `BACK301-S04` |
+
+#### CS340 — Data Systems Beyond Relational Databases
+
+300-level · 7 lectures · course status `draft` · `CS/CS340-data-systems-beyond-relational/`
+
+| ID | Lecture | Manuscript | Edition | Legacy |
+| --- | --- | --- | --- | --- |
+| `CS340-L01` | The Database That Didn't Fit Into Tables | `manuscript` | `2.0.0` | `` |
+| `CS340-L02` | Inside a Storage Engine | `stub` | `2.0.0` | `` |
+| `CS340-L03` | Document Databases and MongoDB | `stub` | `2.0.0` | `` |
+| `CS340-L04` | Indexes, Queries, and Aggregation Beyond SQL | `stub` | `2.0.0` | `` |
+| `CS340-L05` | Replication, Consistency, and Sharding in Practice | `stub` | `2.0.0` | `` |
+| `CS340-L06` | Specialized Data Systems | `stub` | `2.0.0` | `` |
+| `CS340-L07` | The Data Architecture Workshop | `stub` | `2.0.0` | `` |
 
 #### CS430 — Distributed Systems and Reliable Workflows
 
@@ -228,11 +242,11 @@ Elective status means optional in the programme — not a different ID scheme. E
 | Code | Title | Status | Builds on | Notes |
 | --- | --- | --- | --- | --- |
 | `CS350` | Advanced PostgreSQL Engineering | `planned` | `CS330` | First lecture candidate: PostgreSQL Internals — MVCC, Vacuum, and Bloat |
-| `CS360` | Algorithms and Coding Interview Lab | `planned` | `CS110` | Algorithmic patterns for senior engineering interviews |
+| `CS360` | Algorithms and Coding Interview Lab | `planned` | `CS110` | Algorithmic patterns for senior engineering interviews — distinct from listening to CS110 theory. Development priority #3 after CS340 and CS320 reorganization. |
 | `CS370` | Game Engines and Simulation Systems | `planned` | `CS220`, `CS320` | Independent exploration — game loops, entities, simulation time |
 | `SE250` | Modern Frontend Frameworks | `planned` | `SE240` | React for Vue Developers as first lecture candidate |
 | `SE350` | Advanced Software Design Patterns | `planned` | `SE330` |  |
-| `SE450` | Kubernetes and Platform Engineering | `planned` | `SE340`, `SE440` |  |
+| `SE450` | Kubernetes and Platform Engineering | `planned` | `SE340`, `SE440` | Practical platform knowledge beyond SE340's Docker/AWS intro. Development priority #4 among planned electives (after CS340, CS320 expansion, CS360). |
 | `SE460` | Performance Engineering | `planned` | `CS320`, `SE440` |  |
 | `AI450` | Advanced Agentic Systems | `planned` | `AI410` | Durable agents, workflow engines, advanced evaluations |
 | `SE360` | Practical Terraform and Cloud Delivery | `planned` | `SE340` |  |

@@ -1365,15 +1365,17 @@ That also closes CS330. You now have relational design, SQL performance judgment
 
 ---
 
-# 20. Next Course — Advanced Systems and Production
+# 20. Next Course — Data Systems Beyond Relational Databases
 
-Application and data engineering ends here with CS330: schema design, query performance, and the transaction semantics that decide whether concurrent bookings, payments, and inventory updates stay honest.
+CS330 ends here: schema design, query performance, and the transaction semantics that decide whether concurrent bookings, payments, and inventory updates stay honest.
 
-Recommended study order next is **CS430 — Distributed Systems and Reliable Workflows**, under Advanced systems and production. Today's durability uncertainty — the commit that succeeded while the client never heard — and the payment that lives outside PostgreSQL are the opening pressure for that course.
+The Application and data engineering track continues with **CS340 — Data Systems Beyond Relational Databases**. PostgreSQL is not the whole storage world. Document models, storage engines, replication and sharding, Redis, DynamoDB, search indexes, and analytical stores each optimize different trade-offs — and misuse any of them and you recreate today's problems with worse tooling.
 
-In **CS430-L01**, that course begins — Distributed Systems and Partial Failure. Why a network timeout tells you almost nothing about whether an operation succeeded, and how to build software when different computers cannot agree on what happened.
+In **CS340-L01**, that course begins — The Database That Didn't Fit Into Tables. Why a feature's shape sometimes refuses the relational rectangle, and how to choose a model without collecting databases like souvenirs.
 
-If your next focus is backend caching and asynchronous workflows rather than multi-node failure, **SE320** remains a natural alternative after CS330. If you want Linux, containers, and cloud delivery next, **SE340** is the other production-path option. See the recommended study order in `README.md`.
+When you are ready for multi-node failure and workflows that span more than one database, **CS430-L01** opens Advanced systems and production — Distributed Systems and Partial Failure. Today's durability uncertainty — the commit that succeeded while the client never heard — is the opening pressure for that course.
+
+If your next focus is backend caching and asynchronous workflows rather than storage models, **SE320** remains a natural alternative. If you want Linux, containers, and cloud delivery next, **SE340** is the other production-path option. See the recommended study order in `README.md`.
 
 ---
 

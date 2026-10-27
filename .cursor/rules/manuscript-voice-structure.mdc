@@ -8,6 +8,14 @@ alwaysApply: false
 
 Working standard for new and rewritten lectures (exemplars: `CS230-L03`, `CS230-L04`). Optimize for continuous voice listening **and** on-screen reading. Do not alter YAML frontmatter, IDs, or curriculum wiring unless asked.
 
+## Three products in one file
+
+Keep a deliberate distinction while drafting:
+
+1. **Spoken lecture** — the main product. Coherent story, sustained case study, short paragraphs, bold takeaways. Aim for roughly **4,000–5,500 spoken words** for most subjects (adjust when the material genuinely needs more). Usable mental models beat exhaustive factual recall.
+2. **Visual reference** — diagrams, compact comparisons, definitions, clear headings that support later revision on screen.
+3. **Practical investigation** — labs, commands, configs, and dense outputs **after** the spoken end marker so listening is not a recital of Dockerfiles.
+
 ## Spoken path (in order)
 
 1. Hook / case study → concepts with short paragraphs and bold takeaway lines
@@ -17,12 +25,14 @@ Working standard for new and rewritten lectures (exemplars: `CS230-L03`, `CS230-
 5. **Next Lecture — …** — in-course transition (not a dead “end of course” if more lectures exist)
 6. **Optional Practical Lab** — begins only after: *The spoken lecture ends here…*
 7. **Further Reading** — optional references
+8. **Dense Cheatsheet — Interview Glance Card** — after Further Reading (absolute end). Put the *entire* card body inside one fenced `text` (or similar) code block so voice readers announce “code block” and skip the contents. Compact monospaced tables / one-liners covering *everything* the lecture taught so a reader can scroll to the bottom (or skim many cards across lectures) and spark associations without rereading the manuscript. Keep only a short spoken caption outside the fence (e.g. that it is fenced for voice skip / screen revision).
 
-Train both skills: listening creates familiarity; oral challenges create interview retrieval.
+Train both skills: listening creates familiarity; oral challenges create interview retrieval. The glance card is a third retrieval mode: dense visual compression for revision under time pressure.
 
 ## Speakable formatting
 
 - Prefer short spoken enumerations and bold term lead-ins over dense markdown tables in the spoken path
+- Dense comparison tables belong in the end **Dense Cheatsheet** (or labs), not in the listening spine
 - ASCII diagrams and real multi-line samples are fine when a preceding sentence states what they show
 - Keep HTTP/shell samples when they teach; don’t turn the lecture into a slide deck
 - Separate **resolution / protocol semantics** from **connectivity / tooling** when the topic invites that confusion

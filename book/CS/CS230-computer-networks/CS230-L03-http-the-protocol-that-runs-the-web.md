@@ -1042,3 +1042,125 @@ The objective is to practice separating HTTP semantics from the browser tooling 
 4. [MDN — HTTP Overview](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Overview) — Practical reference for HTTP fundamentals.
 5. [MDN — HTTP Caching](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching) — Browser and intermediary caching behavior.
 
+---
+
+## Dense Cheatsheet — Interview Glance Card
+
+*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
+
+```text
+CS230-L03  HTTP — INTERVIEW GLANCE CARD
+
+CORE MODEL
+  HTTP vs transport   TCP/QUIC move bytes; HTTP assigns meaning
+                      (method, target, headers, status, body)
+  Resource            Conceptual URI target — not “a file on disk”
+  Representation      One concrete encoding (JSON, HTML, …) via negotiation
+  Contract layers     Protocol permits/promises X; APPLICATION still enforces
+                      exactly-once effects, atomic version checks, privacy
+
+METHODS — SAFE?  IDEMPOTENT?  EFFECT
+  GET     yes   yes   Retrieve a representation
+  HEAD    yes   yes   Same metadata as GET, no body
+  POST    no    NO*   Submit / process / create (*not guaranteed)
+  PUT     no    yes   Create or REPLACE full state at the URI
+  PATCH   no    NO*   Partial update (*{"price":150} may be; {"increaseBy":10} not)
+  DELETE  no    yes   Remove — 2nd delete: same intended end state (gone);
+                      responses may differ (204 then 404)
+
+  Retry trap:  no response ≠ failed. Blind POST retry → duplicates.
+               Fix: Idempotency-Key + durable key→result; reject mismatched reuse;
+               concurrent-safe.
+  Safety trap: never put destructive work on GET — crawlers/caches auto-fetch.
+
+STATUS CODES — OUTCOME (body enriches, never contradicts)
+  200  Success + content          NEVER bury real failures in {"success":false}
+  201  Created                    often + Location
+  202  Accepted for processing    NOT finished — job id + statusUrl; poll/SSE
+  304  Not Modified               no body; client REUSES stored representation
+  400  Malformed / invalid
+  401  Auth missing/unacceptable  HTTP auth challenge — ≠ 403
+  403  Understood, forbidden
+  404  Not found
+  406  No acceptable representation   (Accept negotiation)
+  409  Conflict with current state    domain conflict (illegal transition…)
+  412  Precondition failed            If-Match etc. — more specific than 409
+  415  Unsupported request media type
+  422  Well-formed but unprocessable
+  429  Too many requests
+  500  Unexpected server failure
+  502  Bad upstream via gateway
+  503  Temporarily unavailable        prefer over “200 + error JSON”
+  504  Gateway timeout
+  Prefer coherent errors (e.g. application/problem+json).
+
+HEADERS — NEGOTIATION, NOT DECORATION
+  Accept / Content-Type              want response type / type of THIS body
+  Accept-Language / Content-Language preferred vs actual
+  Accept-Encoding / Content-Encoding compression offer vs applied (br, gzip)
+                                     ≠ HTTP framing/version
+  Authorization                      credentials for this request
+  Cache-Control                      freshness / storage / validation policy
+  ETag / Last-Modified               validators
+  If-None-Match / If-Modified-Since  “still current?” → often 304
+  If-Match                           “update only if version matches” → else 412
+  Vary                               extra request dims in the cache key
+  Set-Cookie / Cookie                continuity (Secure, HttpOnly, SameSite)
+
+CACHING — FRESHNESS vs VALIDATION vs DANGER
+  Freshness (max-age, s-maxage)   still young enough?  → may NEVER contact origin
+  Validation (ETag/LM + cond.)    still current?       → RTT, but no body on 304
+  Variation (Vary)                which dims inequivalent? wrong Vary → wrong body
+
+  Directive     Myth              Reality
+  max-age=N     TTL               fresh ~N seconds
+  public        anyone may cache  shared caches allowed (other rules apply)
+  private       don’t share       no shared full-response cache; private may store
+  no-cache      “don’t cache!”    MAY store; MUST revalidate before reuse
+  no-store      don’t keep        conforming caches MUST NOT store (≠ full privacy)
+  s-maxage      shared TTL        shared freshness; overrides relevant general
+  immutable     never changes     don’t expect change during freshness (hashed assets)
+
+  Assets: content-hashed names → long max-age + immutable.
+          HTML entrypoints → short/careful (stale HTML → missing bundles).
+  Personal data: often private, no-store. Shared CDN of /api/my-reservations
+          without isolation → cross-customer leaks.
+  Cache key = method + URL + relevant Vary dims (+ CDN config).
+  Caching ≠ “put in Redis.”
+
+CONDITIONAL REQUESTS & CONCURRENCY
+  Freshness hit:     use stored body, no origin trip
+  Validation hit:    If-None-Match → 304 → reuse stored body
+  Lost-update guard: GET → ETag → PUT/PATCH + If-Match → 412 if stale
+
+  ETag: opaque validator (hash/revision/…). Weak W/ = semantic equivalence.
+  Last-Modified / If-Modified-Since: coarser; clock resolution can miss close edits.
+  Optimistic concurrency: concurrent edits OK; version check ATOMIC with write.
+  HTTP supplies the contract; DB/app must close the check-then-act race.
+
+HTTP VERSIONS — SAME LANGUAGE, DIFFERENT MACHINERY
+  1.1  textual; TCP(+TLS); persistent; no true browser multiplexing
+  2    binary frames; multiplexed streams; HPACK; TCP HoL under loss
+  3    QUIC/UDP; independent streams; TLS integrated
+  Semantics (methods/status/ETag/cache) unchanged across versions.
+  Diagnose PERFORMANCE at transport; CORRECTNESS at semantics.
+
+RESERVATION API PATTERNS
+  Search    GET + short s-maxage if anonymous; vary params/currency/lang;
+            cache ≠ bookable truth
+  Create    POST + Idempotency-Key; retry returns recorded outcome
+  Edit      PUT/PATCH + If-Match → 412 on conflict
+  Cancel    often domain POST …/cancel (transition/refunds/audit) ≠ literal DELETE
+  Outage    honest 5xx + structured error; retry only if safe/idempotent
+
+FIVE QUESTIONS THAT RECOVER THE LECTURE
+  1. What are you asking?           (method → safe? idempotent?)
+  2. What happened?                 (status honest? body enriching?)
+  3. How is the representation described?  (headers / negotiation)
+  4. May this answer be reused?     (freshness, validation, Vary, private/shared)
+  5. What must the app still guarantee?
+     (exactly-once effects, atomic preconditions, privacy)
+
+SENIOR LINE: know what HTTP guarantees, what it permits, and what YOU enforce.
+```
+

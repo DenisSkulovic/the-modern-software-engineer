@@ -26,7 +26,7 @@ book/
 └── AI/                    ← Artificial Intelligence courses
 ```
 
-**3 disciplines · 15 core courses · 60 lectures** (all at manuscript status, edition `2.0.0`).
+**3 disciplines · 16 core courses · 73 lectures** (most at manuscript status; `CS340` is stubbed and under construction; edition `2.0.0`).
 
 Lecture identity: `CS330-L03`. Frontmatter carries `id`, `manuscript`, `edition`, `legacy_ids`, `prev`/`next`.
 
@@ -44,7 +44,7 @@ Details: [`STATUS.md`](STATUS.md).
 The catalogue is not a reading sequence. Course numbers describe scope and difficulty, not a rigid calendar.
 
 1. **Foundations** — `CS110` → `CS220` → `CS230` → `CS320`
-2. **Application and data engineering** — `SE240` → `SE310` → `SE320` → `CS330`
+2. **Application and data engineering** — `SE240` → `SE310` → `SE320` → `CS330` → `CS340`
 3. **Advanced systems and production** — `CS430` → `SE330` → `SE340` → `SE440`
 4. **Modern AI engineering** — `AI310` → `AI410`
 5. **Architecture studio** — `SE490` (five integrated design workshops)

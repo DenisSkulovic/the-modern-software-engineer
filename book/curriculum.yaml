@@ -4,7 +4,7 @@
 
 version: '2.0'
 title: The Modern Software Engineer
-updated: '2026-10-26'
+updated: '2026-10-27'
 manuscript_statuses:
   planned: Catalogue only — no file yet
   stub: File exists; outline / placeholder
@@ -36,6 +36,7 @@ study_order:
   - SE310
   - SE320
   - CS330
+  - CS340
 - label: Advanced systems and production
   courses:
   - CS430
@@ -107,6 +108,9 @@ courses:
   status: complete
   slug: programming-languages
   dir: CS/CS220-programming-languages
+  notes: >-
+    Targeted future expansion (#5 after CS340, CS320 reorganization, CS360, SE450):
+    more comparative Python/JS/TS, type systems, and runtime behavior beyond the current focus.
   lectures:
   - id: CS220-L01
     title: Programming Languages and Abstraction
@@ -215,6 +219,10 @@ courses:
   status: complete
   slug: operating-systems-and-concurrency
   dir: CS/CS320-operating-systems-and-concurrency
+  notes: >-
+    High-priority future expansion/reorganization (#2 after CS340). Processes,
+    scheduling, virtual memory, sync, and I/O are compressed; L03 language-semantics
+    material may belong more naturally in CS220.
   lectures:
   - id: CS320-L01
     title: Concurrency, Parallelism, and Asynchrony
@@ -272,6 +280,70 @@ courses:
     - BACK301-S04
     source: CS/CS330-relational-databases/CS330-L03-transactions-and-isolation.md
     manuscript: manuscript
+    edition: 2.0.0
+- code: CS340
+  title: Data Systems Beyond Relational Databases
+  discipline: CS
+  level: 300
+  type: core
+  status: draft
+  slug: data-systems-beyond-relational
+  dir: CS/CS340-data-systems-beyond-relational
+  builds_on:
+  - CS330
+  notes: >-
+    Complements CS330. Document/key-value/graph/search/analytical models, storage
+    engines, MongoDB as a major example, replication/sharding, specialized stores.
+    Development priority #1 among new foundations (ahead of CS320 reorganization).
+  lectures:
+  - id: CS340-L01
+    title: The Database That Didn't Fit Into Tables
+    slug: the-database-that-didnt-fit-into-tables
+    legacy_ids: []
+    source: CS/CS340-data-systems-beyond-relational/CS340-L01-the-database-that-didnt-fit-into-tables.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: CS340-L02
+    title: Inside a Storage Engine
+    slug: inside-a-storage-engine
+    legacy_ids: []
+    source: CS/CS340-data-systems-beyond-relational/CS340-L02-inside-a-storage-engine.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS340-L03
+    title: Document Databases and MongoDB
+    slug: document-databases-and-mongodb
+    legacy_ids: []
+    source: CS/CS340-data-systems-beyond-relational/CS340-L03-document-databases-and-mongodb.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS340-L04
+    title: Indexes, Queries, and Aggregation Beyond SQL
+    slug: indexes-queries-and-aggregation-beyond-sql
+    legacy_ids: []
+    source: CS/CS340-data-systems-beyond-relational/CS340-L04-indexes-queries-and-aggregation-beyond-sql.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS340-L05
+    title: Replication, Consistency, and Sharding in Practice
+    slug: replication-consistency-and-sharding-in-practice
+    legacy_ids: []
+    source: CS/CS340-data-systems-beyond-relational/CS340-L05-replication-consistency-and-sharding-in-practice.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS340-L06
+    title: Specialized Data Systems
+    slug: specialized-data-systems
+    legacy_ids: []
+    source: CS/CS340-data-systems-beyond-relational/CS340-L06-specialized-data-systems.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS340-L07
+    title: The Data Architecture Workshop
+    slug: the-data-architecture-workshop
+    legacy_ids: []
+    source: CS/CS340-data-systems-beyond-relational/CS340-L07-the-data-architecture-workshop.md
+    manuscript: stub
     edition: 2.0.0
 - code: CS430
   title: Distributed Systems and Reliable Workflows
@@ -730,7 +802,9 @@ courses:
   builds_on:
   - CS110
   lectures: []
-  notes: Algorithmic patterns for senior engineering interviews
+  notes: >-
+    Algorithmic patterns for senior engineering interviews — distinct from listening
+    to CS110 theory. Development priority #3 after CS340 and CS320 reorganization.
 - code: CS370
   title: Game Engines and Simulation Systems
   discipline: CS
@@ -779,6 +853,9 @@ courses:
   - SE340
   - SE440
   lectures: []
+  notes: >-
+    Practical platform knowledge beyond SE340's Docker/AWS intro. Development
+    priority #4 among planned electives (after CS340, CS320 expansion, CS360).
 - code: SE460
   title: Performance Engineering
   discipline: SE
