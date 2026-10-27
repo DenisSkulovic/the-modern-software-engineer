@@ -65,9 +65,16 @@ An elective is a **course you choose to take**, not a separate numbering scheme.
 
 Aim for roughly **60–100 minutes** of meaningful work (reading, thinking, optional labs). Familiar material can be faster.
 
+Lectures are ordinarily **one file, two progressive parts** (already in place for `CS230`):
+
+1. **Part I — Intuition** — short mental model, one story, a few diagrams (often 5–15 minutes)
+2. **Part II — Deep Dive** — full mechanisms, trade-offs, oral exam, then lab / cheatsheet after the spoken end
+
+If Part II starts to blur, return to Part I’s opening picture and narrate one complete journey in your own words before continuing.
+
 **Teaching principles (unchanged from v1):** teach like an excellent lecturer; assume professional experience; open with a real problem; build mental models; explain trade-offs; stay concrete; no padding.
 
-**Typical rhythm:** opening mystery → main lecture → exploration/lab → challenges → mental model → further reading.
+**Typical rhythm:** intuition → deep dive → exploration/lab → challenges → mental model → further reading.
 
 ---
 

@@ -18,6 +18,138 @@ next: CS230-L07
 
 ---
 
+# Part I — Intuition
+
+*A TCP connection isn't a permanent cable and it isn't a stream of neatly separated JSON messages. It's shared transport state that can stop matching reality.*
+
+Look at the opening diagram for half a minute, then listen. This pass builds one mental picture. Part II develops the same picture with full technical depth.
+
+### The picture to carry in your head
+
+```mermaid
+sequenceDiagram
+    participant C as Node.js client
+    participant N as Network / intermediaries
+    participant S as Supplier server
+    C->>S: SYN
+    S-->>C: SYN-ACK
+    C->>S: ACK
+    Note over C,S: TCP connection state established
+    C->>S: Bytes containing request
+    S-->>C: Bytes containing response
+    Note over C,S: Connection may remain idle for reuse
+    N--x C: Connection state may expire / fail
+    C->>S: Attempt to reuse stale connection
+    Note over C,S: Error or uncertain outcome
+```
+
+The sequence is illustrative; a real idle connection can be closed by either endpoint or affected by intermediaries, and exact failure behavior varies.
+
+**The question:** What does each endpoint know about the conversation, and what could it fail to know?
+
+---
+
+### 1. The first request after a pause fails
+
+Your travel-booking backend uses a connection pool to communicate with a supplier API. Most calls succeed. But after the application has been idle for a few minutes, the first request occasionally fails with `ECONNRESET`, while the next succeeds immediately.
+
+It's tempting to blame the supplier's business logic. But the immediate issue may be the state of an old network connection. Your client believes it has a reusable connection. The peer—or a network intermediary—may have closed it or discarded necessary state. Attempting to reuse it can fail.
+
+The trick is understanding that a TCP connection isn't a fixed physical tube. It's a coordinated set of state held at endpoints: which addresses and ports define the conversation, which bytes have been sent and acknowledged, which buffers are available, and whether the endpoints believe the connection is open.
+
+### 2. A socket is an operating-system interface
+
+Your Node.js code doesn't directly operate an Ethernet card for every outgoing request. It uses networking APIs backed by OS socket machinery. A listening server socket waits for inbound connection requests. A connected socket represents one transport conversation with a peer.
+
+A TCP connection is commonly identified by the source address, source port, destination address, and destination port, together with protocol and relevant network context. The client may create many connections to the same supplier service using different local ports.
+
+A server uses `listen` to accept incoming connection attempts and `accept`-style behavior to obtain connections for application work. The OS handles much of the protocol machinery underneath. A server can have a healthy process but still fail clients if connection queues are overwhelmed or connection limits are reached.
+
+### 3. Three short messages establish the initial agreement
+
+TCP's ordinary three-way handshake consists of **SYN**, **SYN-ACK**, and **ACK**. The participants establish initial sequence-number state and agree to begin a connection.
+
+This doesn't mean authentication or encryption has happened. Those are separate concerns. For HTTPS over TCP, TLS negotiation follows on top of the established transport connection. And TCP connection establishment doesn't prove that the supplier application will process a booking successfully.
+
+The handshake solves a limited problem: establish the initial transport state for exchanging bytes.
+
+**Checkpoint:** If a TCP connection establishes, does that prove your API credentials are valid? **No.** TCP doesn't interpret API authorization.
+
+### 4. TCP delivers bytes, not application messages
+
+Imagine your application writes a JSON message of 1,000 bytes to a TCP socket. At the receiving end, the application might read 400 bytes, then 600. Or read several adjacent application messages together. TCP does not preserve the sender's application write boundaries as record boundaries.
+
+It provides an ordered **byte stream**. The application protocol must decide how complete messages are framed: perhaps a length prefix, a delimiter, or HTTP's own message framing mechanisms.
+
+This is the classic mistake of assuming one `write()` corresponds to one `read()`.
+
+Now consider loss. TCP numbers bytes and acknowledges reception. Missing data can be retransmitted. The receiving application sees an ordered stream, which means a gap can delay delivery of later bytes even if later TCP segments have physically arrived.
+
+This is transport reliability, not a promise that the remote application executed a transaction exactly once.
+
+### 5. Closing isn't always a shared instant of knowledge
+
+A graceful TCP close commonly uses **FIN** messages to indicate no more data will be sent in one direction. A **RST** aborts a connection or reports certain invalid states. The details matter during debugging, but the first-pass picture is simple: different connection-ending events have different meanings.
+
+Now imagine the supplier's load balancer closes a long-idle connection. Your client pool may discover the closure promptly, or it may attempt reuse before its local state reflects what happened. It can then encounter a reset or another transport failure.
+
+Worse, a cable or network path can disappear without either endpoint receiving a neat goodbye message. Both processes may believe the connection is still established. TCP keepalives or application-level deadlines may eventually reveal the problem, but silence alone is ambiguous.
+
+**Checkpoint:** Does a TCP socket appearing established locally prove the remote service remains reachable? **No.** It may represent stale state or a connection whose path has failed silently.
+
+### 6. The most expensive ambiguity is a business ambiguity
+
+Suppose your client sends a POST that creates a reservation. The supplier processes it and commits the reservation. Then the connection breaks before the response arrives.
+
+The client sees a timeout or reset. What does that prove? That it didn't receive a successful response. It does **not** prove the supplier didn't create the reservation.
+
+Blind retry can create a second booking. Correct recovery may require a durable operation identifier, an idempotency key supported by the supplier, or an explicit status inquiry. This is where network transport and business invariants meet.
+
+Connection pooling improves efficiency by reusing established transport state. But pools need sensible idle lifetimes, stale-connection handling, and retry policies. Reuse is an optimization, not a guarantee that the old conversation remains valid forever.
+
+### 7. What about UDP and QUIC?
+
+UDP provides datagrams without TCP's built-in connection, byte-stream ordering, or retransmission guarantees. An application can choose what reliability it needs above UDP.
+
+QUIC uses UDP as its underlying carrier but adds its own connection state, security based on TLS 1.3, reliable streams, congestion control, and other mechanisms. HTTP/3 uses QUIC. So **UDP underneath** doesn't mean HTTP/3 is an unreliable application transport.
+
+The transport options solve the same general problem—moving application information between endpoints—but make different trade-offs in their mechanisms.
+
+### 8. The minute-long replay
+
+Node.js uses a socket. TCP's three-way handshake establishes transport state. Application protocols exchange framed messages over TCP's reliable ordered bytes. The OS manages buffers and acknowledgments. An idle pooled connection may be closed or become stale. A later write can fail, and that failure may leave the remote business outcome unknown. UDP offers datagrams; QUIC builds a modern reliable-stream transport over UDP for HTTP/3.
+
+#### Three questions before L06
+
+1. Does TCP deliver each JSON write as one matching read? **No.** It delivers ordered bytes, not message boundaries.
+2. Is `ECONNRESET` evidence that the supplier didn't process the booking? **No.** It is transport evidence, not proof of business outcome.
+3. Why can the first request after idle time fail while the second succeeds? **The first may reuse stale transport state; the next can create a fresh connection.**
+
+
+### Pocket map — screen reference
+
+```text
+SOCKET          OS interface for network communication
+TCP HANDSHAKE   SYN → SYN-ACK → ACK (transport establishment)
+BYTE STREAM     Reliable ordered bytes; no app message boundaries
+ACK/RETRANSMIT  Recover lost transport data
+FLOW CONTROL    Don't overrun receiving buffers
+FIN             Graceful end to sending direction
+RST             Reset/abort or invalid connection state
+POOL            Reuse established connections; risk stale entries
+TIMEOUT         Caller has incomplete information, not proof of failure
+UDP             Independent datagrams; no built-in TCP guarantees
+QUIC            Connection/security/reliable streams built over UDP
+
+Transport delivery != exactly-once business operation.
+```
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. The Connection That Died Without Telling Anyone
 
 It's three in the morning, and your hotel-booking platform has developed an unpleasant habit.

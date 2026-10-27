@@ -18,6 +18,144 @@ next: CS230-L06
 
 ---
 
+# Part I — Intuition
+
+*One laptop, one home router, one server: learn the picture before learning CIDR arithmetic.*
+
+Look at the opening diagram for half a minute, then listen. This pass builds one mental picture. Part II develops the same picture with full technical depth.
+
+### The picture to carry in your head
+
+```mermaid
+flowchart LR
+    L["Laptop\n192.168.1.42/24"] --> H["Home router\nLAN: 192.168.1.1\nWAN: 198.51.100.24"]
+    H --> I["Internet routers\nForward toward destination"]
+    I --> S["Server\n203.0.113.10:443"]
+    S -. "Response" .-> I
+    I -.-> H
+    H -.-> L
+```
+
+All public-looking addresses here are reserved documentation examples. The conceptual diagram shows ordinary outbound IPv4 communication through a home NAT router.
+
+**The question:** How does each device decide what to do next, and what changes on the way?
+
+---
+
+### 1. Your laptop knows its neighborhood, not the whole internet
+
+Your laptop is connected to home Wi-Fi with address `192.168.1.42/24`. Your router's inside address is `192.168.1.1`. You want to send an HTTPS request to `203.0.113.10`.
+
+Think of an IP address as a network location assigned to an interface or endpoint, not a permanent personal identity of the entire machine. Your laptop can have other addresses over a VPN or another interface.
+
+The `/24` is the network prefix length. For this example it describes a directly connected network containing addresses from `192.168.1.0` through `192.168.1.255`. The laptop's destination is not inside that block. The laptop therefore chooses a route that forwards the packet through its default gateway, the router.
+
+You do not need binary arithmetic to follow the decision. The detailed lecture will teach the calculations. For the first pass, remember only: **the prefix helps determine whether the destination matches a local or more specific route**.
+
+**Checkpoint:** What if the destination were `192.168.1.99`? Under the example's normal configuration, the laptop can attempt direct local delivery rather than using the default gateway.
+
+### 2. Two destinations: final destination and next hop
+
+Here's where people often lose the thread. The **IP destination** is the remote server. The **next hop** is the router immediately reachable from your laptop.
+
+The laptop needs a way to deliver data to that local router. On an Ethernet-like IPv4 link it can use **ARP** to discover the link-layer address associated with the next-hop IPv4 address. That link-layer address is commonly a **MAC address**.
+
+The laptop places its IP packet inside a local link-layer frame intended for the next hop. It does not need the remote server's MAC address.
+
+When a router forwards the packet through another link, the link-layer wrapping normally changes. The IP destination still refers to the remote server, although NAT or tunnels can alter what is visible at particular boundaries.
+
+Think of a parcel addressed to Paris handed to your local delivery company. The recipient doesn't change just because a local courier handles the first leg.
+
+**Checkpoint:** Does ARP ask the entire internet for the server's MAC? **No.** It resolves the next-hop IPv4 address on the relevant local link.
+
+### 3. Every router answers the next-hop question
+
+Your router receives the packet and checks the destination IP. Its forwarding information tells it where to send the packet next. Other routers repeat the process.
+
+A **routing table** contains instructions for destinations that match network prefixes. More specific matching routes take precedence over less specific ones; this is longest-prefix matching. The IPv4 default route, `0.0.0.0/0`, matches anything not covered by a more specific applicable route.
+
+The router doesn't need an elaborate description of your application's database or the customer's hotel booking. It forwards according to network-level information and policy.
+
+When the packet reaches the destination's network, that network can deliver it to the server.
+
+### 4. The private address problem
+
+Your laptop has a private IPv4 address. So do millions of other devices around the world. That is fine because private address space can be reused inside separate networks, but ordinary public internet routing cannot use `192.168.1.42` to identify your particular laptop globally.
+
+Your home router generally has an outward-facing public address. In this example it's `198.51.100.24`. The router performs **source NAT** on outgoing traffic, changing the packet's source address from the laptop's private address to its public address.
+
+When necessary, it also translates source ports, allowing different internal connections to share the same public address. This common behavior is called NAPT or PAT.
+
+Imagine your laptop connects from `192.168.1.42:51514` to the remote server at `203.0.113.10:443`. The router maps the source to `198.51.100.24:62001`. It records the mapping.
+
+The server sends the response toward the public address and port it saw. The router consults its NAT state, reverses the translation, and forwards the traffic back to the laptop.
+
+```mermaid
+flowchart TB
+    A["Laptop source\n192.168.1.42:51514"] --> B["NAT state\nInternal ↔ public mapping"]
+    B --> C["Server sees source\n198.51.100.24:62001"]
+    C -. "Return packets" .-> B
+    B -. "Deliver internally" .-> A
+```
+
+That's why the same home router can serve many devices with one public IPv4 address. It remembers which return traffic belongs to which mapping.
+
+### 5. Route, NAT, firewall: three different jobs
+
+Don't merge these ideas.
+
+**Routing** asks where the packet should go next. **NAT** rewrites some addressing information and maintains relevant mapping state. **Firewall policy** decides whether traffic is permitted.
+
+Your router may implement all three, but they don't mean the same thing. A route can exist while a firewall blocks the packet. NAT can be configured without making a service reachable to unsolicited external connections.
+
+When a remote server independently tries to initiate a connection to your private laptop, the home router may have no relevant inbound translation mapping. A port-forwarding arrangement or another traversal mechanism may be needed, subject to firewall policy. That behavior isn't the complete definition of a firewall.
+
+### 6. Now the same picture in AWS
+
+Replace the laptop with a backend at `10.0.2.15` in a private VPC subnet. Replace the home NAT router with an appropriate NAT gateway path. The backend needs to call an external payment API.
+
+For an ordinary outbound IPv4 design, the subnet's route table must direct external destinations toward the NAT gateway; the NAT gateway's public-side path uses the internet gateway. Security policy must permit the traffic, and return traffic must be handled correctly.
+
+If the route to the NAT gateway is absent, DNS resolution might succeed while the connection fails. A healthy backend process doesn't create a network route by itself.
+
+Cloud network diagrams seem complicated because they contain more managed components. The same underlying questions remain: destination, next hop, policy, translation, return path.
+
+### 7. The minute-long replay
+
+Laptop wants to reach a remote IP. Its prefix and routes say the destination isn't directly local. It selects the home router as next hop. ARP or the local link mechanism enables delivery to that router. The router performs the configured source NAT, forwards toward the internet, and routers along the path keep forwarding. The server replies toward the translated public address. The home router reverses its recorded mapping and delivers the response inside.
+
+Don't memorize the reserved IP numbers. Memorize **who owns each decision**.
+
+#### Three questions before L05
+
+1. What is the difference between destination and next hop? **Ultimate endpoint versus the immediate forwarding device.**
+2. Why doesn't your laptop need the French server's MAC address? **The MAC is for the local link's next hop.**
+3. Why can DNS work while outbound HTTPS fails from a private subnet? **Naming may work even when routes, NAT, or policy do not.**
+
+
+### Pocket map — screen reference
+
+```text
+IP address      Network destination/endpoint location
+/24 prefix      Address block that helps select route
+Routing table   Which interface/next hop for this destination?
+Default gateway Where to forward when no more specific route applies?
+ARP             Neighbor IPv4 → local link-layer address
+MAC             Local next-hop delivery (not end-to-end across routers)
+NAT             Rewrite addressing/ports + state for return mapping
+Firewall        Permit or block traffic under policy
+IPv6            Larger addressing, uses Neighbor Discovery not ARP
+MTU             Largest packet size a link/path can carry as configured
+
+Route != firewall != NAT. A response also needs a working return path.
+```
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. The Packet That Had Nowhere to Go
 
 Imagine you're the backend engineer responsible for a hotel-booking platform.

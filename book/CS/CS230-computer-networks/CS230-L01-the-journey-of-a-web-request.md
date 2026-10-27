@@ -18,6 +18,116 @@ next: CS230-L02
 
 ---
 
+# Part I — Intuition
+
+*The browser is not a pipe connected to your Node.js server. It is the conductor of a small orchestra, and not every instrument plays every time.*
+
+Look at the opening diagram for half a minute, then listen. This pass builds one mental picture. Part II develops the same picture with full technical depth.
+
+### The picture to carry in your head
+
+First, look at the complete journey. These are **responsibilities**, not a claim that every page load executes every step in sequence. Caches, existing connections, parallel resource requests, and HTTP/3 change the details.
+
+```mermaid
+flowchart LR
+    B["Browser\nURL + cache"] --> D["DNS\nFind endpoint address"]
+    D --> N["Network\nRoute packets"]
+    N --> C["Connection + TLS\nCommunicate securely"]
+    C --> E["CDN / proxy\nAnswer or forward"]
+    E --> A["Application\nGenerate response"]
+    A --> E
+    E --> R["Browser\nParse, fetch, render"]
+    B -. "Fresh cached response" .-> R
+```
+
+**The one question:** At which boundary did the expected thing stop happening?
+
+---
+
+### 1. The 43-millisecond server and the five-second page
+
+You maintain a travel-booking website. A customer opens a hotel page. Five seconds pass before anything useful appears. Your API logs confidently report a 43-millisecond response.
+
+Both observations can be true. The API measured one small part of a much longer operation. The customer measured the experience from navigation to visible content. Imagine timing a train's movement between two stations while ignoring the time you spent finding the platform, changing trains, and walking to your destination.
+
+Let's follow the customer's action without getting trapped by terminology. They type an address. The browser first interprets what they want. Is this a search term or a URL? Is the page already known? Does the browser have an applicable fresh cached response? Is there a service worker that might handle the request? A navigation can produce some useful content before any new request reaches your backend.
+
+If the browser needs the network, it needs a destination address. A name such as `stays.example` is convenient for people, but packets need network addresses. DNS supplies the relevant answer, perhaps from a cache rather than a fresh series of DNS queries. DNS does not download the page. It answers the naming question.
+
+Next the machine has to deliver traffic toward that address. Routing is about where to send packets next. It doesn't tell us what HTTP response means, whether the user is authorized, or why JavaScript takes a long time to execute.
+
+Then comes a usable transport connection and, for HTTPS, security negotiation. With a typical HTTPS-over-TCP setup, establishing a TCP connection and negotiating TLS involve messages and time. On a reused connection, much of that work may already be done. HTTP/3 has a different transport foundation, QUIC, and integrates its security handshake differently. The user-facing task remains the same: communicate with the endpoint reliably and securely enough for the chosen protocol.
+
+Only now should we ask which server actually handles the request. The browser might contact a CDN edge, a reverse proxy, or a load balancer. A cache hit may end the journey right there. On a cache miss, the edge forwards the request toward the origin. The Node.js service might respond in 43 milliseconds, while the customer has already paid hundreds of milliseconds elsewhere.
+
+Finally, the browser must do something with the response. HTML is not a finished page. The browser parses it, discovers stylesheets, scripts, images, and fonts, requests more resources, executes JavaScript, constructs a layout, and paints pixels. Some tasks overlap; others depend on earlier results. A fast API can coexist with a slow page because the browser is still working.
+
+### 2. Three clocks, three different stories
+
+Picture three stopwatches. The first starts when a customer navigates. The second measures one network request. The third measures the time the API handler spends producing a response.
+
+If they show five seconds, eight hundred milliseconds, and forty-three milliseconds, none must be lying. They have different boundaries. The mistake is comparing them as though they measure the same interval.
+
+**Checkpoint:** A page paints late, but the API responds quickly. Must the database be the bottleneck? No. Inspect navigation timing, critical resources, frontend work, proxies, and network stages before choosing a culprit.
+
+Now imagine the page loads instantly on refresh. Perhaps DNS and connection setup were reused, content came from a browser cache or CDN, or previously downloaded resources remained usable. The same URL doesn't imply the same network journey every time.
+
+One more puzzle: the browser displays a substantial part of the website while offline. Does that prove it contacted your server? No. Cache storage and service workers can enable that behavior. The browser can use information it already possesses.
+
+### 3. What each layer promises—and doesn't
+
+DNS offers naming answers; it doesn't establish connectivity. IP routing offers forwarding decisions; it doesn't guarantee an application response. TCP offers a reliable ordered byte stream when a connection succeeds; it doesn't promise the remote business operation will succeed. TLS protects an authenticated encrypted communication channel under appropriate validation; it doesn't decide whether an API user is authorized. HTTP carries application requests and responses; it doesn't guarantee that the frontend has finished rendering. A CDN may answer a request without the origin ever seeing it.
+
+This distinction is the mental map. Every layer solves one problem and depends on neighboring layers. A symptom may appear at the outermost layer while the cause sits far below it—or entirely inside the browser after the network has finished.
+
+### 4. The small investigation
+
+A user reports a five-second page load. Don't begin by naming protocols. Ask where the five seconds went.
+
+Did the browser actually issue a network request? If so, what address did it resolve, and was a fresh connection needed? Did a CDN respond or forward the request? How long did the request spend waiting for the first response bytes? Once bytes arrived, how long until useful pixels appeared?
+
+Now take the original 43-millisecond API number and put it in the appropriate box. It measures application work on one request. It isn't a measurement of DNS, network travel, edge processing, all page resources, or rendering.
+
+**Checkpoint:** If a browser has the HTML but the page is still blank, which responsibility owns the next question? Primarily browser resource loading and rendering, not DNS resolution of the original HTML request.
+
+### 5. The sixty-second replay
+
+A user asks for a page. The browser checks what it already knows. DNS may help locate an endpoint. The system routes traffic there. A transport and secure channel allow communication. An edge service may return a cached response or forward the request. The application produces data when needed. The response comes back. The browser performs more work to turn that data into a page.
+
+If you can visualize those steps and say **which one is not implied by the others**, you have the skeleton of the whole networking course. CS230-L02 through L09 fill in individual boxes. They aren't nine unrelated subjects.
+
+#### Three questions before L01
+
+1. Can a browser render useful content without contacting the origin on this navigation? **Yes**—for example, from a usable cache or through service-worker behavior.
+2. Does a 43-millisecond API handler prove a page should load in 43 milliseconds? **No**—it measures only one component.
+3. If an HTTP response arrives successfully, is the browser necessarily done? **No**—parsing, resources, scripts, layout, and paint may still be pending.
+
+
+### Pocket map — screen reference
+
+```text
+USER NAVIGATION
+  Browser checks local state/cache/service worker
+  DNS: name → endpoint address, maybe cached
+  IP: packets → next hop → destination
+  Transport: TCP (or QUIC for HTTP/3) communication
+  TLS: identity + encrypted integrity-protected channel
+  Edge: CDN/proxy may answer or forward
+  Origin: app/db generate response when needed
+  Browser: parse/resources/JS/layout/paint
+
+MEASUREMENT BOUNDARIES
+  Page load != request duration != backend handler duration
+  Cache hit may omit DNS, origin, or connection establishment
+  Debug the FIRST boundary where expectation diverges
+```
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. The Mystery of the Fast Server and the Slow Website
 
 Imagine you're responsible for a hotel-booking platform.

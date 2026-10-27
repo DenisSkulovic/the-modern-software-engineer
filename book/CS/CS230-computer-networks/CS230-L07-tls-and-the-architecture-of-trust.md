@@ -18,6 +18,134 @@ next: CS230-L08
 
 ---
 
+# Part I — Intuition
+
+*Encryption is easy to misunderstand because a perfectly encrypted conversation can still be with the wrong person.*
+
+Look at the opening diagram for half a minute, then listen. This pass builds one mental picture. Part II develops the same picture with full technical depth.
+
+### The picture to carry in your head
+
+```mermaid
+flowchart LR
+    C["Node.js payment client\nWants api.payment.example"] --> S["Server offers certificate\nName + public key + chain"]
+    T["Trusted CA roots\nClient trust store"] -. "Verify chain to a trusted root" .-> C
+    S -. "Proof of private-key control\nTLS handshake" .-> C
+    C <-->|"Agreed symmetric keys\nEncrypted authenticated records"| S
+```
+
+**The question:** Even if nobody can read our encrypted messages, how do we know the receiver is the intended payment provider?
+
+---
+
+### 1. The suspiciously effective security fix
+
+A payment integration that worked for months begins failing after the provider changes certificate configuration. Node.js reports a certificate validation error. Someone discovers that disabling verification makes every request succeed.
+
+The dashboard returns to green. The payment API responds. It looks fixed.
+
+But you've removed one of the central reasons HTTPS is trusted. Encryption alone doesn't tell the client **who holds the other end of the connection**. An attacker controlling the network might negotiate an encrypted session with your client. The resulting bytes could be well protected from other observers while flowing straight to the attacker.
+
+TLS must solve several distinct problems. **Confidentiality** prevents outsiders from reading protected application data. **Integrity** detects unauthorized changes to protected data. **Authentication** helps the client determine which server it is talking to. These are not interchangeable.
+
+A secure payment connection needs all the relevant guarantees together.
+
+### 2. Two kinds of cryptography, two jobs
+
+Imagine a simple lockbox. If both parties already share the same secret key, **symmetric encryption** can efficiently protect large amounts of traffic. Modern TLS uses symmetric authenticated encryption for application data after establishing the session keys.
+
+The difficulty is how two strangers acquire a shared secret across an untrusted network without exposing it to an eavesdropper.
+
+**Public-key cryptography** introduces different roles for public and private keys. Public information can be shared openly; the private key must remain controlled by its owner. Digital signatures can prove possession of an appropriate private key and authenticate parts of a protocol transcript when correctly verified.
+
+Modern TLS 1.3 ordinarily uses an ephemeral Diffie–Hellman key agreement, commonly ECDHE, to establish shared secret material. The peers exchange public key-agreement values, derive matching secrets, and turn those into symmetric traffic keys. The server separately authenticates itself with certificate-based credentials and the handshake's signature and verification steps.
+
+The key insight isn't the algebra. It's that **establishing a secret** and **establishing an identity** are distinct jobs that must be connected securely.
+
+### 3. A certificate isn't an identity badge that certifies itself
+
+Now imagine the server offers a certificate claiming to be `api.payment.example`. Why should the client believe the name?
+
+A certificate binds identifying information, such as relevant DNS names, to a public key through signatures and a chain of trust. The client validates the certificate chain toward an appropriate trusted root, checks that the certificate is valid for the intended hostname and usage, checks validity periods and other required conditions, and verifies the relevant TLS handshake proof.
+
+A root certificate is trusted because the client's trust configuration accepts it for appropriate purposes—not merely because any certificate announces that it is trustworthy.
+
+A system may use different trust stores or different configured policies. A browser and a Node.js process can therefore disagree about the same server certificate. One environment may possess an intermediate certificate or root configuration that the other lacks.
+
+**Checkpoint:** If Chrome opens the provider's site successfully, must the Node.js API integration validate the provider's TLS chain successfully? **No.** Their trust stores and validation contexts can differ.
+
+### 4. What the handshake accomplishes
+
+Picture a client starting a secure connection. It proposes supported TLS parameters and, for TLS 1.3, supplies key-agreement information. The server replies with its selection and its own key agreement. Through the handshake, the client checks the server's certificate and cryptographic proofs. Both sides derive symmetric keys bound to the negotiated session.
+
+Once the handshake is successful under appropriate authentication checks, the application can exchange encrypted, integrity-protected records. A passive observer on the path shouldn't be able to read the protected HTTP body, and unauthorized modifications should be detected.
+
+That doesn't mean *everything* about the connection is invisible. IP-level routing information remains necessary; some metadata can be exposed depending on protocol features and deployment. TLS also doesn't prevent the endpoint itself from mishandling data or the application from making incorrect authorization decisions.
+
+Security guarantees always have boundaries.
+
+### 5. Why the bad workaround is so dangerous
+
+When you disable server-certificate validation, your code may continue negotiating encryption. But it no longer reliably rejects an impostor offering its own certificate for the wrong identity.
+
+This is especially dangerous for payments, credentials, and private customer data. The appropriate fix is to investigate the certificate chain, hostname, trust configuration, time, intermediates, client settings, and provider deployment. The goal is to restore secure validation, not to silence the error by discarding authentication.
+
+A certificate-renewal incident can be operationally annoying. That doesn't justify replacing authentication with blind trust.
+
+**Checkpoint:** What exactly would "the connection is encrypted" fail to prove? **That the other endpoint is the genuine intended server.**
+
+### 6. Where TLS can end
+
+Now imagine the browser contacts a public load balancer over HTTPS. The load balancer terminates TLS and forwards the request to a backend service over another connection.
+
+The browser's TLS session authenticates and protects communication with the TLS endpoint at that load balancer. The connection between the load balancer and backend is a **separate** security boundary and can use its own TLS or another permitted arrangement according to the infrastructure and threat model.
+
+This is why drawing one unbroken padlock around a request path is misleading. A request may traverse several separately authenticated and encrypted channels.
+
+Mutual TLS, or mTLS, adds another possibility: both parties authenticate with certificates, not just the server. It's useful for some service-to-service identity designs, but it doesn't replace the application's authorization policies.
+
+### 7. Resumption is faster, not conceptually magic
+
+A new secure connection can perform an expensive handshake. Later connections may be able to resume earlier session information under the protocol's rules. TLS 1.3 can also support 0-RTT early data in some resumptions.
+
+But 0-RTT has special replay considerations. Sending a non-idempotent payment or reservation action as replayable early data would require extremely careful protocol and application safeguards. Optimization never erases business semantics.
+
+### 8. The minute-long replay
+
+The client wants to contact a specific hostname. The server presents credentials. The client verifies the trust chain and that the certificate applies to the intended name and purpose. The TLS 1.3 handshake establishes fresh symmetric secrets and authenticates the server. Protected application bytes then flow. A certificate error indicates that part of the authentication contract failed. Disabling validation doesn't repair the contract—it discards it.
+
+#### Three questions before L07
+
+1. Can encrypted communication be with an attacker? **Yes**, if authentication is missing or defective.
+2. Why does TLS use symmetric cryptography after the handshake? **Efficient bulk protection using established session keys.**
+3. What is the danger of `rejectUnauthorized: false` for a Node.js HTTPS client? **It disables the normal server-certificate verification safeguard.**
+
+
+### Pocket map — screen reference
+
+```text
+CONFIDENTIALITY   outsiders cannot read protected application data
+INTEGRITY         tampering with protected records is detected
+AUTHENTICATION    peer proves expected server identity
+SYMMETRIC KEYS    efficient record protection
+ECDHE             derive shared secret over untrusted network
+CERTIFICATE       identity-name ↔ public-key binding via trust chain
+TRUST STORE       client roots/policies for validation
+HOSTNAME CHECK    cert must apply to intended service name
+TLS TERMINATION   new trust boundary; backend connection separate
+mTLS              client and server certificate authentication
+RESUMPTION        reduce handshake cost, subject to protocol rules
+0-RTT             early data; special replay risk
+
+Encryption != authentication != application authorization.
+```
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. The Security Fix That Made Everything Insecure
 
 It's a Tuesday morning, and your hotel-booking platform is experiencing a production incident.

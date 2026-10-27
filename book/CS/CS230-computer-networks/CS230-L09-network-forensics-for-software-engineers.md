@@ -20,6 +20,157 @@ next: null
 
 ---
 
+# Part I — Intuition
+
+*Network debugging is not remembering fifty commands. It is locating the first place where observed behavior diverges from expected behavior.*
+
+Look at the opening diagram for half a minute, then listen. This pass builds one mental picture. Part II develops the same picture with full technical depth.
+
+### The picture to carry in your head
+
+```mermaid
+flowchart TB
+    A["1. Name\nWhat endpoint did we choose?"] --> B["2. Route\nCan packets reach a next hop?"]
+    B --> C["3. Transport\nCan peers exchange bytes/datagrams?"]
+    C --> D["4. TLS\nIs the intended peer authenticated?"]
+    D --> E["5. HTTP / proxy\nWho answered, cached, or timed out?"]
+    E --> F["6. Application\nWas the business operation correct?"]
+    F --> G["7. Browser\nWere results rendered correctly?"]
+```
+
+This is a diagnostic ladder, not a guarantee that every request proceeds through all stages sequentially or that a failure always belongs to exactly one box.
+
+**The question:** What is the smallest observation that distinguishes competing explanations?
+
+---
+
+### 1. The incident room
+
+It's Thursday morning at our hotel-booking company. Customers report that searches are slow, some payment calls fail, and one API works in a browser but not in the backend.
+
+The team's first ideas are familiar: restart containers, raise timeouts, clear DNS, disable certificate validation, add servers.
+
+None is yet a diagnosis.
+
+A diagnostic observation might be "The browser received an HTTP 504 from the edge." A proposed explanation might be "Node.js is overloaded." The explanation could be right, but the observation doesn't establish it. The 504 may originate at a proxy while the backend never received the request.
+
+**Don't confuse observation with explanation.** That is the whole incident-forensics method.
+
+### 2. Start by defining the expected path
+
+For one failing request, define the source, destination, transport, expected protocol, and intended result. Did the customer try to load HTML, query an API, upload a file, or create a reservation?
+
+Then ask which components should participate. Browser, DNS, local gateway, internet network, CDN, load balancer, Node.js, database, supplier.
+
+A useful diagram can be drawn on paper in thirty seconds. It need not match every internal packet. It should make clear which boundary could conceivably prevent the desired outcome.
+
+Now walk through the boundaries and seek evidence.
+
+### 3. Name: did we choose the expected endpoint?
+
+A DNS lookup maps a hostname to relevant records, sometimes through cached results. A hostname can resolve successfully but to an old deployment after a migration.
+
+If London reaches the old API while Vilnius reaches the new API, compare resolved addresses and resolver paths. An authoritative record showing the new address doesn't prove every recursive resolver discarded its valid cached earlier answer.
+
+But if both clients resolve the same intended endpoint, stop blaming DNS without evidence. The next problem may be routing or something above it.
+
+**Checkpoint:** A successful DNS answer proves the hostname lookup returned data. Does it prove HTTPS works? **No.** It establishes only the naming stage.
+
+### 4. Route and transport: can the peers actually communicate?
+
+A client needs a route toward its destination. Network policy must permit the traffic. Relevant NAT state may be required for the return path. Even with a correct destination address, a missing VPC default route or blocked egress can prevent any useful connection.
+
+Then distinguish transport establishment from application response. A successful TCP handshake indicates an initial transport connection was established; it doesn't prove TLS trust, valid credentials, or a successful booking.
+
+A failed connect attempt could reflect several causes. `Connection refused` often indicates an active refusal or no listener at that endpoint, though intermediaries can complicate interpretation. A timeout can mean filtering, unreachable path, stalled responses, or other conditions. The error string is a clue, not a complete topology map.
+
+### 5. TLS: an authenticated connection or just encrypted bytes?
+
+Suppose Chrome opens the payment provider successfully while a Node.js service reports a certificate-chain error. The problem may be trust-store or certificate-chain differences between the clients, not a generic inability to reach the internet.
+
+Disabling verification isn't diagnosis or repair. It hides a failure in endpoint authentication.
+
+Compare the intended hostname, presented certificate, chain, trust roots, and TLS configuration. If the client authenticates the correct server and completes TLS successfully, proceed upward to HTTP and the application.
+
+### 6. Intermediaries: who actually emitted the status?
+
+A browser receives a 504. The Node.js application has no trace of that request. The right next question is where the status originated and which upstream exchange timed out.
+
+A CDN or reverse proxy can return a response without forwarding a request; it can also generate an error due to its own upstream timeout or policy. An HTTP `200` from a cache isn't proof that your origin service processed anything just now.
+
+Correlate request IDs, timestamps, proxy access logs, origin traces, and upstream timing measurements where available. Identify the first hop where the expected request stopped progressing.
+
+**Checkpoint:** If the edge logs a timeout contacting an upstream target while the backend has no matching request, where should you investigate first? **At that edge-to-upstream boundary**, not in a speculative database query.
+
+### 7. The strange case of small requests working
+
+A service establishes TCP connections and processes tiny requests, but large responses or uploads hang. That pattern suggests different possibilities from a simple DNS failure.
+
+One candidate is a Path MTU Discovery problem: an oversized packet is dropped on a path, and necessary ICMP feedback doesn't reach the sender, leading to a black-hole-like failure for larger traffic. But this is only a hypothesis; TLS framing, proxy buffering, server body-size limits, and application timeouts can also produce size-dependent symptoms.
+
+Find a test that distinguishes them. Can you reproduce with a controlled payload size? Does the request reach the proxy or application? Do packet captures or network error counters show retransmissions or ICMP feedback? Does changing an intermediary's buffering behavior alter the result?
+
+The goal isn't to be the first person to name MTU. It's to select evidence that rules competing mechanisms in or out.
+
+### 8. The first request after idle fails
+
+Now the failure looks like `ECONNRESET` after an idle period. The next request succeeds. Inspect connection reuse and intermediary idle timeouts.
+
+Your HTTP client may select a pooled TCP connection that the peer or load balancer has already closed. A fresh connection works. That explanation fits the pattern, but test it by comparing failures with and without reuse, examining close timing, and correlating proxy settings.
+
+And remember the business boundary: a failed response to a booking POST doesn't prove the supplier did not process the request. Transport diagnosis and idempotent reconciliation belong in the same incident plan.
+
+### 9. The network succeeds, the booking is still wrong
+
+Imagine every technical boundary is healthy. DNS resolves. TCP connects. TLS validates. HTTP returns `200`. Yet the customer receives another person's reservation details.
+
+This is not a reason to run traceroute. The failure can live in authorization, cache keys, request handling, or state management. Network protocols can transport a perfectly formed but incorrect business response.
+
+A sound diagnostic method stops escalating network hypotheses once the evidence shows that the network did its job. The application contract may be the thing that failed.
+
+### 10. The five-step investigation habit
+
+First, reproduce a narrowly defined symptom and identify the observation boundary. Second, draw the expected sequence of participants. Third, write two or three plausible mechanisms, not twenty unranked possibilities. Fourth, choose the next observation that would distinguish those mechanisms. Fifth, update the explanation after seeing evidence, and record the final reproduction and fix.
+
+This is the same scientific reasoning from CS120: hypotheses must survive tests, and a successful measurement says only what its boundary actually measures.
+
+### 11. The minute-long replay
+
+When networking fails, don't walk down a memorized list of commands in random order. Ask where the client intended to go, which route it used, whether transport worked, whether TLS authenticated the peer, which proxy handled the HTTP request, whether the application returned the correct business outcome, and whether the browser rendered it.
+
+For each answer, distinguish observed evidence from an inferred cause. Investigate the first boundary where expected behavior diverged.
+
+#### Three questions before L09
+
+1. Does an HTTP 504 prove Node.js sent an error? **No.** The proxy could have emitted it.
+2. Does a certificate error justify disabling verification? **No.** Diagnose the validation failure.
+3. Why is a single packet trace not the same as an end-to-end diagnosis? **It covers a specific interface, place, and time; other boundaries may behave differently.**
+
+
+### Pocket map — screen reference
+
+```text
+OBSERVATION     What the system actually showed
+HYPOTHESIS      Proposed mechanism explaining the observation
+TEST            New evidence that distinguishes hypotheses
+
+DNS             Correct current endpoint? Cache/delegation differences?
+ROUTE           Usable next hop, NAT, policy, return path?
+TRANSPORT       Handshake, reuse, retransmits, timeouts?
+TLS             Intended hostname, certificate, chain, trust store?
+HTTP / PROXY    Which hop answered, forwarded, cached, timed out?
+APP             Did the business invariant and authorization hold?
+BROWSER         Did resources, scripts and rendering complete?
+
+Do not fix a layer until evidence implicates it.
+```
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 ### How to listen to this lecture
 
 Written for continuous listening first, then for on-screen re-reading. The theme today is forensic method: **observe → form a hypothesis → choose a discriminating test.** Do not confuse an observation with an explanation. Bold takeaways mark ideas worth pausing on. Near the end, answer the challenges **out loud** before reading the solutions.

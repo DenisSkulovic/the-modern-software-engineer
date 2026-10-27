@@ -22,3 +22,4 @@ When adding or expanding lectures:
 - Run `curriculum_migrate.py` for brand-new lectures (legacy 60-lecture migration helper)
 - Invent course or lecture IDs outside the yaml/manifest scheme
 - Promote electives to `type: core` merely to satisfy validation
+- Split **Part I — Intuition** into a second lecture ID, `companions/`, or `primers/` tree — Intuition lives in the same manuscript as Part II (see **manuscript-voice-structure**)

@@ -8,11 +8,11 @@ alwaysApply: false
 
 When editing lecture manuscripts (`book/**/*-L*.md`), improve attention retention. Do **not** rewrite educational meaning, strip exercises/solutions, or change YAML unless asked.
 
-Follow **manuscript-voice-structure** for overall architecture. This rule covers pacing aids that stay compatible with voice listening.
+Follow **manuscript-voice-structure** for overall architecture (including **Part I — Intuition** / **Part II — Deep Dive**). This rule covers pacing aids that stay compatible with voice listening.
 
 ## Goal
 
-Long chapters should feel guided, not intimidating. Scaffold; don’t gut the curriculum.
+Long chapters should feel guided, not intimidating. Scaffold; don’t gut the curriculum. Prefer fixing a missing or weak Part I over packing more callouts into an already dense Part II.
 
 ## Compatible pacing kit
 

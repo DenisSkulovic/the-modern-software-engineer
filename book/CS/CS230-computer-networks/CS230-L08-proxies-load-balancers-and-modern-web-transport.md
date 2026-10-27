@@ -20,6 +20,145 @@ next: CS230-L09
 
 ---
 
+# Part I — Intuition
+
+*Your browser may never speak directly to your backend. Every intermediary can improve performance—and accidentally become part of your application's correctness and security.*
+
+Look at the opening diagram for half a minute, then listen. This pass builds one mental picture. Part II develops the same picture with full technical depth.
+
+### The picture to carry in your head
+
+```mermaid
+flowchart LR
+    B["Browser"] --> E["CDN / edge proxy\nCache + security + TLS"]
+    E --> L["Application load balancer\nChoose healthy target"]
+    L --> A["Node.js instance A"]
+    L --> C["Node.js instance B"]
+    A --> D[("Database")]
+    C --> D
+    E -. "Cache hit: reply here" .-> B
+```
+
+**The question:** Which participant actually handled the request, and which parts of the message or connection could it change?
+
+---
+
+### 1. The request that never reached Node.js
+
+A customer opens a hotel page. The browser reports a fast successful response. Your Node.js server logs show nothing. How can that be?
+
+The public hostname doesn't necessarily resolve to your application instance. It may lead to a **CDN edge**, which acts as a reverse proxy. If it has a fresh usable cached representation, the edge can answer the browser without contacting the origin.
+
+That is an architectural feature. A response can come from the network edge while the backend remains uninvolved.
+
+Now imagine the request is for a personalized reservation list. If the edge mistakenly reuses a response cached for another user, the same optimization becomes a serious information leak.
+
+The crucial mental model is that proxies are **participants**, not invisible wires.
+
+### 2. Forward proxy versus reverse proxy
+
+A forward proxy acts on behalf of the client side: a corporate network might route employee web requests through one. A reverse proxy acts in front of servers: clients connect to it as the public endpoint for an origin or application service.
+
+A reverse proxy can terminate TLS, inspect HTTP metadata, choose an upstream service, retry requests under configured policy, cache responses, enforce limits, or transform headers.
+
+Those capabilities are useful and dangerous precisely because the proxy understands more than packet forwarding.
+
+**Checkpoint:** If Node.js has no log for a request that returned `200`, must the customer's report be wrong? **No.** The response may have been served entirely by the CDN.
+
+### 3. Load balancing: which backend gets the work?
+
+Suppose two Node.js instances can serve the same API. A load balancer decides where to send a connection or request, depending on its operating layer and implementation.
+
+A **Layer 4** load balancer generally makes decisions using transport-level information, such as addresses and ports, without interpreting the complete HTTP message. A **Layer 7** HTTP-aware load balancer can route based on application-level information such as hostnames, paths, headers, and other protocol properties.
+
+Both are load balancers, but they don't make identical promises. Also, a health check telling you a process is alive doesn't prove it can successfully complete a booking. Readiness and service correctness are stronger questions.
+
+Sticky sessions try to keep a client associated with a particular backend. Sometimes they're needed, but they can hide unwanted process-local state and make balancing, failover, or scaling more awkward. If possible, build application correctness around shared authoritative state rather than assuming one process will own a customer forever.
+
+### 4. The connection isn't necessarily end-to-end
+
+Imagine the browser establishes TLS with the CDN. The CDN may then open another connection to the load balancer, which may open another connection to Node.js. Each hop can have its own transport and TLS state.
+
+The browser isn't necessarily sharing one uninterrupted TCP connection with the application process.
+
+That explains several otherwise mysterious observations: the application may see the load balancer as the TCP peer; upstream and downstream timeouts can differ; and the proxy may return an error before the backend ever receives the request.
+
+If a proxy returns `504 Gateway Timeout`, investigate which upstream exchange timed out. The status does not prove that the backend executed and returned a 504 itself.
+
+### 5. Where did the real client IP go?
+
+A Node.js backend behind an HTTP reverse proxy often sees the proxy's address as the network peer. The proxy may add metadata such as `X-Forwarded-For` or standardized `Forwarded` headers to convey upstream client information.
+
+But those headers are not automatically trustworthy when supplied by arbitrary clients. Correct interpretation requires a defined trusted-proxy chain and configuration that discards or handles untrusted input appropriately.
+
+If your fraud engine treats any caller-provided `X-Forwarded-For` value as ground truth, an attacker may forge their apparent origin.
+
+**Checkpoint:** Why does the backend's socket peer address differ from the customer's address? **Because an intermediary opened a separate upstream connection.**
+
+### 6. Caching: only when the representation is shareable
+
+A public hotel image is a good candidate for shared caching under suitable rules. A private booking list is not. HTTP caching behavior depends on policy, response metadata, and the key used to identify representations.
+
+A CDN must understand which responses are public and which depend on user identity, authorization, cookies, or request headers. `Cache-Control: private` or `no-store` can be relevant according to the desired policy. `Vary` helps identify which request-header differences select different representations, but it isn't an automatic substitute for a safe authorization and caching design.
+
+Another edge case is the **cache stampede**. A popular cached item expires; many simultaneous misses hit the origin. The cache meant to reduce load suddenly concentrates traffic. Coalescing, jittered expiration, and bounded fallback may help.
+
+### 7. HTTP versions are different transportation machinery
+
+HTTP/1.1 commonly uses persistent TCP connections, but each connection's request/response handling has practical ordering constraints. HTTP/2 allows multiple logical streams to be multiplexed over one TCP connection, reducing certain application-level blocking patterns.
+
+However, because HTTP/2 over TCP depends on one ordered TCP byte stream, loss of a TCP segment can delay delivery of bytes needed by several streams. That's transport-level head-of-line blocking.
+
+HTTP/3 carries HTTP semantics over QUIC, which uses UDP underneath and provides independently recoverable reliable streams. Losing data for one QUIC stream need not block unrelated streams in the same way as a missing TCP segment beneath HTTP/2, although shared congestion and other bottlenecks still exist.
+
+Remember the distinction: **HTTP method and status semantics remain HTTP; the transportation machinery changes.**
+
+### 8. Streaming and timeouts
+
+Not all responses need to be buffered until completion. Streaming lets a server or proxy deliver a response incrementally, but intermediaries may buffer, time out, transform, or terminate streams according to configuration.
+
+If an AI or report-generation endpoint stops streaming through a proxy, don't assume the backend stopped producing data. Inspect each intermediary's behavior and timeout boundary.
+
+Likewise, an automatic proxy retry of a side-effecting request may create a duplicate operation if the first upstream attempt succeeded but its response vanished. Network convenience doesn't erase application idempotency.
+
+### 9. The minute-long replay
+
+The browser connects to an edge endpoint. The edge may answer from cache or forward. A load balancer chooses an available backend. Separate network connections can exist between hops. Every intermediary may add latency, modify headers, terminate TLS, enforce policy, or return its own error. HTTP/2 and HTTP/3 change how simultaneous application exchanges share transport machinery. The debugging question is not merely "Did the server respond?" but "Which server, through which boundary, answered or failed?"
+
+#### Three questions before L08
+
+1. Can a CDN serve a valid response while Node.js sees no request? **Yes**, on a suitable cache hit.
+2. Is an `X-Forwarded-For` header automatically evidence of client identity? **No**, only trusted proxy processing can justify its interpretation.
+3. Does HTTP/3 mean HTTP is unreliable because QUIC uses UDP? **No**, QUIC implements transport reliability and streams above UDP.
+
+
+### Pocket map — screen reference
+
+```text
+FORWARD PROXY    client-side intermediary
+REVERSE PROXY    server-side public intermediary
+CDN              distributed edge cache/reverse proxy
+L4 BALANCER      transport/address/port-based routing
+L7 BALANCER      HTTP-aware routing/headers/host/path
+HEALTH CHECK     signal, not proof full business operation works
+TLS TERMINATION  separate secure channel ends at this hop
+X-FORWARDED-FOR  client chain metadata; trust only defined proxies
+CACHE HIT        origin may see no request
+504              an intermediary may have timed out upstream
+HTTP/1.1        persistent connections; older multiplexing constraints
+HTTP/2          multiplexed streams on TCP; TCP loss HOL remains
+HTTP/3          HTTP over QUIC; streams built above UDP
+STREAMING        intermediaries may buffer or time out
+
+An intermediary isn't an invisible wire.
+```
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 ### How to listen to this lecture
 
 Written for continuous listening first, then for on-screen re-reading. Theme: **intermediaries are programmable participants** — a CDN, load balancer, or HTTP version change can alter correctness, security, and identity, not merely latency. Bold takeaways mark where a “faster” hop quietly became part of the application’s behavior.

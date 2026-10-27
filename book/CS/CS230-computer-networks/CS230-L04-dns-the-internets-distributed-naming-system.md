@@ -18,6 +18,131 @@ next: CS230-L05
 
 ---
 
+# Part I — Intuition
+
+*The internet doesn't have one giant phone book. It has a hierarchy of responsibilities and a lot of cached answers.*
+
+Look at the opening diagram for half a minute, then listen. This pass builds one mental picture. Part II develops the same picture with full technical depth.
+
+### The picture to carry in your head
+
+This is what can happen **on a cache miss**, not a mandatory sequence for every lookup.
+
+```mermaid
+flowchart LR
+    B["Browser / OS"] --> R["Recursive resolver\nAsk on user's behalf"]
+    R --> T["Root\nWhere is .com?"]
+    T --> U["TLD nameservers\nWho serves example.com?"]
+    U --> A["Authoritative DNS\nWhat is api.example.com?"]
+    A -. "Answer" .-> R
+    R -. "Cache + return" .-> B
+```
+
+The example uses the reserved documentation domain `example.com`. The hierarchy is rooted in DNS delegation, not a chain of machines transferring the website itself.
+
+**The question:** Who is responsible for answering the question, and who is merely remembering an earlier answer?
+
+---
+
+### 1. A migration that worked for half the customers
+
+Your booking API used to point at an old deployment. You switch the hostname's DNS record to the new deployment. A colleague in Vilnius reaches the new API, while someone in London still reaches the old one. The authoritative DNS provider shows the updated record, so why are customers seeing two different answers?
+
+Because a hostname doesn't live inside one magical worldwide lookup table that updates every browser instantly. DNS involves authoritative information and cached copies held by several systems.
+
+Start with what the browser wants. It needs one or more network addresses for a name such as `api.example.com`. It may already have a usable answer in a local cache. The operating system or another configured resolution layer may also have one. If an answer isn't available there, a recursive resolver can perform the search on the client's behalf.
+
+Notice our first distinction. The **recursive resolver** is the helper answering clients. The **authoritative nameserver** is the source designated to answer for a DNS zone. They are different jobs, even if a particular provider runs several kinds of infrastructure.
+
+### 2. Who knows whom?
+
+Imagine the recursive resolver has never looked up our hostname and has no helpful cached delegation information.
+
+It doesn't need to ask every server on the planet. It starts at the DNS hierarchy. Root nameservers can direct it toward the relevant top-level domain, such as `.com`. The TLD nameservers can direct it toward the authoritative nameservers for `example.com`. The authoritative server can answer for the requested name or supply information relevant to completing resolution.
+
+The root doesn't store the live IP address of every website. The TLD doesn't host the website. And the authoritative DNS server isn't necessarily the machine running the API.
+
+They divide the responsibility for **knowing where the answer should be found**.
+
+In many real lookups, the resolver already remembers the delegation and needs fewer upstream queries. The diagram is the logic of authority, not a promise of four network trips every time.
+
+**Checkpoint:** Does querying a DNS root server download an API response? **No.** It helps locate DNS authority; fetching the API happens later with another protocol.
+
+### 3. A record is an answer to a particular question
+
+DNS records have types because "What is this hostname's address?" isn't the only possible question.
+
+An **A record** gives an IPv4 address. An **AAAA record** gives an IPv6 address. A **CNAME** makes one name an alias of another name, which the resolver may need to follow to obtain the requested address. An **MX record** helps identify mail exchangers. **TXT** records carry text used for several application and verification purposes.
+
+A record type isn't a command to open a connection. It supplies information. For example, an A record doesn't guarantee the target server is reachable or healthy.
+
+A DNS answer may also depend on how the provider selects responses: different users or resolvers can receive different appropriate endpoints. DNS-based traffic steering is useful but doesn't replace health, connection, TLS, or application behavior.
+
+### 4. Why two computers can disagree
+
+Now consider **TTL**, the time-to-live attached to cached DNS information. A resolver can cache a record for a permitted period and continue returning it until it needs to refresh, subject to its implementation and policies.
+
+Suppose a resolver obtained the old address shortly before the migration and its cached answer has substantial lifetime remaining. Another resolver queries after the update and receives the new address. The two clients can temporarily reach different deployments while the authoritative source has already changed.
+
+This isn't necessarily DNS malfunction. It's the consequence of caching as designed.
+
+Changing a record doesn't erase previously distributed cached answers. Lowering TTL only at the moment of a migration also doesn't retroactively shorten TTLs already cached. That's why carefully planned migrations may lower relevant TTLs ahead of time, wait for old caches to age out, and keep the old endpoint functional during transition.
+
+**Checkpoint:** If `dig` using an authoritative server shows the new record, does that prove every user sees it? **No.** Their resolvers and caches may still have valid earlier answers.
+
+### 5. Sometimes absence gets cached
+
+Suppose a client asks for a hostname that doesn't exist yet and receives a negative DNS answer, such as NXDOMAIN. That negative result can also be cached according to DNS rules.
+
+You create the hostname a minute later. Some clients still report that it doesn't exist because their resolver remembers the earlier negative response.
+
+The relevant mental point: DNS caching doesn't store only successful addresses. It can store knowledge that a particular question had no answer under earlier authoritative information.
+
+### 6. DNS privacy, integrity, and identity are separate questions
+
+If someone sees an ordinary DNS lookup, they may infer which hostname was queried. Mechanisms such as DNS over HTTPS or DNS over TLS protect the transport between client and configured resolver, under their respective trust assumptions.
+
+**DNSSEC** addresses a different concern: cryptographic authentication of DNS data through a chain of trust for signed zones. It doesn't encrypt ordinary DNS queries. And neither DNSSEC nor encrypted DNS replaces TLS certificate validation for the eventual HTTPS connection.
+
+That distinction fits the entire course. Finding an address, ensuring the DNS information is authentic, keeping queries private, and authenticating a remote HTTPS service are distinct responsibilities.
+
+### 7. The minute-long replay
+
+The browser needs an address. It checks whether it or another local layer already knows. A recursive resolver may answer from cache or follow DNS delegations through the hierarchy to an authoritative source. It returns records with applicable caching information. Different resolvers may temporarily report different still-cached answers after a change. The browser then uses the resulting address as input to the next stage of communication; DNS itself hasn't opened the API connection.
+
+#### Three questions before L04
+
+1. Recursive resolver versus authoritative server? **One searches/caches for clients; the other answers for its zone.**
+2. Why did London reach the old deployment? **A usable old record may still have been cached.**
+3. Does a valid A record prove the API is healthy? **No.** It answers an address question, not a reachability or application-health question.
+
+
+### Pocket map — screen reference
+
+```text
+CLIENT         wants address for hostname
+RECURSIVE      answers for client, uses cache or queries hierarchy
+ROOT           directs toward TLD authority
+TLD            directs toward domain's authoritative nameservers
+AUTHORITATIVE  provides records for zone
+A              IPv4 address
+AAAA           IPv6 address
+CNAME          alias to another DNS name
+TTL            cached answer lifetime under caching rules
+NEGATIVE CACHE failed/nonexistent-name answer may be retained
+DNSSEC         authenticated DNS data; not query confidentiality
+DoH / DoT      encrypted transport client ↔ resolver
+TLS            separate later authentication of HTTPS server
+
+DNS works ≠ route works ≠ TCP works ≠ TLS works ≠ API works
+```
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. The Deployment That Worked for Only Half the Internet
 
 It's nine in the morning. Your company operates a successful hotel-booking platform, and today you're migrating its public API to a new infrastructure provider.

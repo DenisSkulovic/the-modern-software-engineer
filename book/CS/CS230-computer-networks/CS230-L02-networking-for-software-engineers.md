@@ -18,6 +18,129 @@ next: CS230-L03
 
 ---
 
+# Part I — Intuition
+
+*A wide highway doesn't shorten a long journey. And reliable conversations require more than a wide highway.*
+
+Look at the opening diagram for half a minute, then listen. This pass builds one mental picture. Part II develops the same picture with full technical depth.
+
+### The picture to carry in your head
+
+The server is far away. Data moves across a path with limited capacity, propagation delay, buffers, and other traffic.
+
+```mermaid
+flowchart LR
+    L["Browser in Berlin"] --> R["Network path\nPropagation delay + queues"]
+    R --> S["Server in Singapore"]
+    S -. "Reply takes time too" .-> R
+    R -.-> L
+```
+
+**The question:** Is our problem how much data fits through the path, how long one exchange takes, or how well the sender adapts to changing conditions?
+
+---
+
+### 1. The fast internet connection that feels slow
+
+You're in Berlin using an excellent gigabit internet connection. A server in Frankfurt answers a tiny API request quickly. An equally capable server in Singapore answers the same request much later. Yet downloads from both servers can achieve impressive throughput once underway.
+
+That isn't a contradiction. We've combined two separate meanings of *fast*.
+
+**Bandwidth**, or more precisely the link's available data-carrying rate, answers how much data can move per unit of time. **Latency** answers how long a particular transfer or interaction takes. A network can move a tremendous amount of data per second after the pipeline fills while still requiring a noticeable amount of time for the first exchange to complete.
+
+Think about a long freight train. A train carrying two hundred containers per trip has high carrying capacity. It does not arrive instantly. Increasing its capacity doesn't eliminate the travel time.
+
+Network paths also have a physical component of delay. Signals take time to propagate. Routers and other devices add processing and queueing. Distance isn't the only factor, but it cannot be ignored.
+
+### 2. The conversation has turns
+
+Our frontend needs a small piece of data. Sometimes the browser and server must exchange setup information before the application request can complete. TCP connection establishment may take a round trip. TLS negotiation can involve additional messages, depending on connection reuse and protocol version. Then the HTTP request travels out and the response comes back.
+
+A **round-trip time**, or RTT, is the time for a communication to travel out and for a corresponding response or acknowledgment to return. A useful mental estimate is that every unavoidable dependent back-and-forth adds some portion of RTT to elapsed time.
+
+A large file transfer can keep the path busy. A sequence of dependent small requests may repeatedly stop and wait for the next answer. One interaction needs throughput. The other is especially sensitive to round trips.
+
+**Checkpoint:** If the endpoint takes 8 milliseconds of CPU time and the browser measures 230 milliseconds end to end, must the application have wasted 222 milliseconds? **No.** Connection setup, network RTT, edge processing, and other waiting can explain the difference.
+
+### 3. TCP: a reliable conversation over unreliable deliveries
+
+IP moves packets on a best-effort basis. Individual packets can be lost, delayed, or arrive out of order. TCP builds a reliable ordered byte stream above that.
+
+How? The sender numbers the transmitted bytes, the receiver acknowledges progress, and missing information can be retransmitted. TCP also controls how much unacknowledged data may remain in flight.
+
+That last idea is important. If you could transmit endlessly without any limit, you might overwhelm the receiver or the network. Two distinct controls address two distinct limits.
+
+**Flow control** protects the receiver. The receiver tells the sender how much additional data it can buffer. **Congestion control** protects the network path. The sender adapts its sending behavior according to signs of available capacity and congestion.
+
+These aren't synonyms. A fast receiver can't force a congested network to carry more traffic. An uncongested network can't make an overwhelmed receiver accept unlimited bytes.
+
+### 4. The bandwidth–delay product
+
+Imagine a pipe that can carry 100 megabits per second and has a round-trip time of 100 milliseconds. If a sender wants to keep the path busy, it needs enough data in flight while acknowledgments are returning.
+
+One hundred megabits per second multiplied by one-tenth of a second equals ten megabits, or about 1.25 megabytes.
+
+That's the **bandwidth–delay product**. It approximates how much data can be in flight to occupy a path at a given rate and RTT. It doesn't predict the entire transfer duration or guarantee that real TCP windows and congestion conditions permit that rate.
+
+The intuition is more valuable than the arithmetic: a fast but distant path may need a sizeable amount of data in flight to achieve high throughput.
+
+**Checkpoint:** Would a ten-kilobyte send window fully utilize a high-bandwidth path with a long RTT? Likely not. The sender could spend much of its time awaiting acknowledgments instead of keeping the path busy.
+
+### 5. The queue that makes the road feel longer
+
+Routers and other network devices sometimes receive traffic faster than they can forward it. They buffer packets. Buffers absorb bursts, but excessive buffering adds waiting.
+
+This is **bufferbloat**: a path appears well connected and may transfer plenty of data, while bloated queues make interactive traffic painfully slow.
+
+Now add loss. A missing TCP segment may require retransmission, which takes additional time. Ordered delivery means that later received bytes can't always be passed to the application ahead of a gap. That's one reason loss can hurt responsiveness out of proportion to the number of bytes lost.
+
+Notice the pattern: network speed is not a single scalar. You need a picture of propagation, serialization, waiting, and recovery.
+
+### 6. Choosing a response to a slow request
+
+If an API call is slow because its server is far away, moving or caching work closer may help. If it is slow because it transfers a massive payload, reducing bytes or improving usable throughput may help. If buffers are saturated, increasing the link's raw capacity might help, but appropriate queue management and traffic shaping may matter more. If many sequential dependency calls each wait for a round trip, changing the application dependency graph can be more powerful than optimizing one endpoint's CPU instructions.
+
+No tool should be used until you decide which mechanism could explain the observation.
+
+A useful diagnosis asks four questions: How many bytes are moving? How long is the round trip? How much waiting is caused by queues? Are loss and retransmissions creating extra delay?
+
+The answers place the problem into a model. The model suggests which measurement to make next.
+
+### 7. The minute-long replay
+
+A high-capacity network can still have a long round-trip time. Small dependent exchanges care about latency. Large continuous transfers care strongly about throughput. TCP reconstructs reliable ordered bytes over packet delivery that isn't guaranteed. Flow control protects the receiver; congestion control adapts to the network. Windows limit how much data can be outstanding. Buffers and retransmissions can turn a high-throughput path into a terrible interactive experience.
+
+You don't need detailed congestion-control algorithms to understand that story. The algorithms are refinements of those responsibilities.
+
+#### Three questions before L02
+
+1. Does one gigabit per second guarantee a tiny API request finishes quickly? **No**—RTT and dependent exchanges can dominate.
+2. Is flow control the same as congestion control? **No**—receiver capacity versus network path capacity.
+3. Can a large buffer make the network feel slower? **Yes**—queued packets may wait even when raw throughput remains high.
+
+
+### Pocket map — screen reference
+
+```text
+BANDWIDTH         How much per second?
+LATENCY / RTT     How long until response/ack comes back?
+TCP              Ordered reliable byte stream from lossy packet delivery
+FLOW CONTROL     Receiver's available buffering
+CONGESTION       Network's available carrying capacity
+WINDOW           How much unacknowledged data can be in flight
+BDP              Bandwidth × RTT ≈ data needed in flight to fill path
+BUFFERBLOAT      Excess buffering increases waiting time
+LOSS             Retransmissions and ordered delivery increase tail delay
+
+Diagnostic: bytes? RTT? queue? loss? dependent trips?
+```
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. The Mystery of the Gigabit Connection
 
 Imagine you've deployed two identical Node.js services. Same code.

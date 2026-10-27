@@ -18,6 +18,133 @@ next: CS230-L04
 
 ---
 
+# Part I — Intuition
+
+*The same network can produce a correct cached page, a duplicate payment, or leaked customer data. The difference is what the participants believed the HTTP exchange meant.*
+
+Look at the opening diagram for half a minute, then listen. This pass builds one mental picture. Part II develops the same picture with full technical depth.
+
+### The picture to carry in your head
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant C as Cache / CDN
+    participant A as Booking API
+    B->>C: Request: method + path + headers
+    alt usable cached representation
+        C-->>B: Cached response + metadata
+    else origin required
+        C->>A: Forwarded request
+        A-->>C: Status + headers + body
+        C-->>B: Response
+    end
+```
+
+**The question:** What does each participant think it is permitted to do with this request and response?
+
+---
+
+### 1. The network works; the application still goes wrong
+
+You open the booking website and inspect a request to fetch hotel information. The browser sends a request; the server responds. At first glance, HTTP looks like a glorified envelope for JSON.
+
+But the envelope has meaning. The method declares the intended kind of operation. The path identifies a target resource. Headers provide conditions and metadata. The status reports the outcome of that HTTP exchange. The body carries a representation when one is supplied.
+
+HTTP does not itself guarantee that a reservation wasn't accidentally created twice or that private information is safe to cache. Those are obligations the application and its intermediaries must fulfill.
+
+Imagine three incidents. The browser receives a `304 Not Modified` without a fresh response body but still displays a page. A timed-out reservation POST is retried and creates two bookings. A shared CDN returns another user's personal booking data. All three are possible without faulty routing or TCP.
+
+The actors disagreed about HTTP semantics.
+
+### 2. Method means intention
+
+A **GET** request is intended to retrieve a representation without requesting a change to the resource's state. It's called safe in HTTP semantics. A GET endpoint secretly creating a charge violates the expectation that retrieval is safe.
+
+A **POST** submits data for processing under the resource's own rules. It often creates something, but its semantics are broader than creation. A generic POST is not inherently idempotent.
+
+A **PUT** requests that a resource's state be created or replaced with the supplied representation, under the server's rules. **DELETE** requests removal of the association with a target resource. PUT and DELETE are idempotent in their intended semantics: applying the same request repeatedly has the same intended effect on server state as applying it once. That doesn't promise identical response statuses or guarantee no logging or side effects elsewhere.
+
+When the frontend retries a booking POST because the response was lost, it may create a second booking. The transport failure doesn't prove the first business operation failed.
+
+**Checkpoint:** If your payment POST times out, does sending it again necessarily repeat only the response? **No.** You need a business idempotency key, durable operation identity, or reconciliation mechanism appropriate to the provider and API.
+
+### 3. Status doesn't tell the whole business story
+
+A `200` or `201` means something about the HTTP operation. A `404` says the target wasn't found or isn't disclosed as available. A `409` can represent a conflict with current resource state. A `500` reports a server-side error.
+
+But what if an HTTP response never arrives? The caller cannot conclude from the timeout alone whether the booking was committed. A process could have completed work and lost the response. An HTTP status is evidence only when you actually receive it.
+
+Also distinguish protocol success from business success. An HTTP `200` could contain an application-level rejection if the API was designed that way, though a carefully designed API should avoid unnecessary ambiguity.
+
+### 4. Caching: asking whether yesterday's answer is still usable
+
+Imagine requesting a public hotel photo. A CDN or browser cache can retain a response and later reuse it according to its caching rules. That avoids contacting the origin for every visit.
+
+But caches need to know when content is fresh and when it requires validation. A response can carry caching metadata, and a representation can have an **ETag** identifying its version.
+
+On a later request, the client may say, in effect, "I have version X; send a new body only if the current representation differs." The client sends a conditional request with `If-None-Match`. If the condition indicates the cached version is still applicable, the server can respond `304 Not Modified` without retransmitting the representation body.
+
+The browser still displays the content because **it already has the body**. The 304 tells it that reusing the stored representation is valid under the relevant HTTP rules.
+
+**Checkpoint:** Does `304` mean the server forgot to send the page? **No.** It participates in a conditional exchange with an existing cached representation.
+
+### 5. Conditional writes are a different trick
+
+ETags can also help prevent lost updates. Imagine two admins editing the same hotel description. Each reads version 12. The first saves an update, producing a newer version. The second tries to save their stale edit.
+
+With a suitable conditional write using `If-Match`, the server can require that the resource version still matches what the client edited. If it doesn't, the server can reject the update, commonly with `412 Precondition Failed`.
+
+Notice the same validator now serves a different purpose. `If-None-Match` on a GET commonly avoids downloading an unchanged representation; `If-Match` on a write can prevent overwriting a version that changed in the meantime.
+
+The exact application design must enforce those conditions correctly. A decorative ETag header with no corresponding write check doesn't prevent races.
+
+### 6. The dangerous cache
+
+Now imagine the CDN caches `/api/me/reservations` as though it were a public hotel listing. Customer A receives their private booking list. The shared cache stores it under an insufficiently specific cache key. Customer B asks the same URL and receives the cached response.
+
+The HTTP exchange succeeded. The product committed a data leak.
+
+For personalized information, the application must use appropriate cache-control behavior and cache configuration. `Cache-Control: private` restricts storage by shared caches; `no-store` prevents storage by compliant caches. Their semantics differ, and the policy must reflect the data and threat model. If using a private cache or a deliberately shared cache of variants, keys and `Vary` behavior require careful design.
+
+Authorization decisions cannot be delegated to an accidentally shared representation.
+
+### 7. The minute-long replay
+
+A client sends an HTTP method, target, headers, and maybe a body. A server or intermediary interprets the request's semantics. The response contains status, metadata, and sometimes a representation body. Caches may satisfy retrievals without consulting the origin. Validators can avoid retransmitting unchanged content or protect against stale writes. Retries of operations with side effects need explicit business correctness. Private representations must not leak through shared caching.
+
+HTTP is not merely how bytes travel. It's an agreement about what participants may infer and reuse.
+
+#### Three questions before L03
+
+1. Why can `304 Not Modified` render a complete page? **The cache already stores the body.**
+2. Does an HTTP timeout prove a booking did not occur? **No.** The result may be ambiguous.
+3. What makes a shared CDN dangerous for `/api/me`? **Reusing a private representation for a different user without proper cache policy and isolation.**
+
+
+### Pocket map — screen reference
+
+```text
+REQUEST  method + target + headers + optional body
+RESPONSE status + headers + optional body
+GET      retrieval, safe semantics
+POST     process submission; not inherently idempotent
+PUT      create/replace with idempotent intended semantics
+DELETE   idempotent intended removal semantics
+304      cached body reused after conditional validation
+ETag     representation validator
+IF-NONE-MATCH    conditional retrieval / revalidation
+IF-MATCH         conditional mutation / avoid stale overwrite
+TIMEOUT          outcome UNKNOWN, not automatically failure
+CACHE            reuse under declared rules; private data needs policy
+```
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
 # 1. Three Strange Incidents at a Hotel Booking Company
 
 It's Monday morning, and your hotel-booking platform has three production incidents. The first is merely confusing.
