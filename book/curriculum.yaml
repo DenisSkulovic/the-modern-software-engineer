@@ -198,14 +198,14 @@ courses:
     slug: proxies-load-balancers-and-modern-web-transport
     legacy_ids: []
     source: CS/CS230-computer-networks/CS230-L08-proxies-load-balancers-and-modern-web-transport.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS230-L09
     title: Network Forensics for Software Engineers
     slug: network-forensics-for-software-engineers
     legacy_ids: []
     source: CS/CS230-computer-networks/CS230-L09-network-forensics-for-software-engineers.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
 - code: CS320
   title: Operating Systems, Concurrency, and Runtimes

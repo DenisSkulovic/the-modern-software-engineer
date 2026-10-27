@@ -22,6 +22,14 @@ next: CS320-L02
 
 ---
 
+### How to listen to this lecture
+
+Written for continuous listening first, then for on-screen re-reading. Theme: **time becomes part of correctness** — and **concurrency ≠ parallelism**. Sticky-note callouts mark where a sequence that works alone fails when other work can run between its steps. Near the end, answer the oral challenges **out loud** before reading solutions. The Node.js lab lives after the spoken lecture ends — keep it for a screen session.
+
+By the end, you should be able to say why two correct booking requests can oversell a room, how one JavaScript thread still races across `await`, what atomic updates and locks protect, why `Promise.all` and unbounded concurrency are dangerous without guardrails, and which questions to ask before trusting asynchronous orchestration.
+
+---
+
 # 1. The Last Room Was Sold Twice
 
 It's Friday evening.
@@ -56,7 +64,7 @@ The payment integration works.
 
 The code has tests, and they all pass.
 
-Here's the simplified implementation:
+Here's the simplified booking path — read availability, create a reservation, then decrease inventory:
 
 ```typescript
 async function bookRoom(
@@ -97,19 +105,17 @@ So how did it sell the last room twice?
 
 The answer is that **a sequence of individually correct operations is not necessarily correct when other operations can occur between them**.
 
-Let's reconstruct what happened.
+Let's reconstruct the interleaving:
 
-| Moment | Customer A | Customer B |
-|---|---|---|
-| 1 | Reads availability: 1 | |
-| 2 | | Reads availability: 1 |
-| 3 | Determines room is available | |
-| 4 | | Determines room is available |
-| 5 | Creates reservation A | |
-| 6 | | Creates reservation B |
-| 7 | Decreases availability | |
-| 8 | | Decreases availability |
-| 9 | Receives confirmation | Receives confirmation |
+1. Customer A reads availability: 1.
+2. Customer B reads availability: 1.
+3. Customer A determines the room is available.
+4. Customer B determines the room is available.
+5. Customer A creates reservation A.
+6. Customer B creates reservation B.
+7. Customer A decreases availability.
+8. Customer B decreases availability.
+9. Both receive confirmation.
 
 Both requests made their decisions using availability information that was valid when they read it.
 
@@ -122,6 +128,10 @@ The correctness of the outcome depends on the relative timing of multiple operat
 And race conditions are especially nasty because the code may behave correctly 99.9% of the time.
 
 Then, under precisely the wrong timing conditions, it violates an important business rule.
+
+> **Sticky note #1**
+>
+> Individually correct steps can still be wrong when other work runs between them.
 
 You may have heard that JavaScript is single-threaded.
 
@@ -144,6 +154,10 @@ That's **parallelism**. The distinction is important.
 **Concurrency is about managing multiple activities whose execution can overlap in time.**
 
 **Parallelism is about multiple activities actually executing at the same instant.**
+
+> **Sticky note #2**
+>
+> Concurrency ≠ parallelism — overlapping progress is not the same as simultaneous execution.
 
 A system can be concurrent without being parallel. A single CPU core can switch between several threads, giving each a share of execution time.
 
@@ -185,7 +199,7 @@ Node.js typically takes another approach. It uses an event-driven execution mode
 
 While one request waits for I/O, the JavaScript thread can execute code belonging to another request.
 
-Conceptually:
+While A waits on the database and B waits on an API, the main JavaScript thread can run other ready work — then resume each request when its I/O completes:
 
 ```text
 Time →
@@ -219,7 +233,7 @@ It isn't.
 
 A better mental model is a scheduler that coordinates when JavaScript callbacks and continuations can execute.
 
-Let's examine a simple program:
+Let's examine a simple program that logs `A`, schedules a zero-delay timer for `B`, then logs `C`:
 
 ```javascript
 console.log("A");
@@ -233,13 +247,7 @@ console.log("C");
 
 What happens?
 
-The output is:
-
-```text
-A
-C
-B
-```
+The output is `A`, then `C`, then `B`.
 
 Why?
 
@@ -269,7 +277,7 @@ It means the callback may execute when the runtime's scheduling rules permit it.
 
 Node.js uses libuv to coordinate much of its asynchronous runtime behavior.
 
-A simplified representation of the major event-loop phases looks like this:
+A simplified cycle walks pending callbacks, poll for I/O, check/`setImmediate`, close callbacks, then timers on the next opportunity:
 
 ```text
          ┌──────────────────┐
@@ -326,7 +334,7 @@ Because promises introduce another layer.
 
 # 5. Microtasks: The Work That Gets to Cut in Line
 
-Let's modify our previous example.
+Let's modify our previous example — same timer for `B`, plus a promise reaction that logs `C`, with synchronous `A` and `D` around them:
 
 ```javascript
 console.log("A");
@@ -344,14 +352,7 @@ console.log("D");
 
 Before reading further, predict the output.
 
-It is:
-
-```text
-A
-D
-C
-B
-```
+It is `A`, then `D`, then `C`, then `B`.
 
 Why does the promise callback execute before the timer?
 
@@ -361,7 +362,7 @@ Promise reactions are scheduled as microtasks.
 
 When the current synchronous execution finishes, the runtime processes the relevant microtasks before proceeding to later event-loop work such as timer callbacks.
 
-In simplified terms:
+In simplified terms, current synchronous JavaScript finishes first, then the microtask queue, then later event-loop callbacks:
 
 ```text
 Current synchronous JavaScript
@@ -390,7 +391,7 @@ But running that logic immediately inside the current execution could produce di
 
 Microtasks provide a predictable mechanism for scheduling those continuations.
 
-Here's another example:
+Here's another example — an `async` function that logs `B`, awaits an already-resolved promise, then logs `D`, called between synchronous `A` and `C`:
 
 ```javascript
 async function example() {
@@ -408,14 +409,7 @@ example();
 console.log("C");
 ```
 
-The output is:
-
-```text
-A
-B
-C
-D
-```
+The output is `A`, then `B`, then `C`, then `D`.
 
 This reveals something important.
 
@@ -431,13 +425,7 @@ That is what happens between `B` and `D`.
 
 ## Even an already-resolved promise causes a suspension
 
-Notice that we're awaiting:
-
-```javascript
-Promise.resolve()
-```
-
-It's already fulfilled.
+Notice that we're awaiting `Promise.resolve()` — it's already fulfilled.
 
 There's no network request.
 
@@ -463,7 +451,7 @@ Let's return to our hotel booking system. Many developers associate race conditi
 
 But it isn't the only one. Asynchronous functions can interleave even when their JavaScript continuations execute on one thread.
 
-Here's a deliberately simplified booking system:
+Here's a deliberately simplified booking system that checks seats, awaits, then decrements:
 
 ```javascript
 let availableRooms = 1;
@@ -483,7 +471,7 @@ async function reserve(name) {
 }
 ```
 
-Now run:
+Now run Anna and David through `Promise.all` and print the remaining rooms:
 
 ```javascript
 await Promise.all([
@@ -536,7 +524,7 @@ That's the essential nature of the race.
 
 ## Why moving the decrement fixes this particular example
 
-Consider:
+Consider checking and decrementing before any `await`, then saving afterward:
 
 ```javascript
 let availableRooms = 1;
@@ -565,6 +553,10 @@ What if saving the reservation fails after the in-memory decrement? What if the 
 We've solved one tiny race within one process. We have not solved reliable booking. And this distinction is crucial.
 
 **Correctness inside one JavaScript execution context does not automatically guarantee correctness across processes, services, databases, or machines.**
+
+> **Sticky note #3**
+>
+> A local race fix is not a multi-instance inventory guarantee.
 
 That is one of the reasons we study distributed systems separately.
 
@@ -595,7 +587,7 @@ You don't necessarily need every internal CPU instruction to execute simultaneou
 
 ## A database solution
 
-For a simplified inventory model with one row holding an available-room count, PostgreSQL can perform a conditional update:
+For a simplified inventory model with one row holding an available-room count, PostgreSQL can decrement only when `available > 0` and return the new count:
 
 ```sql
 UPDATE room_inventory
@@ -627,7 +619,7 @@ A frontend check alone cannot provide that guarantee. Neither can a TypeScript t
 
 Another approach is to lock the relevant row before performing the read-modify-write sequence.
 
-PostgreSQL supports constructs such as:
+PostgreSQL can select the inventory row `FOR UPDATE` so competing writers wait:
 
 ```sql
 SELECT available
@@ -660,12 +652,7 @@ Mutex is short for mutual exclusion.
 
 A mutex protects a critical section so that only one participant holds the lock at a time.
 
-Conceptually:
-
-```text
-Request A ── Acquire lock ── Modify state ── Release lock
-Request B ── Waiting ────────────────────── Acquire lock ...
-```
+While A holds the lock and modifies state, B waits; B acquires only after A releases. Serialized access: A acquires → modifies → releases; B waits, then acquires.
 
 A mutex doesn't automatically make the operation fast. In fact, it deliberately serializes access to protected state. But that serialization can preserve correctness.
 
@@ -712,7 +699,7 @@ They acquire locks in different orders. Transaction A locks Monday. Transaction 
 
 Now A tries to lock Tuesday. It must wait for B. B tries to lock Monday.
 
-It must wait for A. Neither can continue.
+It must wait for A. Neither can continue — each holds what the other needs:
 
 ```text
 Transaction A                     Transaction B
@@ -764,7 +751,7 @@ A customer dashboard displays:
 - Payment history.
 - Loyalty points.
 
-You write:
+You await reservations, then payments, then loyalty — three independent fetches in sequence:
 
 ```typescript
 const reservations = await getReservations(customerId);
@@ -778,7 +765,7 @@ Then we wait for payments before starting loyalty retrieval. If the calls are in
 
 The combined latency might approach 600 milliseconds.
 
-Instead:
+Instead, start all three and wait once with `Promise.all`:
 
 ```typescript
 const [reservations, payments, loyalty] =
@@ -799,7 +786,7 @@ It coordinates the completion of multiple promises representing operations that 
 
 ## The dangerous surprise: Rejection doesn't cancel siblings
 
-Suppose you write:
+Suppose you run charge, reservation, and confirmation email through one `Promise.all`:
 
 ```typescript
 await Promise.all([
@@ -843,7 +830,7 @@ If the answer is no, you need more careful orchestration. This becomes especiall
 
 Now imagine you need to fetch 50,000 customer profiles.
 
-A developer writes:
+A developer maps every customer ID into one giant `Promise.all`:
 
 ```typescript
 const profiles = await Promise.all(
@@ -883,7 +870,7 @@ For now, the important principle is:
 
 Suppose we want at most ten profile requests in flight from this batch at a time.
 
-A straightforward implementation is:
+A straightforward implementation slices the IDs into batches of ten and awaits each batch:
 
 ```typescript
 const batchSize = 10;
@@ -916,7 +903,7 @@ We're trying to choose an appropriate concurrency level that produces good throu
 
 Here's a classic trap. You have a CPU-heavy function. Perhaps it processes a large dataset.
 
-Or calculates a difficult optimization problem. Or transforms an enormous document. You decide to make it asynchronous.
+Or calculates a difficult optimization problem. Or transforms an enormous document. You decide to make it asynchronous — a tight CPU loop wrapped in `async`:
 
 ```typescript
 async function expensiveCalculation() {
@@ -930,7 +917,7 @@ async function expensiveCalculation() {
 }
 ```
 
-Now you write:
+Now you run two of those through `Promise.all`:
 
 ```typescript
 await Promise.all([
@@ -944,6 +931,7 @@ Will the two calculations execute in parallel on separate CPU cores? Not merely 
 When invoked, it starts executing synchronously on the calling JavaScript thread. The loop occupies that thread until it completes. Only then does the function return its promise.
 
 The second function invocation then performs its own loop. The asynchronous function declaration doesn't magically move CPU work onto another thread.
+
 **`async/await` is primarily about composing asynchronous operations and their continuations. It isn't a mechanism for automatic CPU parallelism.**
 
 ## What if we insert an `await`?
@@ -973,7 +961,7 @@ Workers have separate JavaScript execution contexts. They can communicate by sen
 
 Here's a simple example.
 
-Create `worker.js`:
+Create `worker.js` — a worker that sums square roots for `workerData.iterations` and posts the total back:
 
 ```javascript
 const { parentPort, workerData } =
@@ -988,7 +976,7 @@ for (let i = 0; i < workerData.iterations; i++) {
 parentPort.postMessage(total);
 ```
 
-Then create `main.js`:
+Then create `main.js` — spawn two workers via promises and await both with `Promise.all`:
 
 ```javascript
 const { Worker } = require("node:worker_threads");
@@ -1058,7 +1046,7 @@ But occasionally, every endpoint becomes slow simultaneously. Even simple health
 
 The network looks fine. What happened? One possibility is that the main JavaScript thread is blocked.
 
-Consider:
+Consider a function that spins the CPU for about two seconds:
 
 ```javascript
 function blockForTwoSeconds() {
@@ -1078,7 +1066,7 @@ Incoming I/O may be handled or buffered by the operating system, but the applica
 
 ## Microtask starvation
 
-Here's a subtler version. Suppose code continually schedules more microtasks.
+Here's a subtler version. Suppose a function queues itself again as a microtask forever:
 
 ```javascript
 function keepScheduling() {
@@ -1120,7 +1108,7 @@ Eventually, the user navigates away. What should happen to the old requests? May
 
 But cancellation has subtleties.
 
-Consider a frontend using `AbortController`:
+Consider a frontend that attaches an `AbortController` signal to `fetch` and later calls `abort()`:
 
 ```typescript
 const controller = new AbortController();
@@ -1212,17 +1200,214 @@ And in concurrent systems, invariants matter enormously.
 
 ---
 
-# 17. Practical Lab: Watch Two Correct Requests Break Shared State
+# 17. The Oral Examination
+
+Pause the lecture for each one.
+
+Answer **out loud** — as if an interviewer were across the table — before you listen to or read the solutions.
+
+They're designed to reinforce practical judgment rather than obscure runtime trivia.
+
+### Challenge A — The Double Booking
+
+**Suggested time: 10 minutes**
+
+You're designing a hotel reservation service.
+
+Two customers simultaneously try to reserve the last room.
+
+The system has several backend instances and a shared PostgreSQL database.
+
+How would you guarantee that only one reservation succeeds?
+
+Consider:
+
+- Where inventory state is authoritative.
+- What operation must be atomic.
+- Whether a database transaction is required.
+- What happens when the booking covers several nights.
+- How to handle a failed payment.
+- How to handle a database transaction that encounters a deadlock.
+
+Why is a JavaScript mutex inside one Node.js instance insufficient?
+
+### Challenge B — The Dangerous `Promise.all`
+
+**Suggested time: 8 minutes**
+
+A developer writes a single `Promise.all` over inventory reservation, payment charge, and confirmation email:
+
+```typescript
+await Promise.all([
+  reserveInventory(),
+  chargePayment(),
+  sendConfirmationEmail()
+]);
+```
+
+What could go wrong?
+
+Why isn't rejection of the combined promise sufficient to guarantee rollback?
+
+How would you redesign the workflow?
+
+Which operations can safely happen concurrently?
+
+Which require ordering?
+
+### Challenge C — The Overloaded Integration
+
+**Suggested time: 10 minutes**
+
+Your application needs to retrieve information about 100,000 products from an external API.
+
+The provider permits 20 concurrent requests.
+
+Each request takes between 100 milliseconds and two seconds.
+
+How would you process the workload?
+
+Would you use one giant `Promise.all()`?
+
+Would you use batches?
+
+Would a semaphore or worker pool be more efficient?
+
+What happens if the provider begins returning rate-limit errors?
+
+How would you prevent retries from making the overload worse?
+
+### Challenge D — The Mysterious Event-Loop Freeze
+
+**Suggested time: 8 minutes**
+
+A Node.js service suddenly becomes unresponsive for several seconds.
+
+During the incident:
+
+- PostgreSQL is healthy.
+- Network connectivity is healthy.
+- The process remains alive.
+- CPU usage on one logical processor is high.
+- Event-loop delay spikes dramatically.
+- All HTTP endpoints become slow.
+
+What explanations would you investigate?
+
+How would you distinguish a long-running synchronous calculation from an overloaded worker pool or slow database operation?
+
+Would adding another server instance solve the underlying problem?
+
+---
+
+# 18. Solutions and Discussion
+
+*Listen or read only after you have answered each challenge out loud.*
+
+### Solution A — Double booking
+
+The inventory rule should be enforced where authoritative shared state is maintained. For a simple counter, a conditional atomic database update can prevent overselling.
+
+Creating the reservation and updating inventory should ordinarily be coordinated transactionally.
+
+Multi-night reservations may require locking or updating multiple rows in a consistent order and ensuring all-or-nothing behavior.
+
+Payment integration introduces external side effects, so a complete workflow needs explicit handling for failures, retries, and compensation.
+
+A local JavaScript mutex cannot coordinate separate backend instances.
+
+### Solution B — Dangerous `Promise.all`
+
+The operations have business dependencies. Payment might succeed while inventory reservation fails. A confirmation email might be sent before the booking is actually confirmed.
+
+And rejecting `Promise.all()` doesn't automatically cancel or undo sibling operations. The workflow should define a durable sequence of states and safe transitions.
+
+Some independent preparatory work may execute concurrently. But irreversible external side effects need carefully designed ordering, idempotency, and recovery behavior.
+
+### Solution C — Overloaded integration
+
+A concurrency limit of 20 should be enforced deliberately. A semaphore or bounded worker pool is a natural approach.
+
+Fixed-size batches are simpler but can underutilize capacity when some requests finish much later than others.
+
+Rate-limit responses require appropriate backoff, potentially respecting a `Retry-After` header. Retries should be bounded and designed to avoid creating additional overload.
+
+Monitoring in-flight requests, errors, latency, and queue depth helps maintain stability.
+
+### Solution D — Event-loop freeze
+
+The combination of high CPU usage on one logical processor and elevated event-loop delay suggests that synchronous JavaScript work may be monopolizing the main execution thread.
+
+CPU profiling and event-loop diagnostics would help identify the source. Other possibilities should still be considered.
+
+An overloaded libuv worker pool can delay operations dependent on that pool, but it doesn't necessarily produce the same pattern as continuous JavaScript execution on the main thread.
+
+A slow database can increase request latency while leaving the main JavaScript thread relatively free.
+
+Adding application instances may improve aggregate availability or throughput, but it doesn't fix a pathological calculation executed by every instance.
+
+The correct remedy depends on the measured bottleneck.
+
+---
+
+# 19. The Mental Model Worth Keeping
+
+Back to the hotel: one room, two Book clicks, two confirmations — not because availability couldn't be calculated, but because shared state changed between check and modify without protection.
+
+That's what makes concurrent programming different from ordinary sequential programming.
+
+In a sequential program, we often reason about operations in a predictable order: read, check, modify, continue. In a concurrent system, other operations may occur between those steps. Across process or network boundaries, uncertainty increases — delayed queries, timeouts, contested locks, crashed workers, payments that succeed while responses disappear, retries that re-execute work that already succeeded.
+
+Correctness is no longer merely about whether each line performs the intended calculation. It becomes about **which sequences of events the system permits, and whether its important guarantees remain true across those sequences**.
+
+A junior developer might ask: "Does this function work?" A more experienced engineer also asks: What if it's invoked twice simultaneously? What if the process crashes after the first write? What if another service changes the same record? What if the response disappears? What if we retry? What if ten thousand customers do this at once?
+
+An AI assistant can produce a clean async function, a `Promise.all()`, retries, or an entire booking workflow in seconds. But unless the architecture preserves the relevant guarantees, that code may fail when two customers click at nearly the same time — even after sequential unit tests pass.
+
+Remember these durable distinctions:
+
+- **Concurrency ≠ parallelism** — overlapping progress is not the same as simultaneous execution.
+- **Scheduling ≠ executing** — a zero-delay timer and an `await` defer work; they don't run it immediately.
+- **One-thread races are real** — an asynchronous boundary can split a logical operation so another continuation observes stale state.
+- **Local correctness ≠ distributed correctness** — fixing an in-process race does not protect a shared database across instances.
+- **`async/await` ≠ CPU parallelism** — workers (or other processes) move heavy computation; promises compose continuations.
+- **`Promise.all` rejection ≠ sibling rollback** — siblings keep running unless you cancel or design recovery.
+- **Bound concurrency by capacity** — unlimited fan-out overloads pools, APIs, and memory.
+- **Cancellation ≠ undo; timeout ≠ remote failure** — signals stop wanting work; they don't erase side effects you may already have caused.
+
+> **The master sticky note**
+>
+> Concurrency isn't primarily about making several things happen faster. It's about allowing several things to happen without losing control of what must remain true.
+
+Time is part of the correctness story. Related — not identical — to speed.
+
+---
+
+# 20. Next Lecture — CS320-L02: Operating Systems: The Manager Behind the Curtain
+
+We've learned that one JavaScript thread can still race across `await`, that the event loop schedules work rather than magically parallelizing it, and that shared-state invariants need enforcement where authoritative state lives — often in the database, not in a local mutex.
+
+But who actually owns the threads, the memory maps, the file descriptors, and the scheduling decisions underneath Node.js? What does the operating system do when your process blocks, when a worker starts, when containers isolate workloads, or when one runaway process tries to consume every CPU core?
+
+In **CS320-L02**, we'll study the operating system as the manager behind the curtain — processes, threads, virtual memory, system calls, and the resource controls that make modern deployment possible.
+
+---
+
+## Optional Practical Lab — Watch Two Correct Requests Break Shared State
+
+*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet.*
 
 Now let's recreate the core concepts.
 
 You can run the examples in Node.js.
 
-**Suggested time:** 15–20 minutes.
+**Suggested time: 15–20 minutes.**
 
-## Experiment A — The event loop's ordering
+> **Gym rules:** predict before you run. Challenge spoilers are in Solutions and Discussion above; lab answers follow the experiments.
 
-Create `event-loop.js`:
+### Experiment A — The event loop's ordering
+
+Create `event-loop.js` — log synchronous work, a zero-delay timer, a microtask, and a promise reaction:
 
 ```javascript
 console.log("1: synchronous");
@@ -1246,9 +1431,9 @@ Predict the output before running it.
 
 Then explain why the timer appears last even though its delay is zero.
 
-## Experiment B — The race condition
+### Experiment B — The race condition
 
-Create `race.js`:
+Create `race.js` — check seats, `await`, then decrement, and run Anna and David through `Promise.all`:
 
 ```javascript
 let seats = 1;
@@ -1292,9 +1477,9 @@ Observe what changes.
 
 Finally, explain why that fix is insufficient if inventory belongs to a shared database accessed by multiple application instances.
 
-## Experiment C — Sequential versus concurrent waiting
+### Experiment C — Sequential versus concurrent waiting
 
-Create `waiting.js`:
+Create `waiting.js` — three half-second sleeps run first in sequence, then overlapped with `Promise.all`:
 
 ```javascript
 const sleep = ms =>
@@ -1346,9 +1531,9 @@ Did we make the timers individually faster?
 
 Or did we allow their waiting periods to overlap?
 
-## Experiment D — The blocked event loop
+### Experiment D — The blocked event loop
 
-Create `blocking.js`:
+Create `blocking.js` — schedule a 100 ms timer, then busy-loop for about 500 ms:
 
 ```javascript
 const start = Date.now();
@@ -1380,237 +1565,15 @@ How would it affect other requests?
 
 And what if the loop lasted five seconds instead of half a second?
 
----
+### Lab solutions
 
-# 18. Four Engineering Challenges
+*Read after attempting the experiments.*
 
-These are directly relevant to backend development and technical interviews.
+**Experiment A — Event-loop order.** The output is `1: synchronous`, then `2: synchronous`, then `3: microtask`, then `4: promise`, then `5: timer`. The synchronous code executes first. The queued microtasks then run in their scheduling order. The timer callback executes later when the event loop reaches the appropriate scheduling opportunity.
 
-## Challenge A — The Double Booking
+**Experiment B — Race condition.** Both bookings succeed. The final seat count becomes -1. The first booking checks availability and suspends. The second booking checks availability before the first decrement occurs. Both then continue. Moving the decrement before the asynchronous boundary prevents this particular race within one JavaScript execution context. But a shared database accessed by multiple processes requires correctness guarantees at the database or another appropriately coordinated authoritative layer.
 
-**Suggested time:** 10 minutes.
+**Experiment C — Overlapping waits.** The sequential version waits for each half-second task before starting the next. The concurrent version initiates all three tasks before waiting for their combined completion. Their waiting periods overlap. The improvement comes from concurrency, not parallel execution of JavaScript calculations.
 
-You're designing a hotel reservation service.
-
-Two customers simultaneously try to reserve the last room.
-
-The system has several backend instances and a shared PostgreSQL database.
-
-How would you guarantee that only one reservation succeeds?
-
-Consider:
-
-- Where inventory state is authoritative.
-- What operation must be atomic.
-- Whether a database transaction is required.
-- What happens when the booking covers several nights.
-- How to handle a failed payment.
-- How to handle a database transaction that encounters a deadlock.
-
-Why is a JavaScript mutex inside one Node.js instance insufficient?
-
-## Challenge B — The Dangerous `Promise.all`
-
-**Suggested time:** 8 minutes.
-
-A developer writes:
-
-```typescript
-await Promise.all([
-  reserveInventory(),
-  chargePayment(),
-  sendConfirmationEmail()
-]);
-```
-
-What could go wrong?
-
-Why isn't rejection of the combined promise sufficient to guarantee rollback?
-
-How would you redesign the workflow?
-
-Which operations can safely happen concurrently?
-
-Which require ordering?
-
-## Challenge C — The Overloaded Integration
-
-**Suggested time:** 10 minutes.
-
-Your application needs to retrieve information about 100,000 products from an external API.
-
-The provider permits 20 concurrent requests.
-
-Each request takes between 100 milliseconds and two seconds.
-
-How would you process the workload?
-
-Would you use one giant `Promise.all()`?
-
-Would you use batches?
-
-Would a semaphore or worker pool be more efficient?
-
-What happens if the provider begins returning rate-limit errors?
-
-How would you prevent retries from making the overload worse?
-
-## Challenge D — The Mysterious Event-Loop Freeze
-
-**Suggested time:** 8 minutes.
-
-A Node.js service suddenly becomes unresponsive for several seconds.
-
-During the incident:
-
-- PostgreSQL is healthy.
-- Network connectivity is healthy.
-- The process remains alive.
-- CPU usage on one logical processor is high.
-- Event-loop delay spikes dramatically.
-- All HTTP endpoints become slow.
-
-What explanations would you investigate?
-
-How would you distinguish a long-running synchronous calculation from an overloaded worker pool or slow database operation?
-
-Would adding another server instance solve the underlying problem?
-
----
-
-# 19. Solutions and Discussion
-
-*Read after attempting the exercises.*
-
-## Experiment A — Event-loop order
-
-The output is:
-
-```text
-1: synchronous
-2: synchronous
-3: microtask
-4: promise
-5: timer
-```
-
-The synchronous code executes first. The queued microtasks then run in their scheduling order. The timer callback executes later when the event loop reaches the appropriate scheduling opportunity.
-## Experiment B — Race condition
-
-Both bookings succeed. The final seat count becomes -1. The first booking checks availability and suspends.
-
-The second booking checks availability before the first decrement occurs. Both then continue.
-
-Moving the decrement before the asynchronous boundary prevents this particular race within one JavaScript execution context.
-
-But a shared database accessed by multiple processes requires correctness guarantees at the database or another appropriately coordinated authoritative layer.
-
-## Experiment C — Overlapping waits
-
-The sequential version waits for each half-second task before starting the next. The concurrent version initiates all three tasks before waiting for their combined completion.
-
-Their waiting periods overlap. The improvement comes from concurrency, not parallel execution of JavaScript calculations.
-
-## Experiment D — Event-loop blocking
-
-The synchronous busy loop prevents the timer callback from executing at its intended threshold. Other JavaScript callbacks on the same execution thread are similarly delayed.
-
-In an HTTP server, a long-running synchronous callback can damage responsiveness across many requests.
-
-## Challenge A — Double booking
-
-The inventory rule should be enforced where authoritative shared state is maintained. For a simple counter, a conditional atomic database update can prevent overselling.
-
-Creating the reservation and updating inventory should ordinarily be coordinated transactionally.
-
-Multi-night reservations may require locking or updating multiple rows in a consistent order and ensuring all-or-nothing behavior.
-
-Payment integration introduces external side effects, so a complete workflow needs explicit handling for failures, retries, and compensation.
-
-A local JavaScript mutex cannot coordinate separate backend instances.
-
-## Challenge B — Dangerous `Promise.all`
-
-The operations have business dependencies. Payment might succeed while inventory reservation fails. A confirmation email might be sent before the booking is actually confirmed.
-
-And rejecting `Promise.all()` doesn't automatically cancel or undo sibling operations. The workflow should define a durable sequence of states and safe transitions.
-
-Some independent preparatory work may execute concurrently. But irreversible external side effects need carefully designed ordering, idempotency, and recovery behavior.
-
-## Challenge C — Overloaded integration
-
-A concurrency limit of 20 should be enforced deliberately. A semaphore or bounded worker pool is a natural approach.
-
-Fixed-size batches are simpler but can underutilize capacity when some requests finish much later than others.
-
-Rate-limit responses require appropriate backoff, potentially respecting a `Retry-After` header. Retries should be bounded and designed to avoid creating additional overload.
-
-Monitoring in-flight requests, errors, latency, and queue depth helps maintain stability.
-
-## Challenge D — Event-loop freeze
-
-The combination of high CPU usage on one logical processor and elevated event-loop delay suggests that synchronous JavaScript work may be monopolizing the main execution thread.
-
-CPU profiling and event-loop diagnostics would help identify the source. Other possibilities should still be considered.
-
-An overloaded libuv worker pool can delay operations dependent on that pool, but it doesn't necessarily produce the same pattern as continuous JavaScript execution on the main thread.
-
-A slow database can increase request latency while leaving the main JavaScript thread relatively free.
-
-Adding application instances may improve aggregate availability or throughput, but it doesn't fix a pathological calculation executed by every instance.
-
-The correct remedy depends on the measured bottleneck.
-
----
-
-# 20. The Bigger Picture: Time Becomes Part of Correctness
-
-Back to the hotel: one room, two Book clicks, two confirmations — not because availability couldn't be calculated, but because shared state changed between check and modify without protection.
-
-That's what makes concurrent programming different from ordinary sequential programming.
-
-In a sequential program, we often reason about operations in a predictable order: read, check, modify, continue.
-
-In a concurrent system, other operations may occur between those steps.
-
-Across process or network boundaries, uncertainty increases — delayed queries, timeouts, contested locks, crashed workers, payments that succeed while responses disappear, retries that re-execute work that already succeeded.
-
-Correctness is no longer merely about whether each line performs the intended calculation.
-
-It becomes about **which sequences of events the system permits, and whether its important guarantees remain true across those sequences**.
-
-A junior developer might ask: "Does this function work?"
-
-A more experienced engineer also asks:
-
-What if it's invoked twice simultaneously?
-
-What if the process crashes after the first write?
-
-What if another service changes the same record?
-
-What if the response disappears?
-
-What if we retry?
-
-What if ten thousand customers do this at once?
-
-These are everyday production questions.
-
-An AI assistant can produce a clean async function, a `Promise.all()`, retries, or an entire booking workflow in seconds.
-
-But unless the architecture preserves the relevant guarantees, that code may fail when two customers click at nearly the same time — even after sequential unit tests pass.
-
-**Concurrency isn't primarily about making several things happen faster. It's about allowing several things to happen without losing control of what must remain true.**
-
-That's the foundation of reliable asynchronous software — and one of the most important conceptual skills for designing modern backends.
-
----
-
-
----
-
-## Next Lecture — CS320-L02: Operating Systems: The Manager Behind the Curtain
-
-Continue in **CS320 — Operating Systems, Concurrency, and Runtimes**.
+**Experiment D — Event-loop blocking.** The synchronous busy loop prevents the timer callback from executing at its intended threshold. Other JavaScript callbacks on the same execution thread are similarly delayed. In an HTTP server, a long-running synchronous callback can damage responsiveness across many requests.
 

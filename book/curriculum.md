@@ -81,8 +81,8 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (they are cours
 | `CS230-L05` | IP Addressing, Subnets, Routing, and NAT | `manuscript` | `2.0.0` | `` |
 | `CS230-L06` | The Life of a Network Connection | `manuscript` | `2.0.0` | `` |
 | `CS230-L07` | TLS and the Architecture of Trust | `manuscript` | `2.0.0` | `` |
-| `CS230-L08` | Proxies, Load Balancers, and Modern Web Transport | `stub` | `2.0.0` | `` |
-| `CS230-L09` | Network Forensics for Software Engineers | `stub` | `2.0.0` | `` |
+| `CS230-L08` | Proxies, Load Balancers, and Modern Web Transport | `manuscript` | `2.0.0` | `` |
+| `CS230-L09` | Network Forensics for Software Engineers | `manuscript` | `2.0.0` | `` |
 
 #### CS320 — Operating Systems, Concurrency, and Runtimes
 

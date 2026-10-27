@@ -22,6 +22,14 @@ next: CS320-L03
 
 ---
 
+### How to listen to this lecture
+
+Written for continuous listening first, then for on-screen re-reading. Theme: **everything runs somewhere** — and the **operating system mediates the resources** your program thinks it owns. Near the end, answer the oral challenges **out loud** before reading solutions. The environment-inspection lab lives after the spoken lecture ends — keep it for a screen session.
+
+By the end, you should be able to say what a process is, why virtual memory and cgroups make host-free RAM and host-idle CPUs misleading, how namespaces make `localhost` ambiguous in Docker, why a writable container layer is not durable storage, and which questions to ask when a deployment fails for reasons that never appear in your TypeScript.
+
+---
+
 # 1. The Server That Worked Perfectly Until You Deployed It
 
 It's a perfectly ordinary Tuesday.
@@ -132,11 +140,7 @@ Now the abstraction your application interacts with most directly: the process.
 
 # 3. A Process Is a Running Program With Its Own World
 
-You compile or prepare your Node.js application and run:
-
-```bash
-node server.js
-```
+You compile or prepare your Node.js application and run `node server.js`.
 
 What actually happens?
 
@@ -156,20 +160,9 @@ Think of a process as a **managed execution environment for a running program**.
 
 ## Two processes running the same program
 
-Imagine starting two Node.js servers, on different listening ports so they don't conflict:
+Imagine starting two Node.js servers with `node server.js` twice, on different listening ports so they don't conflict.
 
-```bash
-node server.js
-node server.js
-```
-
-Both execute the same code, but they're separate processes. If the first process creates:
-
-```javascript
-let counter = 0;
-```
-
-and increments it, the second process's counter doesn't automatically change. Each process has its own application state — one of the fundamental isolation properties of processes. Ordinary memory writes in one process don't directly modify another process's private memory; the operating system and hardware enforce boundaries between their address spaces.
+Both execute the same code, but they're separate processes. If the first process creates `let counter = 0;` and increments it, the second process's counter doesn't automatically change. Each process has its own application state — one of the fundamental isolation properties of processes. Ordinary memory writes in one process don't directly modify another process's private memory; the operating system and hardware enforce boundaries between their address spaces.
 
 Of course, processes can communicate, using sockets, pipes, shared memory, files, and other mechanisms. But that communication requires an explicit mechanism.
 
@@ -254,7 +247,7 @@ Imagine two applications. Application A believes some data is located at a parti
 
 Not necessarily. The operating system maintains separate address-space mappings, so the same virtual address can correspond to different physical memory in different processes.
 
-Conceptually:
+Same virtual address `0x1000` in two processes can map to different physical pages:
 
 ```text
 Process A                     Process B
@@ -281,7 +274,7 @@ Memory mappings are generally managed in units called pages. A common page size 
 
 The operating system maintains page tables describing how virtual memory maps to physical memory and what access permissions apply, and the processor's memory-management hardware uses those mappings during execution. A special cache called the **Translation Lookaside Buffer**, or TLB, accelerates address translation; without it, repeatedly walking page tables would impose substantial overhead.
 
-Here's the conceptual picture:
+Address translation runs from the virtual address through a TLB lookup or a page-table walk before physical memory:
 
 ```text
 Application
@@ -372,17 +365,7 @@ But here's an important diagnostic qualification.
 
 It means the process terminated through `SIGKILL` under the usual shell/Docker exit-code convention. An administrator, runtime, or orchestration system could also send that signal. So we need evidence.
 
-For Docker, inspect the container's state:
-
-```bash
-docker inspect <container-id>
-```
-
-Look for information such as:
-
-`State.OOMKilled`
-
-and examine the surrounding logs and container events. On cgroup v2 systems, `memory.events` can also report out-of-memory-related events. This is a much stronger diagnosis than simply seeing 137 and declaring victory.
+For Docker, run `docker inspect <container-id>` and look for `State.OOMKilled`, then examine the surrounding logs and container events. On cgroup v2 systems, `memory.events` can also report out-of-memory-related events. This is a much stronger diagnosis than simply seeing 137 and declaring victory.
 
 ## Why increasing the JavaScript heap limit may make things worse
 
@@ -408,7 +391,7 @@ That is one of the defining realities of cloud infrastructure.
 
 # 8. System Calls: How Your Program Asks the Kernel for Help
 
-Suppose your Node.js application wants to read a file. You write:
+Suppose your Node.js application wants to read a file. This high-level call asks the runtime for `/app/config.json` as UTF-8:
 
 ```typescript
 import { readFile } from "node:fs/promises";
@@ -435,7 +418,7 @@ Common Linux system calls include operations related to:
 
 Modern operating systems rely on hardware-supported privilege levels. Ordinary application code generally executes in a less-privileged mode, commonly called **user mode**, while the kernel executes privileged operations in **kernel mode**. The application cannot simply perform any privileged operation it wants; it requests services through controlled interfaces.
 
-Conceptually:
+A `readFile` request crosses user mode into the kernel through system calls, then returns the data to the application:
 
 ```text
 Node.js application
@@ -488,25 +471,11 @@ This allows many different kinds of resources to participate in similar read, wr
 
 Unix-like processes commonly begin with three standard descriptors:
 
-| Descriptor | Conventional purpose |
-|---|---|
-| 0 | Standard input |
-| 1 | Standard output |
-| 2 | Standard error |
+- **0** — standard input.
+- **1** — standard output.
+- **2** — standard error.
 
-When you write:
-
-```javascript
-console.log("Hello");
-```
-
-Node.js ordinarily writes the output through a stream associated with standard output. When you run:
-
-```bash
-node server.js > output.log
-```
-
-the shell arranges for standard output to be redirected to a file. The program doesn't need to change its logging code: it writes to standard output, and the surrounding process environment determines where that output goes.
+When you write `console.log("Hello");`, Node.js ordinarily writes the output through a stream associated with standard output. When you run `node server.js > output.log`, the shell arranges for standard output to be redirected to a file. The program doesn't need to change its logging code: it writes to standard output, and the surrounding process environment determines where that output goes.
 
 This is a remarkably useful abstraction, and one reason containerized applications commonly write logs to stdout and stderr. The container runtime can collect those streams, and infrastructure can route them into logging systems.
 
@@ -534,7 +503,7 @@ This is a crucial connection between our CS fundamentals and the web stack. Your
 
 Let's return to the disappearing PDF.
 
-The application saves a report:
+The application saves a report with `writeFile` to `/app/uploads/report-142.pdf`:
 
 ```typescript
 await writeFile(
@@ -704,13 +673,7 @@ This is a surprisingly common source of confusion.
 
 ## Binding to an address
 
-Consider:
-
-```typescript
-server.listen(3000, "127.0.0.1");
-```
-
-This asks the server to listen on the loopback interface within its current network namespace.
+Consider `server.listen(3000, "127.0.0.1");` — this asks the server to listen on the loopback interface within its current network namespace.
 
 That may be perfect for a local development server.
 
@@ -718,13 +681,7 @@ But when running inside a conventional Docker bridge-networked container, publis
 
 A server listening only on its own loopback address may not be reachable through that path.
 
-Now consider:
-
-```typescript
-server.listen(3000, "0.0.0.0");
-```
-
-Here, `0.0.0.0` is the IPv4 wildcard address.
+Now consider `server.listen(3000, "0.0.0.0");`. Here, `0.0.0.0` is the IPv4 wildcard address.
 
 For a listening socket, it means accepting connections on the available IPv4 interfaces in that network namespace.
 
@@ -736,7 +693,7 @@ Listening on all interfaces isn't always the appropriate security choice.
 
 You still need to control which host ports are published and who can reach them.
 
-For local development, Docker can publish a port only on the host's loopback interface:
+For local development, Docker can publish host loopback port 8080 to container port 3000:
 
 ```bash
 docker run \
@@ -848,6 +805,8 @@ This is what makes container resource allocation possible.
 
 ## A simplified picture
 
+Three containers share one host kernel while each keeps its own PID, network, and mount view plus resource limits:
+
 ```text
                PHYSICAL MACHINE
                       |
@@ -884,7 +843,7 @@ Your containers then share the kernel of that Linux environment.
 
 They don't directly become ordinary Windows processes using the Windows kernel.
 
-This creates another layer:
+On Windows, Docker Desktop typically nests Linux containers under a Linux VM or WSL 2 environment:
 
 ```text
 Windows host
@@ -960,11 +919,7 @@ The host has eight logical processors.
 
 Overall CPU usage appears low.
 
-But the container was started with:
-
-```bash
-docker run --cpus="0.5" my-application
-```
+But the container was started with `docker run --cpus="0.5" my-application`.
 
 What does that mean?
 
@@ -1079,7 +1034,7 @@ Ideally, the service should:
 
 If the process simply disappears halfway through a payment workflow, the business consequences may be unpleasant.
 
-A simplified Node.js HTTP server might handle termination like this:
+A simplified Node.js HTTP server can listen for `SIGTERM`, stop accepting connections, and then close:
 
 ```typescript
 import http from "node:http";
@@ -1125,21 +1080,9 @@ Inside a container, it may be your application itself.
 
 If the container starts with a shell wrapper that doesn't forward signals correctly, the application may not receive termination signals as intended.
 
-For example, a Dockerfile using an exec-form command:
+For example, a Dockerfile using an exec-form command `CMD ["node", "server.js"]` generally allows Node.js to run directly as the container's main process.
 
-```dockerfile
-CMD ["node", "server.js"]
-```
-
-generally allows Node.js to run directly as the container's main process.
-
-A shell-form command:
-
-```dockerfile
-CMD node server.js
-```
-
-can introduce a shell process whose signal-forwarding behavior may complicate shutdown.
+A shell-form command `CMD node server.js` can introduce a shell process whose signal-forwarding behavior may complicate shutdown.
 
 Container init processes can also handle child-process reaping and signal forwarding where needed.
 
@@ -1169,117 +1112,31 @@ You don't need to become a full-time Linux administrator, but a senior software 
 
 ## Which processes exist?
 
-```bash
-ps aux
-```
-
-Displays a process listing with information such as process IDs, commands, and resource usage. For an interactive view:
-
-```bash
-top
-```
-
-Or, where installed:
-
-```bash
-htop
-```
-
-These help identify which processes are consuming CPU or memory.
+`ps aux` displays a process listing with information such as process IDs, commands, and resource usage. For an interactive view, use `top`, or `htop` where it is installed. These help identify which processes are consuming CPU or memory.
 
 ## What is this particular process doing?
 
-```bash
-ps -p <PID> -o pid,ppid,%cpu,%mem,stat,cmd
-```
-
-This displays selected information about a process. For a deeper look, Linux exposes process information through the `/proc` filesystem:
-
-```bash
-cat /proc/<PID>/status
-```
-
-This includes the process's state, memory, threads, and other properties; the precise fields vary by kernel.
+`ps -p <PID> -o pid,ppid,%cpu,%mem,stat,cmd` displays selected information about a process. For a deeper look, Linux exposes process information through the `/proc` filesystem — `cat /proc/<PID>/status` includes the process's state, memory, threads, and other properties; the precise fields vary by kernel.
 
 ## Which network ports are listening?
 
-```bash
-ss -ltnp
-```
-
-This lists listening TCP sockets, with process information when available and permitted. It's extremely useful when a service claims to be listening but cannot be reached. Look at the bound address: is it `127.0.0.1`? `0.0.0.0`? An IPv6 address? Is it actually listening on the expected port?
+`ss -ltnp` lists listening TCP sockets, with process information when available and permitted. It's extremely useful when a service claims to be listening but cannot be reached. Look at the bound address: is it `127.0.0.1`? `0.0.0.0`? An IPv6 address? Is it actually listening on the expected port?
 
 ## What file-descriptor limit applies?
 
-```bash
-ulimit -n
-```
-
-Displays the shell's current soft limit for open file descriptors. You can inspect a process's actual limits through:
-
-```bash
-cat /proc/<PID>/limits
-```
-
-And its open descriptors through:
-
-```bash
-ls -l /proc/<PID>/fd
-```
-
-Permissions may restrict what you can inspect. These tools are particularly useful when investigating `EMFILE` errors.
+`ulimit -n` displays the shell's current soft limit for open file descriptors. You can inspect a process's actual limits with `cat /proc/<PID>/limits`, and its open descriptors with `ls -l /proc/<PID>/fd`. Permissions may restrict what you can inspect. These tools are particularly useful when investigating `EMFILE` errors.
 
 ## How much memory is available?
 
-```bash
-free -h
-```
-
-Provides a host-level view of memory usage and availability. But remember that a container's actual memory limit may differ from the host's available RAM. On a cgroup v2 system, the relevant interfaces may include:
-
-```bash
-cat /sys/fs/cgroup/memory.current
-cat /sys/fs/cgroup/memory.max
-cat /sys/fs/cgroup/memory.events
-```
-
-The exact paths visible from inside a container depend on the cgroup mount and namespace configuration.
+`free -h` provides a host-level view of memory usage and availability. But remember that a container's actual memory limit may differ from the host's available RAM. On a cgroup v2 system, read the accounting and events interfaces — typically `memory.current`, `memory.max`, and `memory.events` under `/sys/fs/cgroup/`. The exact paths visible from inside a container depend on the cgroup mount and namespace configuration.
 
 ## How is the container behaving?
 
-```bash
-docker stats
-```
-
-Provides live container resource statistics. For a particular container:
-
-```bash
-docker inspect <container-id>
-```
-
-This can reveal configuration, resource limits, process state, exit codes, and related information. And:
-
-```bash
-docker logs <container-id>
-```
-
-shows logs captured through the container's configured logging mechanism.
+`docker stats` provides live container resource statistics. For a particular container, `docker inspect <container-id>` can reveal configuration, resource limits, process state, exit codes, and related information, while `docker logs <container-id>` shows logs captured through the container's configured logging mechanism.
 
 ## Which service owns a process?
 
-On many Linux servers, `systemd` manages long-running services. Useful commands include:
-
-```bash
-systemctl status my-service
-```
-
-and:
-
-```bash
-journalctl -u my-service
-```
-
-These help investigate process restarts, failures, and service logs. Not every Linux environment uses systemd, and minimal containers often don't run it internally, but for conventional Linux servers, understanding systemd at a basic level is extremely useful.
+On many Linux servers, `systemd` manages long-running services. `systemctl status my-service` and `journalctl -u my-service` help investigate process restarts, failures, and service logs. Not every Linux environment uses systemd, and minimal containers often don't run it internally, but for conventional Linux servers, understanding systemd at a basic level is extremely useful.
 
 ---
 
@@ -1334,186 +1191,17 @@ Notice something beautiful about this diagnosis. We didn't need to read the enti
 That's precisely the level of operating-system understanding that becomes valuable to a senior full-stack engineer.
 
 ---
+# 18. The Oral Examination
 
-# 18. Practical Lab: Inspect Your Own Operating-System Environment
+Pause the lecture for each one.
 
-This lab is intentionally exploratory.
-
-You don't need to write a large program.
-
-A Linux terminal, WSL 2 environment, or Docker container is sufficient for most experiments.
-
-**Suggested time:** 20–25 minutes.
-
-## Experiment A — Every process has an identity
-
-Run:
-
-```bash
-echo $$
-```
-
-This prints the PID of the current shell in typical Bash environments.
-
-Then inspect it:
-
-```bash
-ps -p $$ -o pid,ppid,stat,cmd
-```
-
-Now run:
-
-```bash
-cat /proc/$$/status
-```
-
-Observe the process name, PID, parent PID, state, and memory-related information.
-
-Questions:
-
-1. Why does the shell have a PID?
-2. What does the parent PID represent?
-3. What happens to a process's PID after it exits?
-4. Could another process eventually receive the same numerical PID?
-
-## Experiment B — File descriptors are real
-
-Run:
-
-```bash
-ls -l /proc/$$/fd
-```
-
-You should observe descriptors associated with the shell.
-
-Depending on how the terminal is configured, standard input, output, and error may point toward terminal-related resources.
-
-Now run:
-
-```bash
-ulimit -n
-```
-
-This reveals the current soft descriptor limit.
-
-Questions:
-
-1. Why can't a process keep opening resources indefinitely?
-2. What happens when the limit is reached?
-3. Why would increasing the limit fail to solve a descriptor leak?
-
-## Experiment C — Who owns localhost?
-
-If Docker is available, try:
-
-```bash
-docker run --rm -d \
-  --name cs101-web \
-  -p 127.0.0.1:8080:80 \
-  nginx:alpine
-```
-
-Now open:
-
-`http://127.0.0.1:8080`
-
-You should see the default nginx page, assuming the port is available and Docker is functioning normally.
-
-Notice that port 8080 belongs to the host-side mapping.
-
-Port 80 is the destination inside the container.
-
-Now inspect:
-
-```bash
-docker port cs101-web
-```
-
-And:
-
-```bash
-docker inspect cs101-web
-```
-
-When finished:
-
-```bash
-docker stop cs101-web
-```
-
-Questions:
-
-1. Why can nginx listen on port 80 inside the container while the host uses port 8080?
-2. What does the `127.0.0.1` in the published-port specification restrict?
-3. Why is the container's loopback interface distinct from the host's?
-
-## Experiment D — Resource limits
-
-Inspect your system's cgroup layout:
-
-```bash
-mount | grep cgroup
-```
-
-On a cgroup v2 environment, try:
-
-```bash
-cat /sys/fs/cgroup/memory.max
-```
-
-If the file exists and is readable, it reports a memory limit or `max` when no limit is set at that cgroup level.
-
-Now examine:
-
-```bash
-cat /sys/fs/cgroup/cpu.max
-```
-
-The result commonly contains a quota and period, or `max` and a period.
-
-Questions:
-
-1. How can a process be constrained even when the machine has spare resources?
-2. Why doesn't a process necessarily know the full physical capacity of the host?
-3. How could a CPU quota affect a long-running numerical computation?
-
-## Experiment E — Process memory isn't one number
-
-In a Node.js process, run:
-
-```javascript
-const os = require("node:os");
-
-console.log({
-  pid: process.pid,
-  platform: process.platform,
-  architecture: process.arch,
-  parallelism: os.availableParallelism(),
-  memory: process.memoryUsage()
-});
-```
-
-Now consider:
-
-- What does `process.pid` actually identify?
-- How might that PID differ inside and outside a container?
-- Why isn't `heapUsed` equal to total process memory?
-- Why can a process fail because of a container limit despite substantial host RAM being available?
-- Does the reported available parallelism guarantee that one JavaScript function can use that many cores?
-
-This experiment connects our operating-system knowledge directly to the Node.js runtime.
-
----
-
-# 19. Engineering Challenges
-
-Try answering these before reading the discussion.
+Answer **out loud** — as if an interviewer were across the table — before you listen to or read the solutions.
 
 These are much closer to realistic senior engineering interviews than memorizing kernel terminology.
 
-## Challenge A — The Container That Keeps Restarting
+### Challenge A — The Container That Keeps Restarting
 
-**Suggested time:** 10 minutes.
+**Suggested time: 10 minutes**
 
 A Node.js document-processing service runs inside a Docker container.
 
@@ -1535,15 +1223,11 @@ Explain:
 4. What architectural changes could reduce peak memory usage.
 5. When increasing the container memory limit would actually be appropriate.
 
-## Challenge B — The Application Nobody Can Reach
+### Challenge B — The Application Nobody Can Reach
 
-**Suggested time:** 8 minutes.
+**Suggested time: 8 minutes**
 
-A Node.js service starts inside Docker:
-
-```typescript
-server.listen(3000, "127.0.0.1");
-```
+A Node.js service starts inside Docker with `server.listen(3000, "127.0.0.1");`.
 
 The container is launched with a published port mapping.
 
@@ -1557,9 +1241,9 @@ Would you automatically publish the service on every host interface?
 
 Why or why not?
 
-## Challenge C — The Process With Too Many Files
+### Challenge C — The Process With Too Many Files
 
-**Suggested time:** 8 minutes.
+**Suggested time: 8 minutes**
 
 A backend begins returning errors:
 
@@ -1577,9 +1261,9 @@ How would you investigate whether the problem is excessive legitimate concurrenc
 
 What would you do before increasing the descriptor limit?
 
-## Challenge D — The Unkillable Worker
+### Challenge D — The Unkillable Worker
 
-**Suggested time:** 10 minutes.
+**Suggested time: 10 minutes**
 
 A containerized background worker processes payment-related tasks.
 
@@ -1604,11 +1288,11 @@ Why can't graceful shutdown alone guarantee that duplicate charges will never ha
 
 ---
 
-# 20. Solutions and Discussion
+# 19. Solutions and Discussion
 
-*Read after attempting the challenges.*
+*Listen or read only after you have answered each challenge out loud.*
 
-## Challenge A — Memory-limited container
+### Solution A — Memory-limited container
 
 The host may have plenty of available RAM, but the container's cgroup imposes a separate memory limit.
 
@@ -1624,7 +1308,7 @@ Increasing the memory limit is reasonable if the workload legitimately needs mor
 
 But doing so without understanding the workload may merely postpone the next incident.
 
-## Challenge B — Container loopback
+### Solution B — Container loopback
 
 The server listens only on loopback within its own network namespace.
 
@@ -1638,7 +1322,7 @@ For local development, binding the published host port to `127.0.0.1` may be pre
 
 The correct configuration depends on who should be allowed to connect.
 
-## Challenge C — File-descriptor exhaustion
+### Solution C — File-descriptor exhaustion
 
 On Linux, file descriptors represent more than regular files.
 
@@ -1652,7 +1336,7 @@ Examine connection-pool behavior, socket lifetimes, active concurrency, and clea
 
 Increasing the limit may be appropriate for a legitimately high-concurrency workload, but it doesn't fix a leak.
 
-## Challenge D — Shutdown and duplicate payments
+### Solution D — Shutdown and duplicate payments
 
 The operating system or container runtime may request termination through SIGTERM and later enforce termination through SIGKILL.
 
@@ -1680,7 +1364,7 @@ This is where operating-system lifecycle management connects directly to distrib
 
 ---
 
-# 21. The Bigger Picture: Everything Runs Somewhere
+# 20. The Mental Model Worth Keeping
 
 We've covered a lot of machinery — processes and threads, scheduling, virtual memory, system calls, file descriptors, filesystems, containers, signals — but the ideas fit together.
 
@@ -1690,7 +1374,18 @@ Section 17 already walked the four Docker incidents. The deeper pattern is the a
 
 These are not unusual mistakes. They're what happens when the abstractions remain invisible.
 
-You don't need to write a scheduler, implement page tables, or memorize every Linux system call. You should understand enough to ask: What process is executing? What resources does it have? What can it see? What is isolated or shared? What happens when it runs out of capacity? Who can terminate it? Which data survives its destruction? Which assumptions stop being true when you leave the development laptop?
+Remember these durable questions:
+
+- **What process is executing?** PID, parent, and which binary or runtime.
+- **What resources does it have?** Memory, CPU quota, file descriptors, open sockets.
+- **What can it see?** Namespaces for PID, network, mounts, and hostname.
+- **What is isolated or shared?** Same kernel; separate views and limits.
+- **What happens when it runs out of capacity?** Throttle, fail opens, or SIGKILL / exit 137.
+- **Who can terminate it — and how?** SIGTERM for graceful exit; SIGKILL when grace expires.
+- **Which data survives its destruction?** Volumes, object storage, and databases — not the writable layer.
+- **Which assumptions stop being true off the laptop?** Host-free resources, `localhost`, and local disk lifetime.
+
+You don't need to write a scheduler, implement page tables, or memorize every Linux system call. You should understand enough to ask those questions when production disagrees with your development machine.
 
 Your TypeScript runs inside Node.js. Node.js runs as a process under an operating system. Containers and cloud infrastructure add more boundaries. Final behavior depends on all those layers working together.
 
@@ -1702,10 +1397,128 @@ And sooner or later, that somewhere becomes part of the problem.
 
 ---
 
+# 21. Next Lecture — CS320-L03: JavaScript and TypeScript Under the Microscope
+
+We've learned that applications run inside operating-system boundaries: processes, virtual memory, system calls, namespaces, cgroups, and signals. Those boundaries explain why a container can starve for RAM on a host that still looks idle, why `localhost` can lie, and why a file can vanish when a container is replaced.
+
+But the program inside the process still has a language runtime of its own. How does JavaScript actually represent values? What does the TypeScript compiler guarantee — and what does it leave to the runtime? When does `===` surprise you, and when does a type annotation give false confidence?
+
+In **CS320-L03**, we'll put JavaScript and TypeScript under the microscope — types, coercion, runtime truth, and the gaps between what the compiler believes and what the machine does.
 
 ---
 
-## Next Lecture — CS320-L03: JavaScript and TypeScript Under the Microscope
+## Optional Practical Lab — Inspect Your Own Operating-System Environment
 
-Continue in **CS320 — Operating Systems, Concurrency, and Runtimes**.
+*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet.*
 
+This lab is intentionally exploratory.
+
+You don't need to write a large program.
+
+A Linux terminal, WSL 2 environment, or Docker container is sufficient for most experiments.
+
+**Suggested time:** 20–25 minutes.
+
+### Experiment A — Every process has an identity
+
+Run `echo $$` to print the PID of the current shell in typical Bash environments.
+
+Then inspect it with `ps -p $$ -o pid,ppid,stat,cmd`, and look deeper with `cat /proc/$$/status`.
+
+Observe the process name, PID, parent PID, state, and memory-related information.
+
+Questions:
+
+1. Why does the shell have a PID?
+2. What does the parent PID represent?
+3. What happens to a process's PID after it exits?
+4. Could another process eventually receive the same numerical PID?
+
+### Experiment B — File descriptors are real
+
+List the shell's open descriptors with `ls -l /proc/$$/fd`.
+
+You should observe descriptors associated with the shell.
+
+Depending on how the terminal is configured, standard input, output, and error may point toward terminal-related resources.
+
+Then check the soft descriptor limit with `ulimit -n`.
+
+Questions:
+
+1. Why can't a process keep opening resources indefinitely?
+2. What happens when the limit is reached?
+3. Why would increasing the limit fail to solve a descriptor leak?
+
+### Experiment C — Who owns localhost?
+
+If Docker is available, start a short-lived nginx container that publishes host loopback port 8080 to container port 80:
+
+```bash
+docker run --rm -d \
+  --name cs101-web \
+  -p 127.0.0.1:8080:80 \
+  nginx:alpine
+```
+
+Now open `http://127.0.0.1:8080`.
+
+You should see the default nginx page, assuming the port is available and Docker is functioning normally.
+
+Notice that port 8080 belongs to the host-side mapping.
+
+Port 80 is the destination inside the container.
+
+Inspect the mapping with `docker port cs101-web`, then inspect the container with `docker inspect cs101-web`.
+
+When finished, stop it with `docker stop cs101-web`.
+
+Questions:
+
+1. Why can nginx listen on port 80 inside the container while the host uses port 8080?
+2. What does the `127.0.0.1` in the published-port specification restrict?
+3. Why is the container's loopback interface distinct from the host's?
+
+### Experiment D — Resource limits
+
+Inspect your system's cgroup layout with `mount | grep cgroup`.
+
+On a cgroup v2 environment, try `cat /sys/fs/cgroup/memory.max`.
+
+If the file exists and is readable, it reports a memory limit or `max` when no limit is set at that cgroup level.
+
+Then examine `cat /sys/fs/cgroup/cpu.max`.
+
+The result commonly contains a quota and period, or `max` and a period.
+
+Questions:
+
+1. How can a process be constrained even when the machine has spare resources?
+2. Why doesn't a process necessarily know the full physical capacity of the host?
+3. How could a CPU quota affect a long-running numerical computation?
+
+### Experiment E — Process memory isn't one number
+
+In a Node.js process, print identity and memory metrics:
+
+```javascript
+const os = require("node:os");
+
+console.log({
+  pid: process.pid,
+  platform: process.platform,
+  architecture: process.arch,
+  parallelism: os.availableParallelism(),
+  memory: process.memoryUsage()
+});
+```
+
+Now consider:
+
+- What does `process.pid` actually identify?
+- How might that PID differ inside and outside a container?
+- Why isn't `heapUsed` equal to total process memory?
+- Why can a process fail because of a container limit despite substantial host RAM being available?
+- Does the reported available parallelism guarantee that one JavaScript function can use that many cores?
+
+This experiment connects our operating-system knowledge directly to the Node.js runtime.
