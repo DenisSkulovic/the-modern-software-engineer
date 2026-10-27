@@ -26,7 +26,7 @@ Library/content state — not whether you have studied the lecture. See [`STATUS
 
 | Code | Discipline | Scope |
 | --- | --- | --- |
-| CS | Computer Science | Computation, languages, operating systems, networks, databases, distributed systems |
+| CS | Computer Science | Computation, mathematical reasoning, languages, operating systems, networks, databases, distributed systems |
 | SE | Software Engineering | Web applications, backend services, architecture, infrastructure, production operations |
 | AI | Artificial Intelligence | Language models, retrieval, agents, evaluation, production AI |
 
@@ -42,7 +42,7 @@ Library/content state — not whether you have studied the lecture. See [`STATUS
 
 Lecture IDs look like `CS330-L03`. Electives use the same scheme (they are courses with `type: planned` or `elective`, not a separate numbering universe).
 
-## Core courses (16 · 73 lectures)
+## Core courses (17 · 78 lectures)
 
 ### CS — Computer Science
 
@@ -57,6 +57,18 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (they are cours
 | `CS110-L03` | Algorithms and the Cost of Computation | `manuscript` | `2.0.0` | `CS101-S03` |
 | `CS110-L04` | Data Structures: Choosing How to Remember Things | `manuscript` | `2.0.0` | `CS101-S04` |
 | `CS110-L05` | Searching, Sorting, and Finding Shortcuts | `manuscript` | `2.0.0` | `CS101-S05` |
+
+#### CS120 — Mathematical and Statistical Thinking for Software Engineers
+
+100-level · 5 lectures · course status `in_progress` · `CS/CS120-mathematical-and-statistical-thinking/`
+
+| ID | Lecture | Manuscript | Edition | Legacy |
+| --- | --- | --- | --- | --- |
+| `CS120-L01` | Logic, Proofs, and Invariants | `stub` | `2.0.0` | `` |
+| `CS120-L02` | Probability, Randomness, and Risk | `stub` | `2.0.0` | `` |
+| `CS120-L03` | Statistics, Distributions, and Sampling | `stub` | `2.0.0` | `` |
+| `CS120-L04` | Experiments, Evidence, and Causality | `stub` | `2.0.0` | `` |
+| `CS120-L05` | Mathematical Models of Real Systems | `stub` | `2.0.0` | `` |
 
 #### CS220 — Programming Languages, Memory, and Execution
 
@@ -106,17 +118,17 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (they are cours
 
 #### CS340 — Data Systems Beyond Relational Databases
 
-300-level · 7 lectures · course status `draft` · `CS/CS340-data-systems-beyond-relational/`
+300-level · 7 lectures · course status `complete` · `CS/CS340-data-systems-beyond-relational/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
 | `CS340-L01` | The Database That Didn't Fit Into Tables | `manuscript` | `2.0.0` | `` |
 | `CS340-L02` | Inside a Storage Engine | `manuscript` | `2.0.0` | `` |
 | `CS340-L03` | Document Databases and MongoDB | `manuscript` | `2.0.0` | `` |
-| `CS340-L04` | Indexes, Queries, and Aggregation Beyond SQL | `stub` | `2.0.0` | `` |
-| `CS340-L05` | Replication, Consistency, and Sharding in Practice | `stub` | `2.0.0` | `` |
-| `CS340-L06` | Specialized Data Systems | `stub` | `2.0.0` | `` |
-| `CS340-L07` | The Data Architecture Workshop | `stub` | `2.0.0` | `` |
+| `CS340-L04` | Indexes, Queries, and Aggregation Beyond SQL | `manuscript` | `2.0.0` | `` |
+| `CS340-L05` | Replication, Consistency, and Sharding in Practice | `manuscript` | `2.0.0` | `` |
+| `CS340-L06` | Specialized Data Systems | `manuscript` | `2.0.0` | `` |
+| `CS340-L07` | The Data Architecture Workshop | `manuscript` | `2.0.0` | `` |
 
 #### CS430 — Distributed Systems and Reliable Workflows
 

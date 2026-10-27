@@ -34,7 +34,8 @@ lectures:
     last_touched: '2026-10-26'
     next_encore: null
     encore_interval_days: 14
-    notes: 'Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not started.'
+    notes: Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not
+      started.
   CS110-L02:
     course: CS110
     title: Everything Is Numbers — Until It Isn't
@@ -46,7 +47,8 @@ lectures:
     last_touched: '2026-10-26'
     next_encore: null
     encore_interval_days: 14
-    notes: 'Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not started.'
+    notes: Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not
+      started.
   CS110-L03:
     course: CS110
     title: Algorithms and the Cost of Computation
@@ -58,7 +60,8 @@ lectures:
     last_touched: '2026-10-26'
     next_encore: null
     encore_interval_days: 14
-    notes: 'Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not started.'
+    notes: Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not
+      started.
   CS110-L04:
     course: CS110
     title: 'Data Structures: Choosing How to Remember Things'
@@ -70,10 +73,71 @@ lectures:
     last_touched: '2026-10-26'
     next_encore: null
     encore_interval_days: 14
-    notes: 'Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not started.'
+    notes: Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not
+      started.
   CS110-L05:
     course: CS110
     title: Searching, Sorting, and Finding Shortcuts
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS120-L01:
+    course: CS120
+    title: Logic, Proofs, and Invariants
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS120-L02:
+    course: CS120
+    title: Probability, Randomness, and Risk
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS120-L03:
+    course: CS120
+    title: Statistics, Distributions, and Sampling
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS120-L04:
+    course: CS120
+    title: Experiments, Evidence, and Causality
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS120-L05:
+    course: CS120
+    title: Mathematical Models of Real Systems
     status: unopened
     confidence: 0
     passes: 0
@@ -130,7 +194,9 @@ lectures:
     last_touched: '2026-10-26'
     next_encore: null
     encore_interval_days: 14
-    notes: 'Voice listen-through once — attentive but dense/networky; useful as shallow map-of-existence refresher, not grasp. Skipped CS110-L05 to diversify. Candidate: keep L01 as tour + deepen via L02/L03 (or new zoom-ins) rather than inflate L01.'
+    notes: 'Voice listen-through once — attentive but dense/networky; useful as shallow map-of-existence
+      refresher, not grasp. Skipped CS110-L05 to diversify. Candidate: keep L01 as tour + deepen via L02/L03
+      (or new zoom-ins) rather than inflate L01.'
   CS230-L02:
     course: CS230
     title: Networking for Software Engineers
@@ -142,7 +208,7 @@ lectures:
     last_touched: '2026-10-27'
     next_encore: null
     encore_interval_days: 14
-    notes: 'Full voice listen-through; one session. Prose done; labs not started.'
+    notes: Full voice listen-through; one session. Prose done; labs not started.
   CS230-L03:
     course: CS230
     title: 'HTTP: The Protocol That Runs the Web'
@@ -154,19 +220,19 @@ lectures:
     last_touched: '2026-10-27'
     next_encore: null
     encore_interval_days: 14
-    notes: 'Full voice listen-through; one session. Prose done; labs not started.'
+    notes: Full voice listen-through; one session. Prose done; labs not started.
   CS230-L04:
     course: CS230
-    title: "DNS: The Internet's Distributed Naming System"
-    status: unopened
-    confidence: 0
-    passes: 0
-    opened_on: null
+    title: 'DNS: The Internet''s Distributed Naming System'
+    status: studying
+    confidence: 2
+    passes: 1
+    opened_on: '2026-10-27'
     settled_on: null
-    last_touched: null
+    last_touched: '2026-10-27'
     next_encore: null
-    encore_interval_days: null
-    notes: ''
+    encore_interval_days: 14
+    notes: Full voice listen-through; one session. Prose done; labs not started.
   CS230-L05:
     course: CS230
     title: IP Addressing, Subnets, Routing, and NAT

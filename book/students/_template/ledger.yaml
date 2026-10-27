@@ -1,7 +1,7 @@
 student: YOUR_ID
 display_name: Your Name
 created: '2026-10-26'
-updated: '2026-10-26'
+updated: '2026-10-27'
 curriculum_version: '2.0'
 learning_statuses:
   unopened: Never started
@@ -74,6 +74,66 @@ lectures:
   CS110-L05:
     course: CS110
     title: Searching, Sorting, and Finding Shortcuts
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS120-L01:
+    course: CS120
+    title: Logic, Proofs, and Invariants
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS120-L02:
+    course: CS120
+    title: Probability, Randomness, and Risk
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS120-L03:
+    course: CS120
+    title: Statistics, Distributions, and Sampling
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS120-L04:
+    course: CS120
+    title: Experiments, Evidence, and Causality
+    status: unopened
+    confidence: 0
+    passes: 0
+    opened_on: null
+    settled_on: null
+    last_touched: null
+    next_encore: null
+    encore_interval_days: null
+    notes: ''
+  CS120-L05:
+    course: CS120
+    title: Mathematical Models of Real Systems
     status: unopened
     confidence: 0
     passes: 0

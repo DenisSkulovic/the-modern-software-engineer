@@ -43,7 +43,7 @@ Details: [`STATUS.md`](STATUS.md).
 
 The catalogue is not a reading sequence. Course numbers describe scope and difficulty, not a rigid calendar.
 
-1. **Foundations** — `CS110` → `CS220` → `CS230` → `CS320`
+1. **Foundations** — `CS110` → `CS120` → `CS220` → `CS230` → `CS320`
 2. **Application and data engineering** — `SE240` → `SE310` → `SE320` → `CS330` → `CS340`
 3. **Advanced systems and production** — `CS430` → `SE330` → `SE340` → `SE440`
 4. **Modern AI engineering** — `AI310` → `AI410`

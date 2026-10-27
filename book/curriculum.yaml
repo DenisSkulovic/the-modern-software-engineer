@@ -16,7 +16,7 @@ default_edition: 2.0.0
 disciplines:
   CS:
     name: Computer Science
-    scope: Computation, languages, operating systems, networks, databases, distributed systems
+    scope: Computation, mathematical reasoning, languages, operating systems, networks, databases, distributed systems
   SE:
     name: Software Engineering
     scope: Web applications, backend services, architecture, infrastructure, production operations
@@ -27,6 +27,7 @@ study_order:
 - label: Foundations
   courses:
   - CS110
+  - CS120
   - CS220
   - CS230
   - CS320
@@ -99,6 +100,54 @@ courses:
     - CS101-S05
     source: CS/CS110-foundations-of-computation/CS110-L05-searching-sorting-and-finding-shortcuts.md
     manuscript: manuscript
+    edition: 2.0.0
+- code: CS120
+  title: Mathematical and Statistical Thinking for Software Engineers
+  discipline: CS
+  level: 100
+  type: core
+  status: in_progress
+  slug: mathematical-and-statistical-thinking
+  dir: CS/CS120-mathematical-and-statistical-thinking
+  notes: >-
+    Foundational mathematical literacy for engineers: logic, probability, statistics,
+    experiments, and quantitative models of real systems. Priority #1 among new
+    investments; deliberately avoids a full university math syllabus.
+  lectures:
+  - id: CS120-L01
+    title: Logic, Proofs, and Invariants
+    slug: logic-proofs-and-invariants
+    legacy_ids: []
+    source: CS/CS120-mathematical-and-statistical-thinking/CS120-L01-logic-proofs-and-invariants.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS120-L02
+    title: Probability, Randomness, and Risk
+    slug: probability-randomness-and-risk
+    legacy_ids: []
+    source: CS/CS120-mathematical-and-statistical-thinking/CS120-L02-probability-randomness-and-risk.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS120-L03
+    title: Statistics, Distributions, and Sampling
+    slug: statistics-distributions-and-sampling
+    legacy_ids: []
+    source: CS/CS120-mathematical-and-statistical-thinking/CS120-L03-statistics-distributions-and-sampling.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS120-L04
+    title: Experiments, Evidence, and Causality
+    slug: experiments-evidence-and-causality
+    legacy_ids: []
+    source: CS/CS120-mathematical-and-statistical-thinking/CS120-L04-experiments-evidence-and-causality.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: CS120-L05
+    title: Mathematical Models of Real Systems
+    slug: mathematical-models-of-real-systems
+    legacy_ids: []
+    source: CS/CS120-mathematical-and-statistical-thinking/CS120-L05-mathematical-models-of-real-systems.md
+    manuscript: stub
     edition: 2.0.0
 - code: CS220
   title: Programming Languages, Memory, and Execution
@@ -286,7 +335,7 @@ courses:
   discipline: CS
   level: 300
   type: core
-  status: draft
+  status: complete
   slug: data-systems-beyond-relational
   dir: CS/CS340-data-systems-beyond-relational
   builds_on:
@@ -322,28 +371,28 @@ courses:
     slug: indexes-queries-and-aggregation-beyond-sql
     legacy_ids: []
     source: CS/CS340-data-systems-beyond-relational/CS340-L04-indexes-queries-and-aggregation-beyond-sql.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS340-L05
     title: Replication, Consistency, and Sharding in Practice
     slug: replication-consistency-and-sharding-in-practice
     legacy_ids: []
     source: CS/CS340-data-systems-beyond-relational/CS340-L05-replication-consistency-and-sharding-in-practice.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS340-L06
     title: Specialized Data Systems
     slug: specialized-data-systems
     legacy_ids: []
     source: CS/CS340-data-systems-beyond-relational/CS340-L06-specialized-data-systems.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS340-L07
     title: The Data Architecture Workshop
     slug: the-data-architecture-workshop
     legacy_ids: []
     source: CS/CS340-data-systems-beyond-relational/CS340-L07-the-data-architecture-workshop.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
 - code: CS430
   title: Distributed Systems and Reliable Workflows
