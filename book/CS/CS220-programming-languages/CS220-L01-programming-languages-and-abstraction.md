@@ -22,30 +22,11 @@ next: CS220-L02
 
 ---
 
-### How to read this lecture
+### How to listen to this lecture
 
-Seventeen rooms. Theme: **what the compiler believes ≠ what the runtime does.**
+Written for continuous listening first, then for on-screen re-reading. Theme: **what the compiler believes ≠ what the runtime does.** Sticky-note callouts mark where static claims stop protecting you. Near the end, answer the oral challenges **out loud** before reading solutions. The TypeScript lab lives after the spoken lecture ends — keep it for a screen session.
 
-```text
-  ROOM MAP
-  ─────────────────────────────────────────────────────────────
-  ① Crash at 02:17     ② Language as agreement  ③ TS → CPU pipeline
-  ④ Compiled vs interpreted ⑤ Static vs dynamic  ⑥ Trust boundaries
-  ⑦ Domain types       ⑧ Structural typing      ⑨ Generics
-  ⑩ Closures           ⑪ Paradigms              ⑫ Leaky abstractions
-  ⑬ Design habit       ⑭ Lab                    ⑮ Challenges
-  ⑯ Solutions          ⑰ Takeaways
-  ─────────────────────────────────────────────────────────────
-```
-
-| Rooms | Theme | Feel |
-|---|---|---|
-| 1–4 | Crash → language → pipeline → JIT | mystery + machinery |
-| 5–10 | Types, trust, unions, brands, generics, closures | TypeScript depth |
-| 11–13 | Paradigms + abstraction budget + design habit | judgment |
-| 14–17 | Lab, challenges, answers, takeaways | practice |
-
-> **Reading tip:** Sticky notes mark where *static claims* stop protecting you. Diagrams show the layers.
+By the end, you should be able to say what a programming language actually is (syntax, semantics, implementation), why TypeScript types mostly erase at runtime, how trust boundaries and validation close the gap, what closures retain, and which questions to ask before trusting an abstraction.
 
 ---
 
@@ -73,7 +54,7 @@ That's peculiar.
 
 Your backend is written in TypeScript.
 
-The relevant interface is straightforward:
+The relevant interface declares `availableRooms` as a `number`:
 
 ```typescript
 interface PartnerAvailability {
@@ -83,7 +64,7 @@ interface PartnerAvailability {
 }
 ```
 
-And the code that processes the response is equally straightforward:
+And the code that processes the response asserts the JSON as that interface — with no runtime check:
 
 ```typescript
 async function getAvailability(
@@ -101,7 +82,7 @@ async function getAvailability(
 }
 ```
 
-Later, another function formats the result:
+Later, another function formats the result by calling `toFixed` on `availableRooms`:
 
 ```typescript
 const availability = await getAvailability("H-142");
@@ -119,7 +100,7 @@ The code was reviewed, tested, and deployed.
 
 And yet production has become a tiny bonfire.
 
-You inspect the actual HTTP response.
+You inspect the actual HTTP response. The partner sent `availableRooms` as the string `"3"`, not a number:
 
 ```json
 {
@@ -128,6 +109,8 @@ You inspect the actual HTTP response.
   "currency": "EUR"
 }
 ```
+
+The compiler believed `availableRooms` was a number; the runtime held the string `"3"`, and the `as` cast performed no check:
 
 ```text
   COMPILER'S STORY              RUNTIME'S STORY
@@ -171,9 +154,7 @@ Because here's the central mystery:
 >
 > Your source code contains information that the running program may not contain at all.
 
-```text
-  ✓ Room 1 complete — types erased, partner lied, boom
-```
+> ✓ Room 1 complete — types erased, partner lied, boom
 
 ---
 
@@ -181,11 +162,7 @@ Because here's the central mystery:
 
 Let's begin with something familiar.
 
-You write:
-
-```typescript
-const total = price + tax;
-```
+You write `const total = price + tax;`.
 
 You understand what this means. Or at least you think you do. The computer, however, doesn't possess an innate understanding of prices, taxes, or addition as human concepts.
 
@@ -193,7 +170,7 @@ At the lowest level, a conventional CPU executes instructions according to its a
 
 So how does your TypeScript statement become something a processor can execute?
 
-There must be a translation or interpretation process, and before that can happen, the language's rules need to define what the statement means. This brings us to three fundamental components of a programming language.
+There must be a translation or interpretation process, and before that can happen, the language's rules need to define what the statement means. This brings us to three fundamental components of a programming language — syntax, semantics, and implementation:
 
 ```text
   THREE PARTS OF A LANGUAGE
@@ -205,21 +182,9 @@ There must be a translation or interpretation process, and before that can happe
 
 ## Syntax: What programs are allowed to look like
 
-Consider:
+Consider `const result = 2 + 3;`. That's valid TypeScript syntax.
 
-```typescript
-const result = 2 + 3;
-```
-
-That's valid TypeScript syntax.
-
-Now consider:
-
-```typescript
-const = result + 2 3;
-```
-
-It isn't. The language has grammatical rules describing which sequences of tokens form valid statements and expressions. These rules are called **syntax**.
+Now consider `const = result + 2 3;`. It isn't. The language has grammatical rules describing which sequences of tokens form valid statements and expressions. These rules are called **syntax**.
 
 Syntax is important, but it's also the least intellectually interesting part of programming languages for our purposes.
 
@@ -227,34 +192,18 @@ You can learn a new language's syntax relatively quickly; understanding its exec
 
 ## Semantics: What programs mean
 
-Consider:
-
-```javascript
-"5" + 2
-```
-
-In JavaScript, this produces:
-
-`"52"`
+Consider `"5" + 2`. In JavaScript, this produces `"52"`.
 
 Why?
 
 Because JavaScript defines rules for how the `+` operator behaves with different operand types.
 
-Now consider:
+Now consider `"5" - 2`. This produces `3`.
 
-```javascript
-"5" - 2
-```
+Two expressions, two meanings under the language's semantics:
 
-This produces:
-
-`3`
-
-| Expression | Result | Why (semantics) |
-|---|---|---|
-| `"5" + 2` | `"52"` | `+` with a string → concatenate |
-| `"5" - 2` | `3` | `-` coerces to numbers |
+- **`"5" + 2`** → `"52"` — `+` with a string concatenates.
+- **`"5" - 2`** → `3` — `-` coerces both sides to numbers.
 
 The subtraction operator follows different conversion rules. That's not a random inconsistency introduced by a broken computer; it's a consequence of the language's specified semantics.
 
@@ -280,15 +229,13 @@ And that leads us to an important idea. Two implementations can execute the same
 
 The implementation is allowed to be clever. It isn't allowed to casually change what your program means.
 
-```text
-  ✓ Room 2 complete — syntax / semantics / implementation
-```
+> ✓ Room 2 complete — syntax / semantics / implementation
 
 ---
 
 # 3. What Actually Happens When You Run TypeScript?
 
-Let's follow a small TypeScript function from your editor toward the CPU.
+Let's follow a small TypeScript discount function — numbers in, number out — from your editor toward the CPU.
 
 ```typescript
 function calculateDiscount(
@@ -312,7 +259,7 @@ A compiler begins by analyzing the source code. First, it recognizes tokens, for
 - `:`
 - `number`
 
-Then it organizes the tokens according to the language grammar. One common internal representation is an **abstract syntax tree**, or AST. Conceptually, the function becomes something like:
+Then it organizes the tokens according to the language grammar. One common internal representation is an **abstract syntax tree**, or AST. Conceptually, the function becomes an abstract syntax tree with a multiply and a subtract:
 
 ```text
 FunctionDeclaration
@@ -338,13 +285,7 @@ This structure enables much of what modern development tools do: syntax highligh
 
 ## Stage two: Type checking
 
-The TypeScript compiler can now analyze relationships between expressions and types. Our function promises to accept numbers and return a number. If we attempt:
-
-```typescript
-calculateDiscount("100", 0.2);
-```
-
-TypeScript reports a type error: the string `"100"` isn't assignable to the declared `number` parameter.
+The TypeScript compiler can now analyze relationships between expressions and types. Our function promises to accept numbers and return a number. If we attempt `calculateDiscount("100", 0.2);`, TypeScript reports a type error: the string `"100"` isn't assignable to the declared `number` parameter.
 
 Notice what makes this useful: the compiler identifies the problem without executing the function, reasoning about the program's declared and inferred types.
 
@@ -352,7 +293,7 @@ This is **static analysis** — the information is available before the program 
 
 ## Stage three: Producing executable JavaScript
 
-In a conventional TypeScript build, the compiler or another tool emits JavaScript. Our function may become:
+In a conventional TypeScript build, the compiler or another tool emits JavaScript. Our function may become plain JavaScript with the type annotations stripped:
 
 ```javascript
 function calculateDiscount(price, discount) {
@@ -372,7 +313,7 @@ Node's built-in type stripping does not perform TypeScript type checking, so run
 
 ## Stage four: JavaScript execution
 
-Now the JavaScript engine takes over. Let's use V8, the engine employed by Chrome and Node.js. A simplified execution pipeline looks like this:
+Now the JavaScript engine takes over. Let's use V8, the engine employed by Chrome and Node.js. A simplified execution pipeline runs from TypeScript source through checking and JavaScript emission into V8 and finally the CPU:
 
 ```text
 TypeScript source
@@ -413,12 +354,12 @@ In a real full-stack project, several tools may participate: a TypeScript compil
 
 These are separate responsibilities, even if a build system combines them behind one command. That's why `npm run build` can conceal a surprisingly elaborate pipeline.
 
-| Stage | Representation |
-|---|---|
-| Source | what you wrote |
-| Checked | what the type checker believed |
-| Emitted | JavaScript without most types |
-| Executed | what the engine actually runs |
+Four stages, four representations:
+
+- **Source** — what you wrote.
+- **Checked** — what the type checker believed.
+- **Emitted** — JavaScript without most types.
+- **Executed** — what the engine actually runs.
 
 The practical lesson is that **source code, checked code, emitted code, and executed code are different representations of a program**.
 
@@ -428,9 +369,7 @@ When something goes wrong, knowing which stage is responsible can save a great d
 >
 > Type erasure: most TypeScript types don't ride along into the running program.
 
-```text
-  ✓ Room 3 complete — parse → check → emit → execute
-```
+> ✓ Room 3 complete — parse → check → emit → execute
 
 ---
 
@@ -459,7 +398,7 @@ Compilation doesn't necessarily mean producing a standalone executable that dire
 
 An interpreter executes a program representation by examining instructions and performing the corresponding behavior. That representation might be source code, bytecode, or another intermediate form.
 
-A system can compile source into bytecode and then interpret that bytecode; later, it can compile frequently executed portions into machine code. That's a common pattern in modern managed runtimes.
+A system can compile source into bytecode and then interpret that bytecode; later, it can compile frequently executed portions into machine code. That's a common pattern in modern managed runtimes — compile, interpret, then JIT the hot paths:
 
 ```text
   Often both, not either/or
@@ -471,7 +410,7 @@ A system can compile source into bytecode and then interpret that bytecode; late
 
 ## JIT compilation
 
-JIT means **just-in-time compilation**: instead of compiling every possible operation into optimized machine code ahead of time, a runtime can optimize during execution, because it can observe how the program actually behaves. Consider:
+JIT means **just-in-time compilation**: instead of compiling every possible operation into optimized machine code ahead of time, a runtime can optimize during execution, because it can observe how the program actually behaves. Consider a polymorphic `add` that may see numbers, strings, or coercions:
 
 ```javascript
 function add(a, b) {
@@ -481,9 +420,7 @@ function add(a, b) {
 
 JavaScript allows several behaviors here: numbers can be added, strings concatenated, and other values participate through coercion rules. The engine must preserve those semantics. But if an application calls `add()` millions of times with small numbers, an optimizing engine can specialize for that observed behavior, emitting efficient machine code guarded by checks on its assumptions, and fall back to general execution if they stop holding. CS220-L03 examines V8 tiers in hardware terms.
 
-```text
-  ✓ Room 4 complete — compiled vs interpreted is a spectrum
-```
+> ✓ Room 4 complete — compiled vs interpreted is a spectrum
 
 ---
 
@@ -491,11 +428,7 @@ JavaScript allows several behaviors here: numbers can be added, strings concaten
 
 Let's return to our broken hotel integration.
 
-Remember this line?
-
-```typescript
-return await response.json() as PartnerAvailability;
-```
+Remember this line? `return await response.json() as PartnerAvailability;`
 
 It looks reassuring. It contains a type, the editor recognizes that type, autocomplete works, and the code compiles. But what does `as PartnerAvailability` actually do?
 
@@ -503,7 +436,7 @@ It tells TypeScript to treat the expression as that type for static analysis. It
 
 It does not convert strings to numbers, check that every required property exists, or verify the business meaning of the values.
 
-Most importantly, **a type assertion is not runtime validation**. Let's make the difference explicit.
+Most importantly, **a type assertion is not runtime validation**. Assert `unknown` data whose `availableRooms` is the string `"3"`, then call `toFixed`:
 
 ```typescript
 interface PartnerAvailability {
@@ -526,21 +459,15 @@ This illustrates a critical limit of TypeScript's type system: it can analyze wh
 
 ## Static typing versus dynamic typing
 
-There's a common misconception that dynamically typed languages don't have types. That's incorrect: JavaScript values have runtime types.
-
-```javascript
-typeof 42       // "number"
-typeof "hello"  // "string"
-typeof true     // "boolean"
-```
+There's a common misconception that dynamically typed languages don't have types. That's incorrect: JavaScript values have runtime types. `typeof 42` is `"number"`, `typeof "hello"` is `"string"`, `typeof true` is `"boolean"`.
 
 Objects, functions, symbols, big integers, and other values also have defined runtime characteristics.
 
-| | Static (TypeScript) | Dynamic (JavaScript values) |
-|---|---|---|
-| When checked | mostly before run | at runtime |
-| What it knows | declared / inferred types | actual values |
-| Survives into JS? | mostly erased | yes — values are real |
+Static TypeScript and dynamic JavaScript values answer different questions:
+
+- **When checked** — static typing mostly before run; dynamic typing at runtime.
+- **What it knows** — the static system knows declared and inferred types; the runtime knows actual values.
+- **Survives into JavaScript?** — most static types are erased; runtime values are real.
 
 JavaScript is dynamically typed because type-related behavior is largely determined and checked at runtime rather than requiring every variable's type to be statically established before execution.
 
@@ -566,9 +493,7 @@ The trick is understanding what guarantees you're actually receiving. Static typ
 >
 > `as SomeType` is a compiler hint, not a runtime check.
 
-```text
-  ✓ Room 5 complete — static claims ≠ dynamic values
-```
+> ✓ Room 5 complete — static claims ≠ dynamic values
 
 ---
 
@@ -580,7 +505,7 @@ Instead of pretending that the remote service has returned the expected shape, w
 
 A good starting type is `unknown`. Unlike `any`, `unknown` forces us to establish what a value is before using it in operations that require a more specific type.
 
-Let's define the expected result.
+Let's define the expected result — hotel ID, integer room count, and currency:
 
 ```typescript
 interface PartnerAvailability {
@@ -590,7 +515,7 @@ interface PartnerAvailability {
 }
 ```
 
-Now write a small runtime parser.
+Now write a small runtime parser that rejects non-objects and invalid fields before returning a typed value:
 
 ```typescript
 function parseAvailability(
@@ -634,7 +559,7 @@ function parseAvailability(
 }
 ```
 
-Now we can write:
+Now fetch the partner endpoint, treat the JSON as `unknown`, and parse before trusting it:
 
 ```typescript
 const response = await fetch(endpoint);
@@ -652,7 +577,7 @@ This is substantially safer.
 
 The runtime parser checks that the required values satisfy the declared structural constraints, and after successful parsing the rest of the application can work with a properly typed object.
 
-Notice the architecture we're creating.
+Notice the architecture we're creating — untrusted JSON passes through runtime validation before typed application logic:
 
 ```text
 External system
@@ -680,7 +605,7 @@ Should the integration reject an invalid field, or apply an explicitly documente
 
 ## The dangerous alternative: `any`
 
-Now consider:
+Now consider typing the JSON as `any` and calling `toFixed` with no validation:
 
 ```typescript
 const data: any = await response.json();
@@ -690,12 +615,10 @@ return data.availableRooms.toFixed(0);
 
 TypeScript permits this, because `any` effectively opts out of meaningful type checking for the relevant operations.
 
-It's useful in certain integration or migration scenarios, but it can silently undermine large sections of otherwise carefully typed code. A helpful distinction is:
+It's useful in certain integration or migration scenarios, but it can silently undermine large sections of otherwise carefully typed code. A helpful distinction is attitude toward uncertainty:
 
-| | Attitude |
-|---|---|
-| **`any`** | don't check this |
-| **`unknown`** | we don't know this yet |
+- **`any`** — don't check this.
+- **`unknown`** — we don't know this yet.
 
 Those are very different attitudes toward uncertainty.
 
@@ -705,9 +628,7 @@ For external APIs, file contents, messages, and other untrusted inputs, `unknown
 >
 > At the trust boundary: `unknown` → validate → then trust.
 
-```text
-  ✓ Room 6 complete — validate before you believe
-```
+> ✓ Room 6 complete — validate before you believe
 
 ---
 
@@ -719,7 +640,7 @@ This is where TypeScript becomes particularly interesting for experienced develo
 
 Imagine modeling a booking result.
 
-A naive interface might look like this:
+A naive interface might look like this — one blob of optionals that allows invalid combinations:
 
 ```typescript
 interface BookingResult {
@@ -748,7 +669,7 @@ We've represented the data without fully expressing its rules.
 
 ## Discriminated unions
 
-Now consider an alternative:
+Now consider an alternative — three mutually exclusive shapes keyed by `status`:
 
 ```typescript
 type BookingResult =
@@ -766,6 +687,8 @@ type BookingResult =
     };
 ```
 
+Optional fields allow many invalid combinations; the union admits only three valid shapes:
+
 ```text
   One blob of optionals          Three valid shapes
   ─────────────────────          ──────────────────
@@ -779,7 +702,7 @@ type BookingResult =
 
 This representation describes three distinct valid shapes: a confirmed booking contains a reservation ID, a sold-out result contains alternatives, and a payment failure contains information about retryability.
 
-Now write:
+Switch on `status` and let TypeScript narrow which fields exist in each branch:
 
 ```typescript
 function describeBooking(
@@ -830,9 +753,7 @@ A discriminated union lets the compiler help enforce those distinctions inside t
 
 That's a much more useful application of static typing than merely annotating every variable with `string` or `number`.
 
-```text
-  ✓ Room 7 complete — make invalid states hard to type
-```
+> ✓ Room 7 complete — make invalid states hard to type
 
 ---
 
@@ -844,7 +765,7 @@ Its type compatibility is primarily **structural**.
 
 That means compatibility depends largely on the required members of a type, rather than simply on whether two values were explicitly declared to belong to the same named class or interface.
 
-Consider:
+Consider two interfaces that require the same members — `id` and `email` strings — under different names:
 
 ```typescript
 interface Customer {
@@ -858,7 +779,7 @@ interface Employee {
 }
 ```
 
-Now:
+Assign an `Employee` value to a `Customer` variable:
 
 ```typescript
 const employee: Employee = {
@@ -877,14 +798,9 @@ This is another example of the gap between structural representation and domain 
 
 ## The problem with identifiers
 
-Consider:
+Consider `type CustomerId = string;` and `type ReservationId = string;`.
 
-```typescript
-type CustomerId = string;
-type ReservationId = string;
-```
-
-Now:
+Pass a `CustomerId` into a function that expects a `ReservationId`:
 
 ```typescript
 function cancelReservation(
@@ -904,9 +820,7 @@ Both aliases describe strings.
 
 But perhaps we wanted to prevent customer IDs from being passed where reservation IDs are expected.
 
-One TypeScript technique is to introduce **branded types**.
-
-Conceptually:
+One TypeScript technique is to introduce **branded types** — string intersected with a phantom brand so the two IDs stop being assignable:
 
 ```typescript
 type ReservationId =
@@ -948,9 +862,7 @@ This leads to an important principle:
 >
 > A type system is most useful when it expresses important domain relationships—not when it maximizes the number of type declarations.
 
-```text
-  ✓ Room 8 complete — same shape ≠ same meaning (brand when it matters)
-```
+> ✓ Room 8 complete — same shape ≠ same meaning (brand when it matters)
 
 ---
 
@@ -960,7 +872,7 @@ Let's briefly revisit generics.
 
 Not because you need a basic TypeScript tutorial, but because they illustrate a deeper idea.
 
-Suppose we write:
+Suppose we write a generic `first` that returns `T | undefined` from a `T[]`:
 
 ```typescript
 function first<T>(
@@ -976,7 +888,7 @@ If we pass an array of customers, the result is a customer or undefined; if we p
 
 The function doesn't need to know the specific type in advance, but the compiler preserves the relationship.
 
-Now compare it with:
+Now compare it with an `any`-typed version that discards the input/output relationship:
 
 ```typescript
 function first(items: any[]): any {
@@ -984,10 +896,7 @@ function first(items: any[]): any {
 }
 ```
 
-```text
-  first<T>(T[]): T | undefined     keeps the relationship
-  first(any[]): any                same runtime; discards the story
-```
+`first<T>(items: T[]): T | undefined` keeps the relationship. `first(items: any[]): any` has the same runtime behavior but discards the story.
 
 This version can execute the same runtime operation.
 
@@ -1011,9 +920,7 @@ If understanding a function requires mentally evaluating a gigantic recursive co
 
 Type-level sophistication is not automatically engineering quality.
 
-```text
-  ✓ Room 9 complete — generics preserve relationships
-```
+> ✓ Room 9 complete — generics preserve relationships
 
 ---
 
@@ -1021,7 +928,7 @@ Type-level sophistication is not automatically engineering quality.
 
 Now let's leave TypeScript's type system and investigate JavaScript itself.
 
-Imagine a function that creates retry policies.
+Imagine a function that creates retry policies — a shared `maxAttempts` binding behind `shouldRetry` and `updateLimit`:
 
 ```typescript
 function createRetryPolicy(
@@ -1041,7 +948,7 @@ function createRetryPolicy(
 }
 ```
 
-We use it:
+We create a policy with limit 3, then lower the limit to 2 and ask again:
 
 ```typescript
 const policy = createRetryPolicy(3);
@@ -1061,7 +968,7 @@ But think about what happened.
 
 The function `createRetryPolicy()` finished executing. Its local variable `maxAttempts` was declared inside that function, and ordinarily we think of local variables as belonging to a function invocation.
 
-So why can `shouldRetry()` and `updateLimit()` still access `maxAttempts` after the outer function has returned? Because JavaScript functions form **closures**.
+So why can `shouldRetry()` and `updateLimit()` still access `maxAttempts` after the outer function has returned? Because JavaScript functions form **closures**. The outer call returns, but the lexical environment with `maxAttempts` stays alive:
 
 ```text
   createRetryPolicy() returns
@@ -1083,7 +990,7 @@ Those bindings can remain alive for as long as they're reachable through the clo
 
 Here's a subtle distinction.
 
-Consider:
+Close over a mutable `timeout` variable, change it after the function is created, then call the function:
 
 ```javascript
 let timeout = 1000;
@@ -1098,7 +1005,7 @@ console.log(getTimeout());
 
 The closure doesn't necessarily freeze the original value of `timeout` at the moment the function was created. It accesses the variable binding, which now contains 5000 — that's why the result changes.
 
-Now compare:
+Now compare a snapshot of the primitive against a live read of `config.timeout`:
 
 ```javascript
 const config = {
@@ -1119,10 +1026,10 @@ console.log(getLive());
 // 5000
 ```
 
-| Closure | Sees… |
-|---|---|
-| `getCaptured` | snapshot of the primitive (1000) |
-| `getLive` | live property on the object (5000) |
+What each closure sees:
+
+- **`getCaptured`** — a snapshot of the primitive (`1000`).
+- **`getLive`** — the live property on the object (`5000`).
 
 These two closures behave differently: one uses a previously extracted primitive value, the other reads a property from the same object each time.
 
@@ -1134,7 +1041,7 @@ It preserves access to particular bindings, whose values may or may not change.
 
 ## The classic loop problem
 
-Consider:
+Push three callbacks from a `var` loop, then invoke them all:
 
 ```javascript
 const callbacks = [];
@@ -1149,7 +1056,7 @@ console.log(callbacks.map(fn => fn()));
 
 Why? Because `var` uses function scope rather than block scope. All three callbacks refer to the same `i` binding, and by the time we invoke them, the loop has finished and `i` is 3.
 
-Now replace `var` with `let`:
+Now replace `var` with `let` so each iteration gets its own binding:
 
 ```javascript
 const callbacks = [];
@@ -1188,9 +1095,7 @@ That's a powerful capability.
 
 And another reason that seemingly simple functions can behave differently depending on their surrounding state.
 
-```text
-  ✓ Room 10 complete — closures keep bindings, not always snapshots
-```
+> ✓ Room 10 complete — closures keep bindings, not always snapshots
 
 ---
 
@@ -1231,18 +1136,16 @@ Contrast `chargeCustomer`, which hits a payment provider — calling it twice ma
 
 **Object-oriented** — combine state and behavior. A `RetryPolicy` class encapsulating `maxAttempts` resembles our earlier closure-based retry policy. Class versus functions-and-closures is not automatically superior; choose whichever makes intended behavior easier to understand, extend, and maintain.
 
-| Paradigm | Emphasizes |
-|---|---|
-| Imperative | explicit steps and mutation |
-| Declarative | *what*, not *how* |
-| Functional | pure calculation, controlled effects |
-| OOP | state + behavior together |
+What each paradigm emphasizes:
+
+- **Imperative** — explicit steps and mutation.
+- **Declarative** — *what*, not *how*.
+- **Functional** — pure calculation, controlled effects.
+- **OOP** — state and behavior together.
 
 Paradigm wars are usually unproductive. A Vue app mixes reactive and declarative patterns; a Node service may combine functional utilities, OOP domain models, and imperative orchestration; SQL is declarative; workers perform side effects. Choose tools; don't force every problem into one ideology.
 
-```text
-  ✓ Room 11 complete — paradigms are tools, not religions
-```
+> ✓ Room 11 complete — paradigms are tools, not religions
 
 ---
 
@@ -1252,7 +1155,7 @@ Let's return to a familiar situation.
 
 You have a database repository.
 
-It exposes this method:
+It exposes a find that loads customers with nested reservations:
 
 ```typescript
 const customers = await repository.find({
@@ -1266,7 +1169,7 @@ Very convenient. You don't need to write SQL manually; the ORM handles object ma
 
 It allows you to think in terms of customers and reservations rather than directly manipulating database rows. And often, that's extremely useful.
 
-But imagine you later write:
+But imagine you later loop over every customer's reservations and read only the length:
 
 ```typescript
 for (const customer of customers) {
@@ -1284,14 +1187,14 @@ This is a **leaky abstraction**: an abstraction is leaky when details of its und
 
 ## All abstractions have boundaries
 
-| Abstraction | Doesn't erase… |
-|---|---|
-| Database ORM | network latency, query cost |
-| Cloud platform | server failures |
-| HTTP client | unreliable remotes |
-| Promise | need for real parallelism |
-| AI agent framework | auth / idempotency of tools |
-| Type annotation | need to validate external JSON |
+Every familiar abstraction still leaves something underneath:
+
+- **Database ORM** — doesn't erase network latency or query cost.
+- **Cloud platform** — doesn't erase server failures.
+- **HTTP client** — doesn't erase unreliable remotes.
+- **Promise** — doesn't erase the need for real parallelism.
+- **AI agent framework** — doesn't erase auth or idempotency of tools.
+- **Type annotation** — doesn't erase the need to validate external JSON.
 
 An abstraction simplifies how we interact with a system.
 
@@ -1337,9 +1240,7 @@ An AI assistant can construct elaborate architectures remarkably quickly. It can
 
 The ability to generate abstractions cheaply doesn't make those abstractions cheap to understand or maintain.
 
-```text
-  ✓ Room 12 complete — abstractions hide cost until they leak
-```
+> ✓ Room 12 complete — abstractions hide cost until they leak
 
 ---
 
@@ -1364,7 +1265,7 @@ Some parts of that workflow are relatively straightforward calculations. Others 
 
 ## Pure domain logic
 
-For example:
+For example, `calculatePrice` is pure arithmetic over cents — no database, no payment provider:
 
 ```typescript
 interface PriceBreakdown {
@@ -1390,7 +1291,7 @@ This is deterministic arithmetic over assumed-valid inputs, subject to the integ
 
 ## External side effects
 
-Now consider:
+Now consider `confirmBooking` — validation, inventory, payments, and recovery from partial failures:
 
 ```typescript
 async function confirmBooking(
@@ -1420,7 +1321,7 @@ Those are examples of abstraction concealing important semantics.
 
 ## The senior engineer's responsibility
 
-At a high level, a senior engineer should be able to answer:
+At a high level, a senior engineer should be able to answer a checklist at the trust boundary — what is trusted, what needs validation, what is deterministic, what mutates external state:
 
 ```text
   CHECKLIST AT THE BOUNDARY
@@ -1441,13 +1342,230 @@ They are software architecture questions.
 
 And they're much more important than whether a function was written using a class or an arrow expression.
 
-```text
-  ✓ Room 13 complete — separate pure logic from side effects
-```
+> ✓ Room 13 complete — separate pure logic from side effects
 
 ---
 
-# 14. Practical Lab: Make TypeScript Lie to You
+# 14. The Oral Examination
+
+Pause the lecture for each one.
+
+Answer **out loud** — as if an interviewer were across the table — before you listen to or read the solutions.
+
+They're designed to reinforce practical judgment rather than obscure compiler trivia.
+
+### Challenge A — The Type-Safe API That Isn't
+
+**Suggested time: 10 minutes**
+
+Your frontend and backend share a TypeScript interface. It declares `id` and `checkInDate` as strings and `guests` as a number:
+
+```typescript
+interface Reservation {
+  id: string;
+  checkInDate: string;
+  guests: number;
+}
+```
+
+Both applications compile successfully.
+
+A production incident occurs because the backend sends an object that matches the primitive shape but violates business meaning — `checkInDate` is `"tomorrow"` and `guests` is `-3`:
+
+```json
+{
+  "id": "R-42",
+  "checkInDate": "tomorrow",
+  "guests": -3
+}
+```
+
+The object satisfies the primitive shape of the interface.
+
+But its business meaning is invalid.
+
+Questions:
+
+1. Why didn't TypeScript prevent this?
+2. Which constraints belong in runtime validation?
+3. Which constraints belong in domain modeling?
+4. Could a database constraint help?
+5. Should the system use the same type for incoming requests and fully validated domain objects?
+
+### Challenge B — The Invisible Closure
+
+**Suggested time: 8 minutes**
+
+You have a service that creates callbacks during startup.
+
+Each callback uses the current configuration value.
+
+Later, the application reloads its configuration without restarting.
+
+Some callbacks continue using old settings.
+
+Others use the new settings.
+
+What might explain the difference?
+
+Consider closures over variables versus captured primitive values.
+
+How would you design configuration access to make the behavior explicit?
+
+### Challenge C — The ORM That Made Everything Slow
+
+**Suggested time: 10 minutes**
+
+Your Node.js application uses an ORM.
+
+A developer introduces a clean-looking repository abstraction.
+
+After deployment, average API latency doubles.
+
+CPU utilization remains moderate.
+
+Database query count increases dramatically.
+
+Questions:
+
+1. What implementation details might the abstraction be hiding?
+2. How would you investigate?
+3. Would you immediately remove the ORM?
+4. How could you preserve the abstraction while fixing the performance problem?
+5. What would you document to prevent the issue from returning?
+
+### Challenge D — Choosing the Right Abstraction
+
+**Suggested time: 10 minutes**
+
+You are reviewing code generated by an AI assistant.
+
+It introduces:
+
+- A generic repository layer.
+- A dependency injection container.
+- A service registry.
+- A command bus.
+- An event dispatcher.
+- Several factories.
+- An abstract base service class.
+
+The application currently has three endpoints and one database table.
+
+Is this good architecture?
+
+What evidence would justify the complexity?
+
+How would you decide which abstractions to keep?
+
+What are the costs of introducing abstractions before the underlying variation and requirements are understood?
+
+---
+
+# 15. Solutions and Discussion
+
+*Listen or read only after you have answered each challenge out loud.*
+
+### Solution A — Shared interfaces
+
+The interface only says that:
+
+- `id` is a string.
+- `checkInDate` is a string.
+- `guests` is a number.
+
+It doesn't guarantee that the string contains a valid calendar date or that the number is positive. Runtime validation should establish those constraints at trust boundaries.
+
+Domain modeling can represent important distinctions, such as validated dates or positive guest counts, and database constraints can protect critical invariants at the persistence layer.
+
+Using separate input types and validated domain types can clarify which guarantees have already been established.
+
+### Solution B — Stale configuration
+
+Some callbacks may close over mutable bindings or objects that get updated; others may capture the value of a property at construction time. A configuration reload can therefore affect them differently.
+
+One solution is to make configuration access explicit through a stable provider interface.
+
+Another is to deliberately rebuild dependent services when configuration changes. The key is defining whether callbacks should use a snapshot or live configuration.
+
+### Solution C — ORM performance
+
+Possible explanations include lazy-loading queries, N+1 patterns, unnecessary relationship loading, poorly indexed predicates, or excessive object mapping.
+
+Investigate query counts, execution times, and generated SQL. An ORM is not automatically the problem; the problem may be the queries produced by a particular usage pattern.
+
+You might preserve the repository abstraction while changing its data-loading strategy, introducing batching, optimizing queries, or adding appropriate indexes.
+
+The most valuable follow-up is documenting the performance expectations and adding tests or observability that detect regression.
+
+### Solution D — Overengineering
+
+Architecture should be justified by requirements. Three endpoints and one table don't automatically require a sophisticated application framework.
+
+Some abstractions may be useful because they isolate important boundaries or simplify testing; others may merely introduce indirection.
+
+A strong review would ask:
+
+- What concrete problem does each abstraction solve?
+- What change does it make easier?
+- What complexity does it introduce?
+- Is the anticipated variation real or speculative?
+- Can the design evolve incrementally?
+
+The best architecture isn't the one with the most patterns. It's the one that makes the system's important behavior understandable and its likely changes manageable.
+
+---
+
+# 16. The Mental Model Worth Keeping
+
+Back to 02:17.
+
+TypeScript said `availableRooms` was a number. The partner sent a string. The runtime crashed.
+
+A validation bug on the surface — and a lesson about layers underneath.
+
+Languages separate syntax, semantics, and implementation; the source you write is not what ultimately executes. Compilers and runtimes do different jobs, and "compiled versus interpreted" is rarely a clean split. Static types analyze programs; they do not automatically validate external reality — assertions are not runtime checks. Domain modeling can eliminate invalid states; TypeScript's structural compatibility can still treat different domain concepts as compatible. Closures retain lexical environments. Paradigms are tools. Abstractions simplify and conceal.
+
+Correctness is layered: compiler, runtime validation, database constraints, transactions. No single layer solves everything.
+
+There is a historical pattern. Higher-level languages, operating systems, garbage collection, databases, frameworks, cloud platforms, and now AI assistants each make certain work easier. The underlying machinery doesn't disappear.
+
+You can use an ORM until the database is slow. TypeScript until a runtime value violates the assumed type. AI until it wraps an incorrect assumption in a beautiful abstraction. The more powerful the tools, the more valuable it is to know where their guarantees end.
+
+Remember these durable distinctions:
+
+- **Source ≠ checked ≠ emitted ≠ executed** — four representations of one program.
+- **Types mostly erase; assertions aren't validation** — `as SomeType` is a compiler hint, not a runtime check.
+- **Trust boundaries: `unknown` → parse → domain type** — establish properties before you rely on them.
+- **Discriminated unions make invalid states harder** — model the states you actually support.
+- **Structural typing ≠ domain identity** — brand carefully where the mix-up would matter.
+- **Closures keep bindings** — snapshot versus live access is a design choice, not trivia.
+- **Abstractions leak; budget complexity** — every layer hides cost until the cost becomes the bug.
+- **Separate pure logic from side effects** — deterministic calculation and external mutation are different jobs.
+
+> **The master sticky note**
+>
+> A strong engineer doesn't need to work at the lowest level all the time. They need to know when the higher-level model is no longer telling the whole story.
+
+Distinguish what the source says, what the static analyzer can establish, what the runtime executes, and what the real-world system does. Related — not identical.
+
+> ✓ All rooms visited. Types told a story. Runtime told another.
+
+---
+
+# 17. Next Lecture — CS220-L02: Memory: The Invisible Battlefield
+
+We've learned that TypeScript's story and the runtime's story can diverge — and that closures retain environments after the functions that created them have returned.
+
+But what happens to those retained bindings in memory? When does the garbage collector reclaim them? What does the heap look like when a long-lived callback keeps a large object alive? And why do memory problems so often look like performance problems until you inspect the right layer?
+
+In **CS220-L02**, we'll study memory as the invisible battlefield — allocation, reachability, garbage collection, and the engineering habits that keep living state from becoming a silent leak.
+
+---
+
+## Optional Practical Lab — Make TypeScript Lie to You
+
+*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet.*
 
 Let's experiment with the difference between static claims and runtime behavior.
 
@@ -1455,9 +1573,11 @@ You can use the TypeScript Playground or a small local TypeScript project.
 
 **Suggested time: 15–20 minutes.**
 
-> **Gym rules:** predict before you run. Spoilers for challenges are in Room 16.
+> **Gym rules:** predict before you run. Challenge spoilers are in Solutions and Discussion above; lab answers follow the experiments.
 
-## Experiment A — The assertion that proves nothing
+### Experiment A — The assertion that proves nothing
+
+Assert `unknown` data as a `User` whose `id` is declared as a number, then call `toFixed` on it:
 
 ```typescript
 interface User {
@@ -1482,7 +1602,9 @@ Before executing it, predict:
 3. What happens when the final line executes?
 4. What would proper validation need to establish?
 
-## Experiment B — Structural typing
+### Experiment B — Structural typing
+
+Assign an `Employee` value to a `Customer` variable when both interfaces require only `id` and `email` strings:
 
 ```typescript
 interface Customer {
@@ -1513,7 +1635,9 @@ Why or why not?
 
 How could we deliberately make the types incompatible?
 
-## Experiment C — The living closure
+### Experiment C — The living closure
+
+Create two counters with `createCounter`, increment `a` twice and `b` once, then read both currents:
 
 ```javascript
 function createCounter() {
@@ -1549,7 +1673,9 @@ Why doesn't calling `createCounter()` twice create one shared counter?
 
 What happens to the state when no reachable references to the returned functions remain?
 
-## Experiment D — Compile-time readonly versus runtime mutation
+### Experiment D — Compile-time readonly versus runtime mutation
+
+Declare a `Settings` object whose `timeout` is `readonly` at the TypeScript level:
 
 ```typescript
 interface Settings {
@@ -1561,11 +1687,7 @@ const settings: Settings = {
 };
 ```
 
-TypeScript will reject:
-
-```typescript
-settings.timeout = 5000;
-```
+TypeScript will reject `settings.timeout = 5000;`.
 
 But what does `readonly` mean at runtime?
 
@@ -1581,265 +1703,16 @@ It prevents certain mutations to the frozen object itself, but doesn't recursive
 
 This experiment illustrates the difference between a compile-time restriction and runtime enforcement.
 
-```text
-  ✓ Room 14 complete — lab done (or at least attempted)
-```
+### Lab solutions
 
----
+*Read after attempting the experiments.*
 
-# 15. Interview-Style Engineering Challenges
+**Experiment A — Type assertions.** TypeScript accepts the assertion from `unknown` to `User`, but no runtime conversion occurs. The `id` property remains the string `"42"`, so calling `toFixed()` throws. Runtime validation should establish that the value is an object with the required properties and valid types. Additional domain validation may be needed depending on what the identifier represents.
 
-These are more important than memorizing compiler terminology.
+**Experiment B — Structural typing.** TypeScript accepts the assignment because the two interfaces have compatible structures; declaring them in different modules doesn't inherently change that. TypeScript's compatibility model is primarily structural. Branded types or other deliberate distinctions can make semantically different values incompatible under ordinary checked assignments.
 
-Try answering them as though you're explaining your reasoning to a senior engineer during a technical discussion.
+**Experiment C — Closures.** The output is `2` then `1`. Each call to `createCounter()` creates a new lexical environment with its own `value` binding, and the returned functions retain access to the corresponding binding. When the functions and their retained environments are no longer reachable, the garbage collector may reclaim their associated memory, though the exact timing of reclamation is not generally guaranteed.
 
-## Challenge A — The Type-Safe API That Isn't
+**Experiment D — Readonly.** TypeScript's `readonly` expresses a static restriction on assignments through the checked type. It doesn't automatically freeze the object at runtime, and JavaScript code, unsafe assertions, or other aliases can still mutate an ordinary object. `Object.freeze()` provides runtime protection against certain property modifications, but it is shallow and has its own semantics. The distinction is between the compiler's model and runtime enforcement.
 
-**Suggested time: 10 minutes**
-
-Your frontend and backend share a TypeScript interface:
-
-```typescript
-interface Reservation {
-  id: string;
-  checkInDate: string;
-  guests: number;
-}
-```
-
-Both applications compile successfully.
-
-A production incident occurs because the backend sends:
-
-```json
-{
-  "id": "R-42",
-  "checkInDate": "tomorrow",
-  "guests": -3
-}
-```
-
-The object satisfies the primitive shape of the interface.
-
-But its business meaning is invalid.
-
-Questions:
-
-1. Why didn't TypeScript prevent this?
-2. Which constraints belong in runtime validation?
-3. Which constraints belong in domain modeling?
-4. Could a database constraint help?
-5. Should the system use the same type for incoming requests and fully validated domain objects?
-
-## Challenge B — The Invisible Closure
-
-**Suggested time: 8 minutes**
-
-You have a service that creates callbacks during startup.
-
-Each callback uses the current configuration value.
-
-Later, the application reloads its configuration without restarting.
-
-Some callbacks continue using old settings.
-
-Others use the new settings.
-
-What might explain the difference?
-
-Consider closures over variables versus captured primitive values.
-
-How would you design configuration access to make the behavior explicit?
-
-## Challenge C — The ORM That Made Everything Slow
-
-**Suggested time: 10 minutes**
-
-Your Node.js application uses an ORM.
-
-A developer introduces a clean-looking repository abstraction.
-
-After deployment, average API latency doubles.
-
-CPU utilization remains moderate.
-
-Database query count increases dramatically.
-
-Questions:
-
-1. What implementation details might the abstraction be hiding?
-2. How would you investigate?
-3. Would you immediately remove the ORM?
-4. How could you preserve the abstraction while fixing the performance problem?
-5. What would you document to prevent the issue from returning?
-
-## Challenge D — Choosing the Right Abstraction
-
-**Suggested time: 10 minutes**
-
-You are reviewing code generated by an AI assistant.
-
-It introduces:
-
-- A generic repository layer.
-- A dependency injection container.
-- A service registry.
-- A command bus.
-- An event dispatcher.
-- Several factories.
-- An abstract base service class.
-
-The application currently has three endpoints and one database table.
-
-Is this good architecture?
-
-What evidence would justify the complexity?
-
-How would you decide which abstractions to keep?
-
-What are the costs of introducing abstractions before the underlying variation and requirements are understood?
-
-```text
-  ✓ Room 15 complete — challenges attempted
-```
-
----
-
-# 16. Solutions and Discussion
-
-*Read after attempting the exercises.*
-
-## Experiment A — Type assertions
-
-TypeScript accepts the assertion from `unknown` to `User`, but no runtime conversion occurs. The `id` property remains the string `"42"`, so calling `toFixed()` throws.
-
-Runtime validation should establish that the value is an object with the required properties and valid types. Additional domain validation may be needed depending on what the identifier represents.
-
-## Experiment B — Structural typing
-
-TypeScript accepts the assignment because the two interfaces have compatible structures; declaring them in different modules doesn't inherently change that.
-
-TypeScript's compatibility model is primarily structural.
-
-Branded types or other deliberate distinctions can make semantically different values incompatible under ordinary checked assignments.
-
-## Experiment C — Closures
-
-The output is:
-
-```text
-2
-1
-```
-
-Each call to `createRetryPolicy()` creates a new lexical environment with its own `value` binding, and the returned functions retain access to the corresponding binding.
-
-When the functions and their retained environments are no longer reachable, the garbage collector may reclaim their associated memory, though the exact timing of reclamation is not generally guaranteed.
-
-## Experiment D — Readonly
-
-TypeScript's `readonly` expresses a static restriction on assignments through the checked type.
-
-It doesn't automatically freeze the object at runtime, and JavaScript code, unsafe assertions, or other aliases can still mutate an ordinary object.
-
-`Object.freeze()` provides runtime protection against certain property modifications, but it is shallow and has its own semantics. The distinction is between the compiler's model and runtime enforcement.
-
-## Challenge A — Shared interfaces
-
-The interface only says that:
-
-- `id` is a string.
-- `checkInDate` is a string.
-- `guests` is a number.
-
-It doesn't guarantee that the string contains a valid calendar date or that the number is positive. Runtime validation should establish those constraints at trust boundaries.
-
-Domain modeling can represent important distinctions, such as validated dates or positive guest counts, and database constraints can protect critical invariants at the persistence layer.
-
-Using separate input types and validated domain types can clarify which guarantees have already been established.
-
-## Challenge B — Stale configuration
-
-Some callbacks may close over mutable bindings or objects that get updated; others may capture the value of a property at construction time. A configuration reload can therefore affect them differently.
-
-One solution is to make configuration access explicit through a stable provider interface.
-
-Another is to deliberately rebuild dependent services when configuration changes. The key is defining whether callbacks should use a snapshot or live configuration.
-
-## Challenge C — ORM performance
-
-Possible explanations include lazy-loading queries, N+1 patterns, unnecessary relationship loading, poorly indexed predicates, or excessive object mapping.
-
-Investigate query counts, execution times, and generated SQL. An ORM is not automatically the problem; the problem may be the queries produced by a particular usage pattern.
-
-You might preserve the repository abstraction while changing its data-loading strategy, introducing batching, optimizing queries, or adding appropriate indexes.
-
-The most valuable follow-up is documenting the performance expectations and adding tests or observability that detect regression.
-
-## Challenge D — Overengineering
-
-Architecture should be justified by requirements. Three endpoints and one table don't automatically require a sophisticated application framework.
-
-Some abstractions may be useful because they isolate important boundaries or simplify testing; others may merely introduce indirection.
-
-A strong review would ask:
-
-- What concrete problem does each abstraction solve?
-- What change does it make easier?
-- What complexity does it introduce?
-- Is the anticipated variation real or speculative?
-- Can the design evolve incrementally?
-
-The best architecture isn't the one with the most patterns. It's the one that makes the system's important behavior understandable and its likely changes manageable.
-
-```text
-  ✓ Room 16 complete — answers checked
-```
-
----
-
-# 17. The Bigger Picture
-
-Back to 02:17.
-
-TypeScript said `availableRooms` was a number. The partner sent a string. The runtime crashed.
-
-A validation bug on the surface — and a lesson about layers underneath.
-
-Languages separate syntax, semantics, and implementation; the source you write is not what ultimately executes. Compilers and runtimes do different jobs, and “compiled versus interpreted” is rarely a clean split. Static types analyze programs; they do not automatically validate external reality — assertions are not runtime checks. Domain modeling can eliminate invalid states; TypeScript's structural compatibility can still treat different domain concepts as compatible. Closures retain lexical environments. Paradigms are tools. Abstractions simplify and conceal.
-
-Correctness is layered: compiler, runtime validation, database constraints, transactions. No single layer solves everything.
-
-There is a historical pattern. Higher-level languages, operating systems, garbage collection, databases, frameworks, cloud platforms, and now AI assistants each make certain work easier. The underlying machinery doesn't disappear.
-
-You can use an ORM until the database is slow. TypeScript until a runtime value violates the assumed type. AI until it wraps an incorrect assumption in a beautiful abstraction. The more powerful the tools, the more valuable it is to know where their guarantees end.
-
-Distinguish what the source says, what the static analyzer can establish, what the runtime executes, and what the real-world system does. Related — not identical.
-
-```text
-  POCKET CARD — CS220-L01
-  ═══════════════════════════════════════════════════════════
-  1. Source ≠ checked ≠ emitted ≠ executed
-  2. Types mostly erase; assertions aren't validation
-  3. Trust boundaries: unknown → parse → domain type
-  4. Discriminated unions make invalid states harder
-  5. Structural typing ≠ domain identity (brand carefully)
-  6. Closures keep bindings (snapshot vs live)
-  7. Abstractions leak; budget complexity
-  8. Separate pure logic from side effects
-  ═══════════════════════════════════════════════════════════
-```
-
-> **The master sticky note**
->
-> A strong engineer doesn't need to work at the lowest level all the time. They need to know when the higher-level model is no longer telling the whole story.
-
-```text
-  ✓ All rooms visited. Types told a story. Runtime told another. See you in CS220-L02.
-```
-
----
-
-## Next Lecture — CS220-L02: Memory: The Invisible Battlefield
-
-Continue in **CS220 — Programming Languages, Memory, and Execution**.
+> ✓ Lab complete — static claims versus runtime behavior checked

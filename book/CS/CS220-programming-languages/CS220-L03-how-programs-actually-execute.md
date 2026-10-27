@@ -22,6 +22,14 @@ next: null
 
 ---
 
+### How to listen to this lecture
+
+Written for continuous listening first, then for on-screen re-reading. The theme today is simple: **what the machine is actually spending time doing.** Bold takeaways mark ideas worth pausing on, and short diagrams show the path from source to silicon. Near the end, answer the challenges **out loud** before reading the solutions. The timing and profiling experiments live after the spoken lecture ends — keep them for a screen session.
+
+By the end, you should be able to explain why a fast CPU can still wait on memory, how pipelines and speculation hide latency until dependencies intervene, why V8 can speed up or deoptimize the same function, how wall-clock time differs from CPU time, and why measuring the hot path beats rearranging code by folklore.
+
+---
+
 # 1. The Mysterious Case of the Slower Code
 
 It's Monday morning, and your team has deployed a modest update to a hotel reservation service.
@@ -207,11 +215,7 @@ isn't how a modern high-performance CPU necessarily operates internally. To unde
 
 # 4. A Processor That Executes Billions of Instructions Can Still Spend Time Waiting
 
-Imagine that the CPU needs to calculate:
-
-```typescript
-const result = customer.balance + customer.creditLimit;
-```
+Imagine that the CPU needs to calculate `const result = customer.balance + customer.creditLimit`.
 
 The arithmetic is trivial. Adding two numbers is not particularly demanding. But the values must be available. Suppose the relevant customer data isn't currently in the CPU's cache.
 
@@ -221,12 +225,7 @@ A powerful processor capable of executing enormous numbers of operations per sec
 
 ## The memory hierarchy
 
-A simplified modern memory hierarchy looks like this:
-
-```text
-REGISTERS -> L1 -> L2 -> L3 / LAST-LEVEL CACHE -> MAIN RAM -> PERSISTENT STORAGE
- (tiny, fastest)                                    (huge, slowest)
-```
+A simplified modern memory hierarchy looks like this: registers to L1 to L2 to L3 or last-level cache to main RAM to persistent storage — tiny and fastest at one end, huge and slowest at the other.
 
 This is a conceptual hierarchy. Actual hardware designs vary, and persistent storage is accessed through a different set of mechanisms from ordinary cache-backed memory loads. The general pattern is that storage closer to the execution units tends to be faster and smaller. Storage farther away tends to be larger and slower: registers are tiny, L1 is small and fast, L2 is typically larger, a shared last-level cache may hold many megabytes, RAM holds gigabytes, and persistent storage potentially terabytes. But the difference isn't merely capacity.
 
@@ -573,11 +572,7 @@ A runtime can observe that pattern.
 
 It may then produce specialized machine code optimized for the numerical case.
 
-But how does it preserve correctness if somebody later calls:
-
-```javascript
-add("Hello", " world");
-```
+But how does it preserve correctness if somebody later calls `add("Hello", " world")`?
 
 This is where speculative optimization comes in.
 
@@ -937,11 +932,7 @@ But it shows us where to investigate. That's a substantial improvement over gues
 
 ## Node.js CPU profiling
 
-Node.js supports a built-in CPU profiler. For a simple application, you can start it with:
-
-```bash
-node --cpu-prof app.js
-```
+Node.js supports a built-in CPU profiler. For a simple application, you can start it with `node --cpu-prof app.js`.
 
 When the process exits normally, Node.js can write a CPU profile file. The resulting `.cpuprofile` can be opened in compatible developer tools, including Chrome DevTools. You can inspect execution samples and identify frequently observed call stacks.
 
@@ -1130,21 +1121,228 @@ That's why studying runtime execution is worthwhile even if you never intend to 
 
 ---
 
-# 16. Practical Lab: Watch CPU Time and Wall Time Diverge
+# 16. The Oral Examination
 
-For this session, I recommend one small practical investigation.
+We now have enough machinery to talk about execution like an engineer rather than guessing from the shape of the source.
 
-Create a file:
+Before reading the solutions, try answering these questions out loud. Imagine that a senior engineer is interviewing you and will challenge any hand-waving. Speak complete explanations, not fragments.
 
-`execution-lab.js`
+### Challenge A — The Slow Pricing Function
 
-We'll compare waiting with computation.
+*Suggested time: 10 minutes.*
 
-Then we'll capture a CPU profile.
+A Node.js pricing function performs poorly after a new integration partner is added.
+
+The function processes objects with different property orders, optional fields, and sometimes different value types.
+
+What are three possible explanations for the slowdown?
+
+How would you distinguish additional application-level work from a change in runtime optimization behavior?
+
+Would you immediately rewrite every object to have the same shape?
+
+Why or why not?
+
+### Challenge B — The Eight-Core Mystery
+
+*Suggested time: 8 minutes.*
+
+A simulation runs at an extremely low frame rate.
+
+Your processor exposes eight logical CPUs.
+
+Overall CPU utilization is approximately 20%.
+
+GPU utilization is also low.
+
+Could the simulation still be limited by CPU execution?
+
+Explain how.
+
+What measurements would help distinguish a serial CPU bottleneck from memory stalls, synchronization, or other limitations?
+
+Why wouldn't adding more threads automatically solve the problem?
+
+### Challenge C — The Dangerous Benchmark
+
+*Suggested time: 8 minutes.*
+
+A developer claims:
+
+"I proved this function is three times faster. I ran it once with `performance.now()` and got a lower number."
+
+What problems do you see with the claim?
+
+What should a better benchmark include?
+
+And how would you establish whether the improvement matters in production?
+
+### Challenge D — The Unexpectedly Slow API
+
+*Suggested time: 10 minutes.*
+
+An HTTP endpoint takes 800 milliseconds to complete.
+
+A distributed trace reveals:
+
+- Request parsing and validation: 5 ms.
+- Database operation: 600 ms.
+- Application processing: 15 ms.
+- External API call: 150 ms.
+- Response serialization and remaining overhead: 30 ms.
+
+A developer proposes rewriting the 15-millisecond processing function in a faster language.
+
+Even if they make that function infinitely fast, what is the greatest possible reduction in endpoint latency under this sequential model?
+
+What would you investigate instead?
+
+Which parts of the request might be independent enough to overlap?
+
+What correctness risks might arise from attempting to execute operations concurrently?
+
+---
+
+# 17. Solutions and Discussion
+
+*Read this section after answering out loud. The coding lab appears after the spoken lecture ends.*
+
+### Solution A — Slow pricing function
+
+Possible explanations include:
+
+- Additional string conversion or normalization work.
+- More object allocations.
+- Less effective optimized property access because of diverse object shapes.
+- Different numerical representations.
+- Increased garbage-collection activity.
+- Additional logging or validation.
+
+Begin with representative profiling and benchmarks.
+
+Inspect where CPU time is concentrated.
+
+Compare the old and new workloads.
+
+Verify whether input differences influence the result.
+
+Consistent object shapes can sometimes help V8, but blindly rewriting every object is not justified without evidence.
+
+The slowdown might have nothing to do with hidden classes.
+
+### Solution B — Eight-core mystery
+
+Overall CPU utilization averages activity across the machine's available logical processors.
+
+One critical execution thread can be saturated while other processors remain relatively idle.
+
+The simulation may be unable to advance until that thread completes its work.
+
+Memory latency, synchronization, and other dependencies can also limit progress.
+
+Useful measurements include per-thread CPU utilization, CPU profiling, simulation-step timing, GPU frame timing, and relevant hardware performance counters.
+
+Adding threads helps only when useful work can be divided and coordinated efficiently.
+
+Parallelism introduces overhead and doesn't eliminate serial dependencies.
+
+### Solution C — Dangerous benchmark
+
+A single timing result is insufficient evidence of a stable performance improvement.
+
+Potential problems include warmup differences, runtime optimization, garbage collection, other processes, input distribution, and measurement noise.
+
+A better benchmark uses representative workloads, repeated measurements, controlled comparisons, output validation, and appropriate warmup.
+
+Then the improvement should be evaluated within the actual application.
+
+A dramatic speedup in a function that contributes almost nothing to total latency may have little practical value.
+
+### Solution D — Slow API
+
+The processing function accounts for 15 milliseconds of an 800-millisecond request.
+
+Even eliminating that work entirely reduces the total from 800 milliseconds to 785 milliseconds.
+
+That's a maximum improvement of 1.875% under the stated sequential model.
+
+The database operation is a much larger contributor.
+
+Investigate query execution plans, round trips, indexing, lock waits, connection-pool delays, and the actual source of its latency.
+
+The external API also consumes significant time.
+
+Independent operations might be overlapped, but only if their dependencies and side effects permit it.
+
+For example, charging a customer and confirming inventory may require careful ordering or compensating workflows.
+
+Executing business-critical operations concurrently without understanding their consistency requirements can produce serious bugs.
+
+Performance improvements must preserve correctness.
+
+---
+
+# 18. The Mental Model Worth Keeping
+
+The pricing service looked simple. The algorithm barely changed. Execution got slower. Source isn't machine code — and the slowdown lived in the machinery beneath the line that "looked the same."
+
+Remember these durable distinctions:
+
+**Arithmetic is cheap; getting data often isn't** — a fast CPU can still wait on the memory hierarchy.
+
+**Pipelines, prediction, and out-of-order execution hide latency** — until dependencies, mispredictions, or cache misses intervene.
+
+**More cores don't guarantee proportional speedups** — Amdahl's law: the serial fraction caps the win.
+
+**V8 optimizes from runtime feedback** — shapes and types can specialize; when assumptions fail, deoptimization restores correctness at a cost.
+
+**Wall-clock, CPU time, and profile samples answer different questions** — Big O alone cannot tell you where this request spent its second.
+
+**Speed up the wrong 1% and accomplish little** — optimize what the machine is actually doing, not what looks inefficient on the page.
+
+**Internals explain behavior; they aren't an invitation to rearrange literals for V8** — measure first; folklore second.
+
+TypeScript sits atop parse, bytecode and JIT tiers, the CPU, the memory hierarchy, OS scheduling, and networks and databases. Most of the time `reservation.price + reservation.tax` simply works — triumph of abstraction. When something goes wrong, look beneath just far enough to find the constraint. Form hypotheses and test them.
+
+> **The master sticky note**
+>
+> When a program becomes slow, don't merely ask which line of code looks inefficient. Ask what the machine is actually spending its time doing — and why.
+
+That is why studying runtime execution remains valuable even when an assistant can generate the code. Someone still has to recognize which bottleneck is real, which measurement answers the question, and which change is safe.
+
+That also closes CS220. You now have the vocabulary of languages, memory, and the path from source to silicon.
+
+---
+
+# 19. Next Course — Computer Networks and Web Protocols
+
+CS220 ends here: how languages represent values, where they live in memory, and what the machine is actually doing when a program runs.
+
+The Foundations track continues outward — from one process thinking about itself to processes talking across a network.
+
+What happens when a browser asks for a page? How do DNS, HTTP, TLS, and TCP turn a URL into bytes on the wire? Where does latency hide when the CPU looks idle?
+
+In **CS230-L01**, the next course in the recommended study order begins — Computer Networks and Web Protocols, starting with the journey of a web request. For concurrency, the event loop, and the operating system that schedules many things at once, **CS320** is the natural systems follow-on — see the recommended study order in `README.md`.
+
+---
+
+## Optional Practical Lab — Watch CPU Time and Wall Time Diverge
+
+*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet.*
+
+For this session, one small practical investigation.
+
+Create a file named `execution-lab.js`.
+
+We'll compare waiting with computation, then capture a CPU profile.
 
 **Suggested time: 15–20 minutes.**
 
+> **Gym rules:** predict before you run. The oral challenges were in the spoken lecture; these labs are for your own eyes.
+
 ## Part A — Timing utility
+
+This helper records wall-clock milliseconds with `performance.now()` and CPU milliseconds from `process.cpuUsage()`, then logs both for a labeled operation.
 
 ```javascript
 const { performance } = require("node:perf_hooks");
@@ -1171,6 +1369,8 @@ async function measure(name, fn) {
 
 ## Part B — An operation dominated by waiting
 
+This function awaits a one-second timer and does almost no computation while the clock advances.
+
 ```javascript
 async function waitForOneSecond() {
   await new Promise(resolve =>
@@ -1180,6 +1380,8 @@ async function waitForOneSecond() {
 ```
 
 ## Part C — An operation dominated by calculation
+
+This function loops a hundred million times, accumulating square roots — deliberate CPU work.
 
 ```javascript
 function calculate() {
@@ -1194,6 +1396,8 @@ function calculate() {
 ```
 
 ## Part D — Run the comparison
+
+Wire both operations through `measure`, then run the script and compare the logged wall and CPU times.
 
 ```javascript
 async function main() {
@@ -1220,11 +1424,7 @@ The purpose is to understand the difference between consuming CPU resources and 
 
 ## Part E — Generate a CPU profile
 
-Run:
-
-```bash
-node --cpu-prof execution-lab.js
-```
+Start the same lab under Node's built-in profiler with `node --cpu-prof execution-lab.js`.
 
 Node.js should generate a `.cpuprofile` file on normal process exit.
 
@@ -1244,7 +1444,7 @@ This is the difference between latency and CPU work made visible.
 
 Create a second calculation function with different data representations.
 
-For example:
+For example, this loop sums every element of an array-like value — try it on a `Float64Array` and on an ordinary JavaScript array of similar numbers.
 
 ```javascript
 function sumTypedArray(values) {
@@ -1273,186 +1473,3 @@ That's not a failure of the experiment.
 It's an opportunity to learn the most important lesson of performance engineering:
 
 **Measure first. Explain the result second.**
-
----
-
-# 17. Engineering Challenges
-
-These challenges connect today's concepts to real work.
-
-## Challenge A — The Slow Pricing Function
-
-**Suggested time: 10 minutes**
-
-A Node.js pricing function performs poorly after a new integration partner is added.
-
-The function processes objects with different property orders, optional fields, and sometimes different value types.
-
-What are three possible explanations for the slowdown?
-
-How would you distinguish additional application-level work from a change in runtime optimization behavior?
-
-Would you immediately rewrite every object to have the same shape?
-
-Why or why not?
-
-## Challenge B — The Eight-Core Mystery
-
-**Suggested time: 8 minutes**
-
-A simulation runs at an extremely low frame rate.
-
-Your processor exposes eight logical CPUs.
-
-Overall CPU utilization is approximately 20%.
-
-GPU utilization is also low.
-
-Could the simulation still be limited by CPU execution?
-
-Explain how.
-
-What measurements would help distinguish a serial CPU bottleneck from memory stalls, synchronization, or other limitations?
-
-Why wouldn't adding more threads automatically solve the problem?
-
-## Challenge C — The Dangerous Benchmark
-
-**Suggested time: 8 minutes**
-
-A developer claims:
-
-"I proved this function is three times faster. I ran it once with `performance.now()` and got a lower number."
-
-What problems do you see with the claim?
-
-What should a better benchmark include?
-
-And how would you establish whether the improvement matters in production?
-
-## Challenge D — The Unexpectedly Slow API
-
-**Suggested time: 10 minutes**
-
-An HTTP endpoint takes 800 milliseconds to complete.
-
-A distributed trace reveals:
-
-- Request parsing and validation: 5 ms.
-- Database operation: 600 ms.
-- Application processing: 15 ms.
-- External API call: 150 ms.
-- Response serialization and remaining overhead: 30 ms.
-
-A developer proposes rewriting the 15-millisecond processing function in a faster language.
-
-Even if they make that function infinitely fast, what is the greatest possible reduction in endpoint latency under this sequential model?
-
-What would you investigate instead?
-
-Which parts of the request might be independent enough to overlap?
-
-What correctness risks might arise from attempting to execute operations concurrently?
-
----
-
-# 18. Solutions and Discussion
-
-*Read after attempting the challenges.*
-
-## Challenge A — Slow pricing function
-
-Possible explanations include:
-
-- Additional string conversion or normalization work.
-- More object allocations.
-- Less effective optimized property access because of diverse object shapes.
-- Different numerical representations.
-- Increased garbage-collection activity.
-- Additional logging or validation.
-
-Begin with representative profiling and benchmarks.
-
-Inspect where CPU time is concentrated.
-
-Compare the old and new workloads.
-
-Verify whether input differences influence the result.
-
-Consistent object shapes can sometimes help V8, but blindly rewriting every object is not justified without evidence.
-
-The slowdown might have nothing to do with hidden classes.
-
-## Challenge B — Eight-core mystery
-
-Overall CPU utilization averages activity across the machine's available logical processors.
-
-One critical execution thread can be saturated while other processors remain relatively idle.
-
-The simulation may be unable to advance until that thread completes its work.
-
-Memory latency, synchronization, and other dependencies can also limit progress.
-
-Useful measurements include per-thread CPU utilization, CPU profiling, simulation-step timing, GPU frame timing, and relevant hardware performance counters.
-
-Adding threads helps only when useful work can be divided and coordinated efficiently.
-
-Parallelism introduces overhead and doesn't eliminate serial dependencies.
-
-## Challenge C — Dangerous benchmark
-
-A single timing result is insufficient evidence of a stable performance improvement.
-
-Potential problems include warmup differences, runtime optimization, garbage collection, other processes, input distribution, and measurement noise.
-
-A better benchmark uses representative workloads, repeated measurements, controlled comparisons, output validation, and appropriate warmup.
-
-Then the improvement should be evaluated within the actual application.
-
-A dramatic speedup in a function that contributes almost nothing to total latency may have little practical value.
-
-## Challenge D — Slow API
-
-The processing function accounts for 15 milliseconds of an 800-millisecond request.
-
-Even eliminating that work entirely reduces the total from 800 milliseconds to 785 milliseconds.
-
-That's a maximum improvement of 1.875% under the stated sequential model.
-
-The database operation is a much larger contributor.
-
-Investigate query execution plans, round trips, indexing, lock waits, connection-pool delays, and the actual source of its latency.
-
-The external API also consumes significant time.
-
-Independent operations might be overlapped, but only if their dependencies and side effects permit it.
-
-For example, charging a customer and confirming inventory may require careful ordering or compensating workflows.
-
-Executing business-critical operations concurrently without understanding their consistency requirements can produce serious bugs.
-
-Performance improvements must preserve correctness.
-
----
-
-# 19. The Bigger Picture: A Computer Is a Stack of Clever Illusions
-
-Source isn't machine code. CPUs run registers, instructions, and memory — arithmetic is fast; getting data often isn't. Pipelines, prediction, and out-of-order execution hide latency until dependencies intervene. More cores don't guarantee proportional speedups (Amdahl).
-
-V8 optimizes dynamically from runtime feedback; assumptions about shapes and types can deoptimize. Measure carefully: Big O, CPU profiles, and wall-clock answer different questions. Speed up the wrong 1% and accomplish little. Internals explain behavior; they aren't an invitation to rearrange literals in the hope of pleasing V8.
-
-The pricing service looked simple. The algorithm barely changed. Execution got slower.
-
-TypeScript sits atop parse, bytecode and JIT tiers, the CPU, the memory hierarchy, OS scheduling, and networks and databases. Most of the time `reservation.price + reservation.tax` simply works — triumph of abstraction. When something goes wrong, look beneath just far enough to find the constraint. Form hypotheses and test them.
-
-**When a program becomes slow, don't merely ask which line of code looks inefficient. Ask what the machine is actually spending its time doing—and why.**
-
----
-
-
----
-
-## End of CS220
-
-**CS220 — Programming Languages, Memory, and Execution** is complete. See the recommended study order in `README.md` for natural next courses.
-

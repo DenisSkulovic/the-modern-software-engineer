@@ -22,32 +22,11 @@ next: CS220-L03
 
 ---
 
-### How to read this lecture
+### How to listen to this lecture
 
-Nineteen rooms. Theme: **reachable ≠ useful.**
+Written for continuous listening first, then for on-screen re-reading. Sticky-note callouts mark where the garbage collector is doing its job and you still have a problem. Near the end, answer the oral challenges **out loud** before reading solutions. The memory-lab worksheet lives after the spoken lecture ends — keep it for a screen session.
 
-```text
-  ROOM MAP
-  ─────────────────────────────────────────────────────────────
-  ① OOM at 03:42      ② Memory's questions   ③ Call stack
-  ④ Stack overflow     ⑤ Heap & references    ⑥ GC vs intent
-  ⑦ Unbounded cache    ⑧ Closure retention    ⑨ Listeners & timers
-  ⑩ Generational GC    ⑪ Growth ≠ leak        ⑫ Outside the JS heap
-  ⑬ Diagnose properly  ⑭ WeakMap              ⑮ Memory as performance
-  ⑯ Lab               ⑰ Challenges           ⑱ Solutions
-  ⑲ Responsibility
-  ─────────────────────────────────────────────────────────────
-```
-
-| Rooms | Theme | Feel |
-|---|---|---|
-| 1–2 | Mystery → what memory must answer | detective setup |
-| 3–6 | Stack, heap, reachability | mental models |
-| 7–9 | Real leak patterns | production scars |
-| 10–14 | GC, metrics, diagnosis, WeakMap | ops toolkit |
-| 15–19 | Performance, lab, practice, takeaway | hands-on |
-
-> **Reading tip:** Sticky notes mark where *the GC is doing its job* and *you still have a problem*. Diagrams show who still holds a reference.
+Theme: **reachable ≠ useful.** By the end, you should be able to say what the stack and heap model, why GC can be healthy while memory still climbs, which retention patterns leak in production, how to read heap versus process metrics, and which questions to ask when something won't disappear.
 
 ---
 
@@ -75,19 +54,17 @@ No enormous scientific calculations.
 
 Just an ordinary backend service.
 
-And yet the memory usage tells an alarming story.
+And yet the memory usage tells an alarming story. Hypothetical measurements, but a very real class of production incident:
 
-| Time since deployment | Process memory |
-|---|---:|
-| 0 minutes | 140 MB |
-| 30 minutes | 230 MB |
-| 1 hour | 370 MB |
-| 2 hours | 590 MB |
-| 3 hours | 810 MB |
-| 4 hours | 980 MB |
-| Shortly afterward | Process terminated |
+- **0 minutes** after deployment — about 140 MB.
+- **30 minutes** — about 230 MB.
+- **1 hour** — about 370 MB.
+- **2 hours** — about 590 MB.
+- **3 hours** — about 810 MB.
+- **4 hours** — about 980 MB.
+- **Shortly afterward** — the process is terminated.
 
-These are hypothetical measurements, but they describe a very real class of production incident.
+That climb is the mystery.
 
 You restart the service.
 
@@ -131,7 +108,7 @@ It may be examining memory regularly, identifying objects that are no longer nee
 
 And the service may still be leaking memory.
 
-How can both things be true?
+How can both things be true? The collector can reclaim everything unreachable while the monitoring graph still climbs to 980 MB — both can be right:
 
 ```text
   THE 03:42 PARADOX
@@ -148,9 +125,7 @@ How can both things be true?
 
 To answer that, we need to understand what memory actually represents to a running program.
 
-```text
-  ✓ Room 1 complete — OOM mystery: GC may be fine; retention may not be
-```
+> ✓ Room 1 complete — OOM mystery: GC may be fine; retention may not be
 
 ---
 
@@ -160,7 +135,7 @@ When a program executes, it needs to remember things. Some information exists fo
 
 Consider a hotel reservation request.
 
-The backend receives:
+The backend receives a reservation request with hotel id, room type, and check-in / check-out dates:
 
 ```typescript
 {
@@ -194,6 +169,8 @@ That leads us to three important questions about memory:
 
 **Who, or what, is responsible for releasing it?**
 
+Lifetimes in one process span stack temps, a request's response body, a session or job, and process-long config or caches that live until you release them:
+
 ```text
   LIFETIME SPECTRUM (same process)
   ─────────────────────────────────────────────────────
@@ -225,9 +202,7 @@ Instead of deciding exactly when to free every object, you must understand which
 
 Let's start with the two memory concepts developers encounter most often: the stack and the heap.
 
-```text
-  ✓ Room 2 complete — three questions: where / how long / who releases
-```
+> ✓ Room 2 complete — three questions: where / how long / who releases
 
 ---
 
@@ -282,7 +257,7 @@ Conceptually, it may include:
 - Temporary values.
 - Information required by the runtime.
 
-The exact contents and physical layout depend on the language implementation and optimization strategy. Let's examine a small example.
+The exact contents and physical layout depend on the language implementation and optimization strategy. Here's a nested pricing call: `calculatePrice` → `applyDiscount` → `calculateReduction`:
 
 ```typescript
 function calculatePrice() {
@@ -306,7 +281,7 @@ function calculateReduction(
 calculatePrice();
 ```
 
-When `calculateReduction()` is executing, the conceptual stack looks like this:
+When `calculateReduction()` is executing, the conceptual stack has four frames — reduction on top, then discount, price, and program entry:
 
 ```text
         CALL STACK
@@ -342,15 +317,13 @@ That popular explanation is too simplistic. In fact, closures provide an excelle
 >
 > Treat stack vs heap as a useful *model* of lifetimes — not a hard rule about where every JS value physically lives.
 
-```text
-  ✓ Room 3 complete — call stack = how execution remembers the path back
-```
+> ✓ Room 3 complete — call stack = how execution remembers the path back
 
 ---
 
 # 4. Why Recursive Functions Can Destroy the Stack
 
-Consider this function:
+Consider a recursive countdown that calls itself with `n - 1` until it hits zero:
 
 ```typescript
 function countdown(n: number): number {
@@ -362,11 +335,7 @@ function countdown(n: number): number {
 }
 ```
 
-Nothing unusual. But suppose we call:
-
-```typescript
-countdown(1_000_000);
-```
+Nothing unusual. But suppose we call `countdown(1_000_000)`.
 
 What happens?
 
@@ -382,7 +351,7 @@ But ordinary JavaScript code should not assume that deep recursion will be optim
 
 ## Iteration can avoid the problem
 
-Consider an iterative version:
+The same countdown can loop in one frame instead of nesting a million calls:
 
 ```typescript
 function countdown(n: number): number {
@@ -417,7 +386,7 @@ A useful distinction emerges:
 
 **Time complexity and memory requirements are different dimensions of algorithmic cost.**
 
-A recursive algorithm and an iterative algorithm can perform similar work while consuming memory differently.
+A recursive algorithm and an iterative algorithm can perform similar work while consuming memory differently. Same O(n) time for a million-step countdown — recursive stack blows up; iterative uses one frame:
 
 ```text
   SAME WORK, DIFFERENT STACK COST
@@ -431,9 +400,7 @@ A recursive algorithm and an iterative algorithm can perform similar work while 
   Time: both O(n).  Call-stack depth: not the same.
 ```
 
-```text
-  ✓ Room 4 complete — stack overflow ≠ out of RAM; depth has a budget
-```
+> ✓ Room 4 complete — stack overflow ≠ out of RAM; depth has a budget
 
 ---
 
@@ -441,7 +408,7 @@ A recursive algorithm and an iterative algorithm can perform similar work while 
 
 Now let's move to the heap. In managed runtimes such as V8, the heap is a major area of memory used to store dynamically allocated objects and related data. Unlike a conventional call-stack frame, heap-allocated data isn't necessarily tied to the lifetime of one function invocation. An object can remain alive long after the function that created it has returned.
 
-Consider:
+Here `createCustomer()` returns a nested customer object, and the caller keeps it in `customer`:
 
 ```typescript
 function createCustomer() {
@@ -476,7 +443,7 @@ That brings us to one of the most important concepts in JavaScript memory manage
 
 ## Variables and objects are not the same thing
 
-Let's try something.
+Assign `customerB = customerA`, mutate the name through `customerB`, then read `customerA.name`:
 
 ```javascript
 const customerA = {
@@ -499,7 +466,7 @@ Why?
 
 Because `customerA` and `customerB` refer to the same object. We haven't created two independent customer objects; we've created two bindings holding references to one object.
 
-Conceptually:
+Both arrows point at one shared customer object whose name is now Maria:
 
 ```text
 customerA ────┐
@@ -518,7 +485,7 @@ Both bindings provide access to the same underlying data. This is called **alias
 
 ## Reassignment versus mutation
 
-Now compare:
+Now reassign `customerB` to a brand-new object instead of mutating the shared one:
 
 ```javascript
 let customerA = {
@@ -546,10 +513,10 @@ The distinction is:
 
 **Reassignment changes what a binding refers to.**
 
-| Action | What changes | Shared object? |
-|---|---|---|
-| `customerB.name = "Maria"` | the object | still shared |
-| `customerB = { name: "Maria" }` | the binding | no longer shared |
+Two actions, two outcomes:
+
+- **`customerB.name = "Maria"`** — changes the object; both bindings still share it.
+- **`customerB = { name: "Maria" }`** — changes the binding; the objects are no longer shared.
 
 This may sound elementary, but it lies beneath many important behaviors:
 
@@ -567,9 +534,7 @@ And it helps explain why objects sometimes remain alive unexpectedly.
 >
 > Bindings are not objects. Lifetime follows *reachability of the object*, not the name of the variable that first created it.
 
-```text
-  ✓ Room 5 complete — heap objects outlive creators while reachable
-```
+> ✓ Room 5 complete — heap objects outlive creators while reachable
 
 ---
 
@@ -589,7 +554,7 @@ And those aren't the same thing.
 
 Imagine an object graph. Objects can hold references to other objects, and some references originate from places the runtime treats as roots—relevant active execution state, globals, and runtime-managed references.
 
-A simplified graph might look like this:
+From GC roots through application state: Customer A and B are reachable via the cache and an active request; Customer C and its old report have no root path:
 
 ```text
               GC ROOTS
@@ -657,7 +622,7 @@ It's:
 
 **"Is there a chain of relevant references from a root to this object?"**
 
-That distinction explains an enormous amount of JavaScript memory behavior.
+That distinction explains an enormous amount of JavaScript memory behavior. Cross useful with reachable: useful and reachable is healthy; useless but reachable is a leak from your point of view; useful but unreachable is a bug; neither is the GC's job:
 
 ```text
   USEFUL?          REACHABLE?
@@ -673,9 +638,7 @@ That distinction explains an enormous amount of JavaScript memory behavior.
 >
 > GC answers reachability, not usefulness. Your business intent is invisible to the collector.
 
-```text
-  ✓ Room 6 complete — useful junk can stay alive forever
-```
+> ✓ Room 6 complete — useful junk can stay alive forever
 
 ---
 
@@ -767,20 +730,18 @@ And even after solving memory retention, we still need to consider consistency. 
 
 Caching is therefore more than a performance optimization. It's a decision about retaining copies of information, how long those copies may live, and when they can be trusted. This connects back to our earlier lessons on representations, data structures, and system state.
 
-| Cache control | Helps with | Alone may miss |
-|---|---|---|
-| TTL / expiration | stale data | burst of unique keys |
-| Max entry count | unbounded growth | huge variable-sized values |
-| LRU eviction | hot-set focus | consistency / invalidation |
-| Explicit invalidate | correctness | forgotten code paths |
+Each control helps with something and can miss something else:
+
+- **TTL / expiration** — helps with stale data; alone may miss a burst of unique keys.
+- **Max entry count** — helps with unbounded growth; alone may miss huge variable-sized values.
+- **LRU eviction** — helps focus on the hot set; alone may miss consistency and invalidation.
+- **Explicit invalidate** — helps correctness; alone may miss forgotten code paths.
 
 > **Sticky note #6**
 >
 > An unbounded cache is a polite way to ask the GC to keep everything forever.
 
-```text
-  ✓ Room 7 complete — classic leak: Map grows; nothing ever leaves
-```
+> ✓ Room 7 complete — classic leak: Map grows; nothing ever leaves
 
 ---
 
@@ -829,7 +790,7 @@ And the report retains access to its large dataset.
 
 So the entire structure may remain alive.
 
-Conceptually:
+The retention chain runs from the global callbacks Map through the callback into the captured report and its large dataset:
 
 ```text
 Global callbacks Map
@@ -874,6 +835,8 @@ The general lesson is:
 
 **Closures make it easy to preserve state without explicitly constructing objects to hold that state. But preserved state still has a lifetime and a memory cost.**
 
+Before, the callback keeps the whole report and its huge dataset; after, it keeps only `reportId` and `owner`, so the dataset is free to die:
+
 ```text
   BEFORE (captures whole report)     AFTER (captures what you need)
   ─────────────────────────────      ──────────────────────────────
@@ -885,15 +848,13 @@ The general lesson is:
 >
 > Closures are invisible boxes of retained state. Capture only what the callback actually needs — and delete the callback when its job ends.
 
-```text
-  ✓ Room 8 complete — closures keep bindings; bindings keep graphs
-```
+> ✓ Room 8 complete — closures keep bindings; bindings keep graphs
 
 ---
 
 # 9. Event Listeners: The Memory Leak That Visits Both Frontend and Backend
 
-Here's another extremely common source of memory leaks: event listeners. Suppose your Node.js service listens for an event whenever an integration becomes available.
+Here's another extremely common source of memory leaks: event listeners. Suppose your Node.js service creates a shared `EventEmitter` and listens whenever an integration becomes available:
 
 ```typescript
 import { EventEmitter } from "node:events";
@@ -927,7 +888,7 @@ So the session can remain alive long after it should have been discarded.
 
 And every new session registers another listener.
 
-Over time:
+Over time the emitter accumulates a listener per customer — tens or hundreds of thousands of retained sessions:
 
 ```text
 EventEmitter
@@ -1017,28 +978,19 @@ const timer = setInterval(() => {
 }, 5000);
 ```
 
-If the timer belongs to a component, session, or temporary service, it should have a defined cleanup policy.
-
-```typescript
-clearInterval(timer);
-```
+If the timer belongs to a component, session, or temporary service, it should have a defined cleanup policy — call `clearInterval(timer)` when that lifetime ends.
 
 A long-lived timer can keep its callback and associated state alive, even when the application no longer needs the repeated work.
 
 And there's another important detail. Garbage collection manages memory. It doesn't automatically understand when a network connection, file descriptor, timer, or external subscription should be logically terminated. Releasing JavaScript objects and closing external resources are related but distinct responsibilities, which is why explicit cleanup remains essential.
 
-```text
-  REGISTER  →  must have a matching  →  UNREGISTER / clearInterval
-  (on / addEventListener / setInterval)
-```
+Every `on`, `addEventListener`, or `setInterval` registration needs a matching unregister — `off`, `removeEventListener`, or `clearInterval`.
 
 > **Sticky note #8**
 >
 > GC frees memory. It does not cancel timers, close sockets, or unsubscribe. Ownership of cleanup is still yours.
 
-```text
-  ✓ Room 9 complete — listeners & timers need explicit teardown
-```
+> ✓ Room 9 complete — listeners & timers need explicit teardown
 
 ---
 
@@ -1085,7 +1037,7 @@ Most newly allocated objects become unreachable relatively quickly.
 
 ## Young and old generations
 
-V8 organizes much of its managed heap into generations. New objects commonly begin in a young generation, and objects that survive enough collection cycles may be promoted into an older generation.
+V8 organizes much of its managed heap into generations. New objects commonly begin in a young generation, and objects that survive enough collection cycles may be promoted into an older generation. Request temps tend to die young; caches and modules often live in the old generation:
 
 ```text
   GENERATIONAL HEAP (simplified)
@@ -1130,9 +1082,7 @@ Those goals can conflict. A runtime that collects very aggressively may reduce m
 >
 > GC trades memory, CPU, and pause time against each other. "Memory went up" is not yet a diagnosis.
 
-```text
-  ✓ Room 10 complete — young objects die fast; GC still costs
-```
+> ✓ Room 10 complete — young objects die fast; GC still costs
 
 ---
 
@@ -1177,7 +1127,7 @@ Memory
 
 The upward slopes represent allocations; the drops represent memory reclaimed during collection. This is normal.
 
-Now imagine a different pattern.
+Now imagine a rising-floor pattern — each trough after collection sits higher than the last:
 
 ```text
 Memory
@@ -1211,45 +1161,20 @@ We need more evidence.
 
 ## Heap memory versus process memory
 
-Node.js exposes useful measurements through:
+Node.js exposes useful measurements through `console.log(process.memoryUsage())`. A typical result includes fields such as `rss`, `heapTotal`, `heapUsed`, `external`, and `arrayBuffers`. These values measure different things:
 
-```javascript
-console.log(process.memoryUsage());
-```
+- **`heapUsed`** — memory currently used within V8's managed heap, including many JavaScript objects and related managed structures. If retained JavaScript objects accumulate, this may increase.
+- **`heapTotal`** — the amount of memory V8 has allocated for its managed heap. This is not identical to the amount currently occupied by live JavaScript objects.
+- **`rss`** — Resident Set Size: process memory resident in physical RAM, including more than the ordinary JavaScript heap — managed memory, native allocations, stacks, executable code, and other process-resident memory.
+- **`external`** — memory associated with native allocations bound to JavaScript-managed objects.
+- **`arrayBuffers`** — memory allocated for ArrayBuffers and SharedArrayBuffers, including Node.js Buffers; also accounted for within the external-memory reporting.
 
-A typical result includes fields such as:
+When a metric rises alone, treat it as a hint, not a verdict:
 
-```javascript
-{
-  rss: ...,
-  heapTotal: ...,
-  heapUsed: ...,
-  external: ...,
-  arrayBuffers: ...
-}
-```
-
-These values measure different things.
-
-### heapUsed
-
-Memory currently used within V8's managed heap, including many JavaScript objects and related managed structures. If retained JavaScript objects accumulate, this may increase.
-
-### heapTotal
-
-The amount of memory V8 has allocated for its managed heap. This is not identical to the amount currently occupied by live JavaScript objects.
-
-### rss
-
-Resident Set Size. This measures process memory resident in physical RAM, including more than the ordinary JavaScript heap: managed memory, native allocations, stacks, executable code, and other process-resident memory.
-
-### external
-
-Memory associated with native allocations bound to JavaScript-managed objects.
-
-### arrayBuffers
-
-Memory allocated for ArrayBuffers and SharedArrayBuffers, including Node.js Buffers. This is also accounted for within the external-memory reporting.
+- Rising **`heapUsed`** suggests JS object retention.
+- Rising **`heapTotal`** suggests heap growth or fragmentation.
+- Rising **`external`** or **`arrayBuffers`** suggests files, networking, or Buffer-backed memory.
+- Rising **`rss`** means the whole process footprint — dig deeper.
 
 Now imagine a service whose `heapUsed` remains relatively stable while `rss` continues increasing. Would you immediately conclude that JavaScript objects are leaking?
 
@@ -1261,16 +1186,7 @@ This is why **process memory and JavaScript heap memory are not interchangeable 
 
 And why a diagnosis based on one monitoring number can be misleading.
 
-| Metric | Roughly means | Rising alone suggests… |
-|---|---|---|
-| `heapUsed` | live-ish V8 managed heap | JS object retention |
-| `heapTotal` | V8 heap capacity reserved | heap growth / fragmentation |
-| `external` / `arrayBuffers` | native-backed / Buffer memory | files, networking, Buffers |
-| `rss` | process RAM footprint | whole process — dig deeper |
-
-```text
-  ✓ Room 11 complete — sawtooth is normal; rising floor needs evidence
-```
+> ✓ Room 11 complete — sawtooth is normal; rising floor needs evidence
 
 ---
 
@@ -1324,7 +1240,7 @@ The process can exceed the container's limit even when V8's managed heap is nowh
 
 The useful distinction is:
 
-**A process has a total memory footprint. The JavaScript heap is only one part of it.**
+**A process has a total memory footprint. The JavaScript heap is only one part of it.** Raising only the V8 heap limit does not enlarge the whole container box — Buffers, external memory, stacks, code, and allocator slack still count:
 
 ```text
   PROCESS MEMORY (container limit cares about this)
@@ -1343,9 +1259,7 @@ This is especially important for services involving uploads, downloads, file pro
 >
 > Watching only `heapUsed` can miss the leak that lives in Buffers and native memory.
 
-```text
-  ✓ Room 12 complete — JS heap ≠ process footprint
-```
+> ✓ Room 12 complete — JS heap ≠ process footprint
 
 ---
 
@@ -1480,6 +1394,8 @@ And remember that heap snapshots may contain sensitive application data, so they
 
 **What is retaining the memory that should no longer be needed?**
 
+The diagnosis loop is: pattern over time, which metric, reproduce, heap-snapshot paths, then ask who owns this:
+
 ```text
   DIAGNOSIS LOOP
   1 pattern over time  →  2 which metric  →  3 reproduce
@@ -1490,9 +1406,7 @@ And remember that heap snapshots may contain sensitive application data, so they
 >
 > Snapshots answer *who retains*, not *why the business still wants it*. You supply the second half.
 
-```text
-  ✓ Room 13 complete — evidence over guesswork
-```
+> ✓ Room 13 complete — evidence over guesswork
 
 ---
 
@@ -1546,20 +1460,18 @@ There are also APIs such as `WeakRef` and `FinalizationRegistry`, but their timi
 
 Garbage collection is a memory-reclamation mechanism, not a scheduling API. A finalizer is not a substitute for explicitly closing a resource. That's the important practical distinction.
 
-| | `Map` | `WeakMap` |
-|---|---|---|
-| Keeps object keys alive? | yes (strong) | no (weak keys) |
-| Enumerate all entries? | yes | no |
-| Primitive keys (e.g. string IDs)? | yes | no |
-| Deterministic eviction / TTL? | you implement | not a cache API |
+Compare `Map` and `WeakMap` on the retention rules that matter:
+
+- **Keeps object keys alive?** — `Map` yes (strong); `WeakMap` no (weak keys).
+- **Enumerate all entries?** — `Map` yes; `WeakMap` no.
+- **Primitive keys (for example string IDs)?** — `Map` yes; `WeakMap` no.
+- **Deterministic eviction / TTL?** — with `Map` you implement it; `WeakMap` is not a cache API.
 
 > **Sticky note #12**
 >
 > WeakMap is for metadata whose lifetime should follow the key — not a drop-in bounded cache for string IDs.
 
-```text
-  ✓ Room 14 complete — WeakMap doesn't own its keys
-```
+> ✓ Room 14 complete — WeakMap doesn't own its keys
 
 ---
 
@@ -1568,6 +1480,8 @@ Garbage collection is a memory-reclamation mechanism, not a scheduling API. A fi
 So far, we've focused on preventing memory leaks. But memory behavior influences performance even when nothing leaks. Consider two approaches to processing one million database records.
 
 ## Approach A: Load everything
+
+Load the full result set first, then process each record:
 
 ```typescript
 const records = await repository.find();
@@ -1580,6 +1494,8 @@ for (const record of records) {
 If the dataset is large, this may allocate a substantial collection of objects in memory. Even if every object becomes unreachable after processing, the application has still paid the cost of allocating them, the garbage collector must eventually manage them, and peak memory usage may be unnecessarily high.
 
 ## Approach B: Process in bounded batches
+
+Stream batches of a thousand records and process each batch before asking for the next:
 
 ```typescript
 for await (const batch of loadBatches(1000)) {
@@ -1621,174 +1537,33 @@ A service that leaks memory isn't merely wasting RAM.
 
 It's accumulating a future outage.
 
+Same million records, different peak shape: loading everything keeps a high peak; processing in batches keeps a lower peak:
+
 ```text
   PEAK MEMORY (same million records)
   Approach A — load all:     ████████████████  high peak
   Approach B — batches:      ████              lower peak
 ```
 
-| Concern | Leak focus | Performance focus |
-|---|---|---|
-| Retained forever | yes | sometimes |
-| Allocation rate / GC churn | secondary | often primary |
-| Peak under load | yes | yes |
+Leak hunting and performance tuning ask overlapping questions with different priorities:
 
-```text
-  ✓ Room 15 complete — memory shape is also a latency story
-```
+- **Retained forever** — central for leak focus; sometimes relevant for performance too.
+- **Allocation rate / GC churn** — secondary when hunting leaks; often primary for performance.
+- **Peak under load** — yes for both.
+
+> ✓ Room 15 complete — memory shape is also a latency story
 
 ---
 
-# 16. Practical Lab: Create and Repair a Memory Leak
+# 16. The Oral Examination
 
-Now let's make the problem visible.
+Pause the lecture for each one.
 
-You only need Node.js.
+Answer **out loud** — as if an interviewer were across the table — before you listen to or read the solutions.
 
-Create a file named:
+They're designed to reinforce practical judgment rather than obscure trivia.
 
-`memory-lab.js`
-
-The experiment will intentionally retain some arrays, measure memory usage, and then release them.
-
-Run it locally, not inside a production service.
-
-Start with:
-
-```bash
-node --expose-gc memory-lab.js
-```
-
-The flag exposes `global.gc()` for diagnostic purposes.
-
-It doesn't make garbage collection perfectly deterministic, and it isn't a general recommendation for production applications.
-
-## Part A — The measurement function
-
-```javascript
-function showMemory(label) {
-  if (global.gc) {
-    global.gc();
-  }
-
-  const memory = process.memoryUsage();
-
-  const toMB = bytes =>
-    (bytes / 1024 / 1024).toFixed(1);
-
-  console.log(label, {
-    heapUsedMB: toMB(memory.heapUsed),
-    heapTotalMB: toMB(memory.heapTotal),
-    rssMB: toMB(memory.rss)
-  });
-}
-```
-
-This function requests garbage collection before taking a measurement.
-
-That's useful for our controlled experiment because we want to observe retained memory rather than only temporary allocation spikes.
-
-But a manual GC request is not a promise that every possible reclaimable byte is immediately returned to the operating system.
-
-## Part B — The accidental retention
-
-```javascript
-const cache = new Map();
-
-function createEntries(start, count) {
-  for (let i = start; i < start + count; i++) {
-    const payload = new Array(20_000).fill(i);
-
-    cache.set(`customer-${i}`, {
-      id: i,
-      payload
-    });
-  }
-}
-```
-
-Each entry contains an array of 20,000 numbers.
-
-The Map retains the entries.
-
-Now run:
-
-```javascript
-showMemory("Initial");
-
-createEntries(0, 100);
-showMemory("After 100 customers");
-
-createEntries(100, 100);
-showMemory("After 200 customers");
-
-createEntries(200, 100);
-showMemory("After 300 customers");
-```
-
-Observe the values.
-
-The exact measurements vary by runtime, operating system, and memory representation.
-
-But retained heap usage should generally increase as we add unique entries.
-
-Why?
-
-Because the global Map continues referencing them.
-
-## Part C — Release the objects
-
-Now add:
-
-```javascript
-cache.clear();
-
-showMemory("After clearing cache");
-```
-
-What happens?
-
-The Map no longer retains the customer objects.
-
-Assuming no other references remain, those objects can become eligible for collection.
-
-The reported managed heap usage should generally decrease following collection.
-
-But RSS may remain relatively high.
-
-Why?
-
-Because the runtime and native allocators don't necessarily return all available memory to the operating system immediately.
-
-Freed memory may be retained for future allocations.
-
-That's another reason memory measurements require interpretation.
-
-## Part D — Make a prediction
-
-Before running the experiment, predict the answers:
-
-1. Why does the memory grow even though each function call finishes?
-2. Why doesn't the garbage collector automatically delete old cache entries?
-3. What does `cache.clear()` change about the object graph?
-4. Why might `heapUsed` fall without an equally large drop in RSS?
-5. What would happen if each cached entry also retained a large Buffer?
-
-After running it, explain the behavior in terms of reachability rather than simply saying "JavaScript uses the heap."
-
-That's the level of understanding we're aiming for.
-
-```text
-  ✓ Room 16 complete — lab: retain, measure, clear, interpret
-```
-
----
-
-# 17. Four Engineering Challenges
-
-These exercises are closer to the problems you might encounter while operating or designing actual software.
-
-## Challenge A — The Growing Queue
+### Challenge A — The Growing Queue
 
 **Suggested time: 8 minutes**
 
@@ -1810,7 +1585,7 @@ What architectural measures could prevent the service from running out of memory
 
 Think about backpressure, bounded queues, durable storage, and admission control.
 
-## Challenge B — The Vue Dashboard
+### Challenge B — The Vue Dashboard
 
 **Suggested time: 8 minutes**
 
@@ -1833,18 +1608,16 @@ What should happen when the component is unmounted?
 
 How would you investigate whether the component is genuinely unreachable?
 
-## Challenge C — The Strange Memory Metrics
+### Challenge C — The Strange Memory Metrics
 
 **Suggested time: 10 minutes**
 
-A Node.js service reports:
+A Node.js service reports these before-and-after numbers:
 
-| Metric | Before | After |
-|---|---:|---:|
-| heapUsed | 120 MB | 125 MB |
-| heapTotal | 180 MB | 190 MB |
-| external | 80 MB | 600 MB |
-| rss | 270 MB | 820 MB |
+- **`heapUsed`** — 120 MB before, 125 MB after.
+- **`heapTotal`** — 180 MB before, 190 MB after.
+- **`external`** — 80 MB before, 600 MB after.
+- **`rss`** — 270 MB before, 820 MB after.
 
 What would you investigate first?
 
@@ -1854,7 +1627,7 @@ Why might this situation occur in a service that downloads and processes files?
 
 What information would help confirm the cause?
 
-## Challenge D — The Cache That Knows Too Much
+### Challenge D — The Cache That Knows Too Much
 
 **Suggested time: 10 minutes**
 
@@ -1880,17 +1653,13 @@ Consider:
 
 What additional guarantees or measurements would you want?
 
-```text
-  ✓ Room 17 complete — challenges attempted
-```
-
 ---
 
-# 18. Solutions and Discussion
+# 17. Solutions and Discussion
 
-*Read after attempting the challenges.*
+*Listen or read only after you have answered each challenge out loud.*
 
-## Challenge A — Growing queue
+### Solution A — Growing queue
 
 The queue receives 50 more jobs per second than it completes. If the arrival and processing rates remain constant, the backlog grows by roughly 3,000 jobs per minute, and if every job remains in memory, memory usage can grow continuously.
 
@@ -1910,7 +1679,7 @@ The deeper issue is capacity management.
 
 Garbage collection cannot solve a workload that requires retaining more information than the system can safely hold.
 
-## Challenge B — Vue dashboard
+### Solution B — Vue dashboard
 
 The component may be retained by external listeners, timers, subscriptions, callbacks, or other objects that still reference it or its data.
 
@@ -1918,13 +1687,13 @@ Unmounting the visual component doesn't automatically guarantee that every manua
 
 A browser heap snapshot can help identify retained objects and their reference paths, but a single snapshot doesn't prove a leak. Comparing behavior across repeated mount/unmount cycles is more informative.
 
-## Challenge C — Memory metrics
+### Solution C — Memory metrics
 
 The major change is in external memory and RSS; the managed JavaScript heap barely grows. This suggests investigating Buffer allocations, ArrayBuffers, native modules, or other externally accounted memory. A file-processing service is a plausible source, and increasing the V8 heap limit may not address the underlying cause.
 
 Useful evidence includes Buffer allocation patterns, retained references, workload correlation, native-memory behavior, and repeated measurements after processing finishes.
 
-## Challenge D — Bounded cache
+### Solution D — Bounded cache
 
 Limiting the number of entries is useful, but it's not a complete guarantee of bounded memory usage.
 
@@ -1934,21 +1703,25 @@ The system needs an appropriate retention policy and observability. Depending on
 
 A bounded entry count is one useful control—not proof that memory usage cannot become excessive.
 
-```text
-  ✓ Room 18 complete — answers checked
-```
-
 ---
 
-# 19. The Bigger Picture: Memory Is About Responsibility
+# 18. The Mental Model Worth Keeping
 
-The call stack tracks active execution; deep recursion can exhaust it. Heap objects outlive the functions that created them while they remain reachable. References share identity — mutating through one alias affects others; reassignment is different from mutation.
+A senior interview may not ask you to recite mark-and-sweep. It may ask why a Node service climbs for four hours, restarts cleanly, and climbs again — and what evidence you'd gather before raising the memory limit.
 
-GC follows reachability from roots: objects stay alive even without a business reason. Unbounded caches, callbacks, listeners, timers, and queues still leak. Memory isn't one resource — JS heap, native allocations, Buffers, and stacks contribute differently to metrics. Growth isn't always a leak. Efficiency affects latency. External resources need explicit cleanup.
+Back to the 03:42 service: the garbage collector may be reclaiming everything unreachable while reachable junk still grows. Raising the limit only postpones the outage if retention keeps climbing — 200 MB per hour still fails later. Every value has a useful lifetime: request, session, workflow, process. The runtime manages physical allocation; the application owns intended business lifetime.
+
+Remember these durable distinctions:
+
+- **GC collects unreachable objects — not "useless" ones.** Reachability is not usefulness.
+- **Stack is execution path and depth budget; heap is longer-lived graphs.** Deep recursion can exhaust the stack without exhausting RAM.
+- **Mutation ≠ reassignment; aliases share one object.** Lifetime follows the object, not the first variable name.
+- **Classic leaks: unbounded caches, closures, listeners, timers, queues.** Retention without a release policy.
+- **Metrics: `heapUsed` ≠ `rss` ≠ `external` — diagnose the rising one.** Process footprint is bigger than the JS heap.
+- **WeakMap: metadata lifetime follows keys; not a string-ID cache.** Weak keys are not a capacity limit.
+- **Cleanup is ownership: register ⇒ unregister; allocate peak wisely.** GC frees memory; it does not cancel timers or close sockets.
 
 When something won't disappear, ask: who still owns this?
-
-Back to the leaking service. Raising the memory limit only postpones the outage if retention keeps growing — 200 MB per hour still fails later. Every value has a useful lifetime: request, session, workflow, process. The runtime manages physical allocation; the application owns intended business lifetime.
 
 Long-running Node services, SPAs, and agent workflows cannot rely on frequent process death to clean up. AI can generate a cache without eviction or a subscription without cleanup. Consequences appear after enough time and state.
 
@@ -1956,27 +1729,151 @@ Long-running Node services, SPAs, and agent workflows cannot rely on frequent pr
 
 A growing memory graph becomes investigable. What is retained? Why reachable? Should it still be alive? Who owns its lifetime?
 
-```text
-  ✓ Room 19 complete — you own reachability; the runtime owns freeing
-```
+> **The master sticky note**
+>
+> Ask: who still holds a reference — and should they?
 
-```text
-  POCKET CARD — CS220-L02
-  ─────────────────────────────────────────────────────────────
-  • GC collects unreachable objects — not "useless" ones
-  • Stack: execution path & depth budget; heap: longer-lived graphs
-  • Mutation ≠ reassignment; aliases share one object
-  • Classic leaks: unbounded caches, closures, listeners, timers, queues
-  • Metrics: heapUsed ≠ rss ≠ external — diagnose the rising one
-  • WeakMap: metadata lifetime follows keys; not a string-ID cache
-  • Cleanup is ownership: register ⇒ unregister; allocate peak wisely
-  Ask: who still holds a reference — and should they?
-  ─────────────────────────────────────────────────────────────
-```
+> ✓ All rooms visited. Reachable ≠ useful.
 
 ---
 
-## Next Lecture — CS220-L03: How Programs Actually Execute
+# 19. Next Lecture — CS220-L03: How Programs Actually Execute
 
-Continue in **CS220 — Programming Languages, Memory, and Execution**.
+We've learned that memory is about reachability, ownership, and the difference between what the collector can see and what the business still needs.
 
+But once values live somewhere, what is the CPU actually doing with them? Why can two correct-looking loops differ in speed? How does V8 decide to optimize — or deoptimize — a hot function? And when a service feels slow, how do you tell CPU work from waiting?
+
+In **CS220-L03**, we'll study how programs actually execute — instructions, caches, speculation, JIT tiers, and the measurements that separate folklore from evidence.
+
+---
+
+## Optional Practical Lab — Create and Repair a Memory Leak
+
+*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet.*
+
+Now let's make the problem visible.
+
+You only need Node.js.
+
+Create a file named `memory-lab.js`.
+
+The experiment will intentionally retain some arrays, measure memory usage, and then release them.
+
+Run it locally, not inside a production service.
+
+Start with `node --expose-gc memory-lab.js`. The flag exposes `global.gc()` for diagnostic purposes. It doesn't make garbage collection perfectly deterministic, and it isn't a general recommendation for production applications.
+
+### Part A — The measurement function
+
+This helper requests garbage collection before logging heap and RSS numbers in megabytes:
+
+```javascript
+function showMemory(label) {
+  if (global.gc) {
+    global.gc();
+  }
+
+  const memory = process.memoryUsage();
+
+  const toMB = bytes =>
+    (bytes / 1024 / 1024).toFixed(1);
+
+  console.log(label, {
+    heapUsedMB: toMB(memory.heapUsed),
+    heapTotalMB: toMB(memory.heapTotal),
+    rssMB: toMB(memory.rss)
+  });
+}
+```
+
+That's useful for our controlled experiment because we want to observe retained memory rather than only temporary allocation spikes.
+
+But a manual GC request is not a promise that every possible reclaimable byte is immediately returned to the operating system.
+
+### Part B — The accidental retention
+
+This Map stores customer entries whose payloads are arrays of 20,000 numbers — each entry is retained while the Map stays reachable:
+
+```javascript
+const cache = new Map();
+
+function createEntries(start, count) {
+  for (let i = start; i < start + count; i++) {
+    const payload = new Array(20_000).fill(i);
+
+    cache.set(`customer-${i}`, {
+      id: i,
+      payload
+    });
+  }
+}
+```
+
+Now measure, add batches of unique customers, and measure again:
+
+```javascript
+showMemory("Initial");
+
+createEntries(0, 100);
+showMemory("After 100 customers");
+
+createEntries(100, 100);
+showMemory("After 200 customers");
+
+createEntries(200, 100);
+showMemory("After 300 customers");
+```
+
+Observe the values.
+
+The exact measurements vary by runtime, operating system, and memory representation.
+
+But retained heap usage should generally increase as we add unique entries.
+
+Why?
+
+Because the global Map continues referencing them.
+
+### Part C — Release the objects
+
+Clear the Map, then measure again:
+
+```javascript
+cache.clear();
+
+showMemory("After clearing cache");
+```
+
+What happens?
+
+The Map no longer retains the customer objects.
+
+Assuming no other references remain, those objects can become eligible for collection.
+
+The reported managed heap usage should generally decrease following collection.
+
+But RSS may remain relatively high.
+
+Why?
+
+Because the runtime and native allocators don't necessarily return all available memory to the operating system immediately.
+
+Freed memory may be retained for future allocations.
+
+That's another reason memory measurements require interpretation.
+
+### Part D — Make a prediction
+
+Before running the experiment, predict the answers:
+
+1. Why does the memory grow even though each function call finishes?
+2. Why doesn't the garbage collector automatically delete old cache entries?
+3. What does `cache.clear()` change about the object graph?
+4. Why might `heapUsed` fall without an equally large drop in RSS?
+5. What would happen if each cached entry also retained a large Buffer?
+
+After running it, explain the behavior in terms of reachability rather than simply saying "JavaScript uses the heap."
+
+That's the level of understanding we're aiming for.
+
+> ✓ Lab complete — retain, measure, clear, interpret
