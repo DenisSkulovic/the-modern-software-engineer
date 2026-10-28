@@ -157,48 +157,70 @@ courses:
   status: complete
   slug: programming-languages
   dir: CS/CS220-programming-languages
-  notes: All five lectures at manuscript status with Part I Intuition / Part II Deep Dive. L01–L03 are
-    JS/TS-centric foundations; L04–L05 broaden comparative type systems, ownership, and multi-runtime
-    behavior. Do not relocate CS320-L03 language-semantics material casually.
+  notes: Eight revised lectures. Language promises and JS/TS semantics first; then types/ownership, memory/GC,
+    compilers/JITs, managed runtimes, native runtimes, and a language-choice workshop. Former CS320-L03
+    (JS/TS under the microscope) now lives here as CS220-L02.
   lectures:
   - id: CS220-L01
-    title: Programming Languages and Abstraction
-    slug: programming-languages-and-abstraction
+    title: What a Programming Language Actually Promises
+    slug: what-a-programming-language-actually-promises
     legacy_ids:
     - CS101-S06
-    source: CS/CS220-programming-languages/CS220-L01-programming-languages-and-abstraction.md
-    manuscript: manuscript
-    edition: 2.0.0
+    source: CS/CS220-programming-languages/CS220-L01-what-a-programming-language-actually-promises.md
+    manuscript: revised
+    edition: 2.1.0
   - id: CS220-L02
-    title: 'Memory: The Invisible Battlefield'
-    slug: memory-the-invisible-battlefield
+    title: JavaScript Semantics and TypeScript Reality
+    slug: javascript-semantics-and-typescript-reality
+    legacy_ids:
+    - CS101-S11
+    source: CS/CS220-programming-languages/CS220-L02-javascript-semantics-and-typescript-reality.md
+    manuscript: revised
+    edition: 2.1.0
+  - id: CS220-L03
+    title: Type Systems, Generics, Ownership, and Valid States
+    slug: type-systems-generics-ownership-and-valid-states
+    legacy_ids: []
+    source: CS/CS220-programming-languages/CS220-L03-type-systems-generics-ownership-and-valid-states.md
+    manuscript: revised
+    edition: 2.1.0
+  - id: CS220-L04
+    title: References, Garbage Collection, and Memory Leaks
+    slug: references-garbage-collection-and-memory-leaks
     legacy_ids:
     - CS101-S07
-    source: CS/CS220-programming-languages/CS220-L02-memory-the-invisible-battlefield.md
-    manuscript: manuscript
-    edition: 2.0.0
-  - id: CS220-L03
-    title: How Programs Actually Execute
-    slug: how-programs-actually-execute
+    source: CS/CS220-programming-languages/CS220-L04-references-garbage-collection-and-memory-leaks.md
+    manuscript: revised
+    edition: 2.1.0
+  - id: CS220-L05
+    title: 'From Source Code to Machine Code: Compilers and JITs'
+    slug: from-source-code-to-machine-code
     legacy_ids:
     - CS101-S08
-    source: CS/CS220-programming-languages/CS220-L03-how-programs-actually-execute.md
-    manuscript: manuscript
-    edition: 2.0.0
-  - id: CS220-L04
-    title: Type Systems, Ownership, and Language Design
-    slug: type-systems-ownership-and-language-design
+    source: CS/CS220-programming-languages/CS220-L05-from-source-code-to-machine-code.md
+    manuscript: revised
+    edition: 2.1.0
+  - id: CS220-L06
+    title: 'Managed Runtimes: Node.js, CPython, and the JVM'
+    slug: managed-runtimes-node-cpython-jvm
     legacy_ids: []
-    source: CS/CS220-programming-languages/CS220-L04-type-systems-ownership-and-language-design.md
-    manuscript: manuscript
-    edition: 2.0.0
-  - id: CS220-L05
-    title: One Program, Many Runtimes
-    slug: one-program-many-runtimes
+    source: CS/CS220-programming-languages/CS220-L06-managed-runtimes-node-cpython-jvm.md
+    manuscript: revised
+    edition: 2.1.0
+  - id: CS220-L07
+    title: 'Native Runtimes: Go, Rust, and Execution Trade-offs'
+    slug: native-runtimes-go-rust-and-execution-tradeoffs
     legacy_ids: []
-    source: CS/CS220-programming-languages/CS220-L05-one-program-many-runtimes.md
-    manuscript: manuscript
-    edition: 2.0.0
+    source: CS/CS220-programming-languages/CS220-L07-native-runtimes-go-rust-and-execution-tradeoffs.md
+    manuscript: revised
+    edition: 2.1.0
+  - id: CS220-L08
+    title: Runtime Performance and Language Choice Workshop
+    slug: runtime-performance-and-language-choice-workshop
+    legacy_ids: []
+    source: CS/CS220-programming-languages/CS220-L08-runtime-performance-and-language-choice-workshop.md
+    manuscript: revised
+    edition: 2.1.0
 - code: CS230
   title: Computer Networks and Web Protocols
   discipline: CS
@@ -296,8 +318,8 @@ courses:
   status: complete
   slug: operating-systems-and-concurrency
   dir: CS/CS320-operating-systems-and-concurrency
-  notes: All eight lectures at manuscript status with Part I Intuition / Part II Deep Dive. L03 language-semantics
-    material may belong more naturally in CS220 in a future revision — do not relocate casually.
+  notes: Seven OS/concurrency lectures. Former CS320-L03 (JS/TS semantics) relocated to CS220-L02; catalogue
+    IDs L04–L08 are retained so existing cross-references stay stable.
   lectures:
   - id: CS320-L01
     title: Concurrency, Parallelism, and Asynchrony
@@ -313,14 +335,6 @@ courses:
     legacy_ids:
     - CS101-S10
     source: CS/CS320-operating-systems-and-concurrency/CS320-L02-operating-systems-the-manager-behind-the-curtain.md
-    manuscript: manuscript
-    edition: 2.0.0
-  - id: CS320-L03
-    title: JavaScript and TypeScript Under the Microscope
-    slug: javascript-and-typescript-under-the-microscope
-    legacy_ids:
-    - CS101-S11
-    source: CS/CS320-operating-systems-and-concurrency/CS320-L03-javascript-and-typescript-under-the-microscope.md
     manuscript: manuscript
     edition: 2.0.0
   - id: CS320-L04

@@ -7,8 +7,9 @@ manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: [CS101-S10]
 prev: CS320-L01
-next: CS320-L03
+next: CS320-L04
 ---
+
 
 
 
@@ -429,7 +430,7 @@ But swap is not a magical replacement for RAM. If an application repeatedly acce
 
 A process can have a large virtual address space without occupying an equally large amount of physical RAM, and it can use physical memory for purposes beyond the JavaScript heap.
 
-This connects directly to CS220-L02, where you learned that `heapUsed`, `heapTotal`, RSS, and external memory describe different aspects of a Node.js process. Now we can see why: the application operates within a virtual address space, while the operating system manages the physical memory actually backing relevant portions of that space.
+This connects directly to CS220-L04, where you learned that `heapUsed`, `heapTotal`, RSS, and external memory describe different aspects of a Node.js process. Now we can see why: the application operates within a virtual address space, while the operating system manages the physical memory actually backing relevant portions of that space.
 
 **Allocated virtual memory, committed memory, and resident physical memory are related but not identical concepts.**
 
@@ -1499,13 +1500,13 @@ And sooner or later, that somewhere becomes part of the problem.
 
 ---
 
-# 21. Next Lecture — CS320-L03: JavaScript and TypeScript Under the Microscope
+# 21. Next Lecture — CS320-L04: Scheduling, CPU Time, and Contention
 
 We've learned that applications run inside operating-system boundaries: processes, virtual memory, system calls, namespaces, cgroups, and signals. Those boundaries explain why a container can starve for RAM on a host that still looks idle, why `localhost` can lie, and why a file can vanish when a container is replaced.
 
-But the program inside the process still has a language runtime of its own. How does JavaScript actually represent values? What does the TypeScript compiler guarantee — and what does it leave to the runtime? When does `===` surprise you, and when does a type annotation give false confidence?
+Language-runtime semantics for JavaScript and TypeScript now live in **CS220-L02**. The next OS question is different: why can a machine with spare average CPU still leave one worker starved?
 
-In **CS320-L03**, we'll put JavaScript and TypeScript under the microscope — types, coercion, runtime truth, and the gaps between what the compiler believes and what the machine does.
+In **CS320-L04**, we'll examine scheduling queues, contention, quotas, and wall-clock time versus CPU time.
 
 ---
 

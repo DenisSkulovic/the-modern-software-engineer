@@ -13,6 +13,7 @@ next: CS340-L07
 
 
 
+
 # CS340 — Data Systems Beyond Relational Databases
 
 ## Lecture 06: Specialized Data Systems

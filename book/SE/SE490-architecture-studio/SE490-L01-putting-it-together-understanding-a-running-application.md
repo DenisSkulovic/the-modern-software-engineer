@@ -16,6 +16,7 @@ next: SE490-L02
 
 
 
+
 # SE490 — Architecture and Systems Design Studio
 ## Lecture 01: Putting It Together: Understanding a Running Application
 
@@ -545,7 +546,7 @@ CS110-L03 taught us to distinguish computational work from waiting.
 
 CS110-L04 taught us that indexes organize information for efficient retrieval.
 
-CS110-L05 taught us to avoid unnecessary repeated work. CS220-L03 taught us to investigate where execution time is actually spent.
+CS110-L05 taught us to avoid unnecessary repeated work. CS220-L05 taught us to investigate where execution time is actually spent.
 
 CS320-L01 taught us that more concurrency isn't automatically better. All those ideas converge here.
 
@@ -877,7 +878,7 @@ We need both appropriate resource allocation and bounded resource consumption.
 
 CS110-L02 taught us that representation has consequences. CS110-L03 taught us about resource complexity.
 
-CS220-L02 taught us about memory retention and external allocations.
+CS220-L04 taught us about memory retention and external allocations.
 
 CS320-L01 taught us that unlimited concurrency can overwhelm dependencies.
 

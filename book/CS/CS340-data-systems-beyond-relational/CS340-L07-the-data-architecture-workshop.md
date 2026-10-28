@@ -13,6 +13,7 @@ next: null
 
 
 
+
 # CS340 — Data Systems Beyond Relational Databases
 
 ## Lecture 07: The Data Architecture Workshop

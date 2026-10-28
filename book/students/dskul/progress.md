@@ -8,7 +8,7 @@ Personal learning tracker (not manuscript status). History is the append-only [`
 
 | Status | Count |
 | --- | ---: |
-| `unopened` · | 77 |
+| `unopened` · | 79 |
 | `wandering` ~ | 1 |
 | `studying` > | 9 |
 | `labbing` * | 0 |
@@ -16,9 +16,9 @@ Personal learning tracker (not manuscript status). History is the append-only [`
 | `fluent` ★ | 0 |
 | `fading` ? | 0 |
 | `encore` ↻ | 0 |
-| **Total** | **87** |
+| **Total** | **89** |
 
-Progress through core lectures (settled+fluent): **0/87** (0%).
+Progress through core lectures (settled+fluent): **0/89** (0%).
 
 Counts cover every core lecture currently in the catalogue. A lecture with no events is `unopened`.
 
@@ -42,9 +42,9 @@ Current phase of each lecture, in catalogue order. This is not a timeline — th
 | --- | --- | --- |
 | `CS110` | `underway` | `>>>>·` |
 | `CS120` | `unopened` | `·····` |
-| `CS220` | `unopened` | `·····` |
+| `CS220` | `unopened` | `········` |
 | `CS230` | `underway` | `~>>>··>>···` |
-| `CS320` | `unopened` | `········` |
+| `CS320` | `unopened` | `·······` |
 | `SE240` | `unopened` | `······` |
 | `SE310` | `unopened` | `···` |
 | `SE320` | `unopened` | `···` |
@@ -132,6 +132,9 @@ Folded snapshot. Passes count listen, read, skim, lab, oral, and review events. 
 | `CS220-L03` | `unopened` | 0 | 0 | — | — |  |
 | `CS220-L04` | `unopened` | 0 | 0 | — | — |  |
 | `CS220-L05` | `unopened` | 0 | 0 | — | — |  |
+| `CS220-L06` | `unopened` | 0 | 0 | — | — |  |
+| `CS220-L07` | `unopened` | 0 | 0 | — | — |  |
+| `CS220-L08` | `unopened` | 0 | 0 | — | — |  |
 | `CS230-L01` | `wandering` | 1 | 1 | 2026-10-26 | — | Voice listen-through once — attentive b… |
 | `CS230-L02` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.… |
 | `CS230-L03` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.… |
@@ -145,7 +148,6 @@ Folded snapshot. Passes count listen, read, skim, lab, oral, and review events. 
 | `CS230-L11` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L01` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L02` | `unopened` | 0 | 0 | — | — |  |
-| `CS320-L03` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L04` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L05` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L06` | `unopened` | 0 | 0 | — | — |  |

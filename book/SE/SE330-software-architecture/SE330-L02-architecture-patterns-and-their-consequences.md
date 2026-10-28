@@ -16,6 +16,7 @@ next: SE330-L03
 
 
 
+
 # SE330 — Software Architecture and Evolution
 
 ## Lecture 02: Architecture Patterns and Their Consequences

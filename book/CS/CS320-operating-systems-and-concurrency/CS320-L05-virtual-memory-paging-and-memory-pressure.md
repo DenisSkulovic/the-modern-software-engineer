@@ -13,6 +13,7 @@ next: CS320-L06
 
 
 
+
 # CS320 — Operating Systems, Concurrency, and Runtimes
 
 ## Lecture 05: Virtual Memory, Paging, and Memory Pressure
@@ -37,7 +38,7 @@ The most important question is:
 
 **Which memory are we measuring, which memory is actually being consumed, and who is enforcing the limit?**
 
-This lecture builds on CS220-L02, which examined application objects, garbage collection, and memory leaks. Here, we descend beneath the programming-language runtime into the operating system.
+This lecture builds on CS220-L04, which examined application objects, garbage collection, and memory leaks. Here, we descend beneath the programming-language runtime into the operating system.
 
 The practical investigation follows the spoken narrative.
 

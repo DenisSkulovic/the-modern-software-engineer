@@ -42,7 +42,7 @@ Library/content state — not whether you have studied the lecture. See [`STATUS
 
 Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `type: elective` or still-`planned`, not a separate numbering universe).
 
-## Core courses (17 · 87 lectures)
+## Core courses (17 · 89 lectures)
 
 ### CS — Computer Science
 
@@ -72,15 +72,18 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `
 
 #### CS220 — Programming Languages, Memory, and Execution
 
-200-level · 5 lectures · course status `complete` · `CS/CS220-programming-languages/`
+200-level · 8 lectures · course status `complete` · `CS/CS220-programming-languages/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
-| `CS220-L01` | Programming Languages and Abstraction | `manuscript` | `2.0.0` | `CS101-S06` |
-| `CS220-L02` | Memory: The Invisible Battlefield | `manuscript` | `2.0.0` | `CS101-S07` |
-| `CS220-L03` | How Programs Actually Execute | `manuscript` | `2.0.0` | `CS101-S08` |
-| `CS220-L04` | Type Systems, Ownership, and Language Design | `manuscript` | `2.0.0` | `` |
-| `CS220-L05` | One Program, Many Runtimes | `manuscript` | `2.0.0` | `` |
+| `CS220-L01` | What a Programming Language Actually Promises | `revised` | `2.1.0` | `CS101-S06` |
+| `CS220-L02` | JavaScript Semantics and TypeScript Reality | `revised` | `2.1.0` | `CS101-S11` |
+| `CS220-L03` | Type Systems, Generics, Ownership, and Valid States | `revised` | `2.1.0` | `` |
+| `CS220-L04` | References, Garbage Collection, and Memory Leaks | `revised` | `2.1.0` | `CS101-S07` |
+| `CS220-L05` | From Source Code to Machine Code: Compilers and JITs | `revised` | `2.1.0` | `CS101-S08` |
+| `CS220-L06` | Managed Runtimes: Node.js, CPython, and the JVM | `revised` | `2.1.0` | `` |
+| `CS220-L07` | Native Runtimes: Go, Rust, and Execution Trade-offs | `revised` | `2.1.0` | `` |
+| `CS220-L08` | Runtime Performance and Language Choice Workshop | `revised` | `2.1.0` | `` |
 
 #### CS230 — Computer Networks and Web Protocols
 
@@ -102,13 +105,12 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `
 
 #### CS320 — Operating Systems, Concurrency, and Runtimes
 
-300-level · 8 lectures · course status `complete` · `CS/CS320-operating-systems-and-concurrency/`
+300-level · 7 lectures · course status `complete` · `CS/CS320-operating-systems-and-concurrency/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
 | `CS320-L01` | Concurrency, Parallelism, and Asynchrony | `manuscript` | `2.0.0` | `CS101-S09` |
 | `CS320-L02` | Operating Systems: The Manager Behind the Curtain | `manuscript` | `2.0.0` | `CS101-S10` |
-| `CS320-L03` | JavaScript and TypeScript Under the Microscope | `manuscript` | `2.0.0` | `CS101-S11` |
 | `CS320-L04` | Scheduling, CPU Time, and Contention | `manuscript` | `2.0.0` | `` |
 | `CS320-L05` | Virtual Memory, Paging, and Memory Pressure | `manuscript` | `2.0.0` | `` |
 | `CS320-L06` | From System Calls to Asynchronous I/O | `manuscript` | `2.0.0` | `` |

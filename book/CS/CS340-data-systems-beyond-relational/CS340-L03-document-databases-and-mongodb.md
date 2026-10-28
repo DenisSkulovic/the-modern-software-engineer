@@ -13,6 +13,7 @@ next: CS340-L04
 
 
 
+
 # CS340 — Data Systems Beyond Relational Databases
 
 ## Lecture 03: Document Databases and MongoDB
