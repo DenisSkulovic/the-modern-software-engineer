@@ -17,6 +17,7 @@ next: null
 
 
 
+
 # CS330 — Relational Databases and Transactions
 
 ## Lecture 03: Transactions: When Correct Operations Produce Incorrect Results

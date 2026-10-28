@@ -14,6 +14,7 @@ next: CS340-L06
 
 
 
+
 # CS340 — Data Systems Beyond Relational Databases
 
 ## Lecture 05: Replication, Consistency, and Sharding in Practice

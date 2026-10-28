@@ -17,6 +17,7 @@ next: SE490-L02
 
 
 
+
 # SE490 — Architecture and Systems Design Studio
 ## Lecture 01: Putting It Together: Understanding a Running Application
 
@@ -548,7 +549,7 @@ CS110-L04 taught us that indexes organize information for efficient retrieval.
 
 CS110-L05 taught us to avoid unnecessary repeated work. CS220-L05 taught us to investigate where execution time is actually spent.
 
-CS320-L01 taught us that more concurrency isn't automatically better. All those ideas converge here.
+CS320-L06 taught us that more concurrency isn't automatically better. All those ideas converge here.
 
 **The best optimization is often not making a bad operation faster. It's eliminating the need for the operation.**
 
@@ -737,7 +738,7 @@ We need to define which guarantees can be enforced locally and how to recover wh
 
 CS110-L01 taught us to define the problem correctly. CS110-L04 taught us about state and representation.
 
-CS220-L01 taught us that abstractions have limits. CS320-L01 taught us about races, concurrency, and atomicity.
+CS220-L01 taught us that abstractions have limits. CS320-L06 and CS320-L07 taught us about races, concurrency, and atomicity.
 
 Now those ideas combine into a real architectural decision.
 
@@ -880,9 +881,9 @@ CS110-L02 taught us that representation has consequences. CS110-L03 taught us ab
 
 CS220-L04 taught us about memory retention and external allocations.
 
-CS320-L01 taught us that unlimited concurrency can overwhelm dependencies.
+CS320-L06 taught us that unlimited concurrency can overwhelm dependencies.
 
-CS320-L02 taught us how container memory limits are enforced. Here, all five ideas converge.
+CS320-L04 taught us how container memory limits are enforced. Here, all five ideas converge.
 
 **A workload can be logically correct and still be operationally impossible because its peak resource requirements exceed the execution environment's limits.**
 

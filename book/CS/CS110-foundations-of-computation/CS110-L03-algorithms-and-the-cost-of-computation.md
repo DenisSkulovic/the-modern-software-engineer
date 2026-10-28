@@ -14,6 +14,7 @@ next: CS110-L04
 
 
 
+
 # CS110 — Foundations of Computation and Algorithms
 ## Lecture 03: Algorithms and the Cost of Computation
 
@@ -1487,7 +1488,7 @@ It doesn't eliminate dependencies.
 
 And sometimes coordination between parallel tasks introduces additional overhead.
 
-We'll study concurrency and parallelism in more depth in CS320-L01.
+We'll study concurrency and parallelism in more depth in CS320-L06.
 
 For now, remember that hardware utilization percentages are not direct measurements of how much faster your application could theoretically run.
 

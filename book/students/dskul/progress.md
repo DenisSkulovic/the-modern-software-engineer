@@ -8,7 +8,7 @@ Personal learning tracker (not manuscript status). History is the append-only [`
 
 | Status | Count |
 | --- | ---: |
-| `unopened` · | 79 |
+| `unopened` · | 80 |
 | `wandering` ~ | 1 |
 | `studying` > | 9 |
 | `labbing` * | 0 |
@@ -16,9 +16,9 @@ Personal learning tracker (not manuscript status). History is the append-only [`
 | `fluent` ★ | 0 |
 | `fading` ? | 0 |
 | `encore` ↻ | 0 |
-| **Total** | **89** |
+| **Total** | **90** |
 
-Progress through core lectures (settled+fluent): **0/89** (0%).
+Progress through core lectures (settled+fluent): **0/90** (0%).
 
 Counts cover every core lecture currently in the catalogue. A lecture with no events is `unopened`.
 
@@ -44,7 +44,7 @@ Current phase of each lecture, in catalogue order. This is not a timeline — th
 | `CS120` | `unopened` | `·····` |
 | `CS220` | `unopened` | `········` |
 | `CS230` | `underway` | `~>>>··>>···` |
-| `CS320` | `unopened` | `·······` |
+| `CS320` | `unopened` | `········` |
 | `SE240` | `unopened` | `······` |
 | `SE310` | `unopened` | `···` |
 | `SE320` | `unopened` | `···` |
@@ -148,6 +148,7 @@ Folded snapshot. Passes count listen, read, skim, lab, oral, and review events. 
 | `CS230-L11` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L01` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L02` | `unopened` | 0 | 0 | — | — |  |
+| `CS320-L03` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L04` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L05` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L06` | `unopened` | 0 | 0 | — | — |  |

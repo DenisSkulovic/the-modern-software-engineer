@@ -3,280 +3,101 @@ id: CS320-L07
 course: CS320
 title: "Threads, Atomics, and Memory Ordering"
 type: core
-manuscript: manuscript
-edition: "2.0.0"
+manuscript: revised
+edition: "2.1.0"
 legacy_ids: []
 prev: CS320-L06
 next: CS320-L08
 ---
 
 
-
-# CS320 — Operating Systems, Concurrency, and Runtimes
+# CS320 — Operating Systems and Concurrency
 
 ## Lecture 07: Threads, Atomics, and Memory Ordering
 
-*Why two threads updating shared state with code that looks logically correct can still observe inconsistent results across processors.*
-
-**Estimated study time:** 80–100 minutes, including the optional practical lab.
-
----
-
-### How to listen to this lecture
-
-This lecture builds one model of shared-memory correctness, then uses it to explain the mechanisms developers encounter in real systems.
-
-**Part I — Intuition** introduces two workers sharing a notice board. One publishes data and raises a ready flag. The other sees the flag and attempts to read the result. That simple handoff exposes the central problem: how can one thread know which actions performed by another thread are safe to observe?
-
-**Part II — Deep Dive** examines data races, atomic operations, memory ordering, happens-before relationships, mutexes, condition variables, lock-free techniques, and the interaction between compilers and processors.
-
-We'll compare how these concepts appear in JavaScript, Rust, Java, and Go without turning this into a C++ language-specialization course.
-
-The spoken narrative prioritizes mental models. Language-specific code and experiments follow in the optional practical lab.
-
----
+*One worker calculates a hotel price, writes the result into shared memory, and announces that the data is ready. Another worker sees the announcement. But how does it know that the data itself is safe to read?*
 
 # Part I — Intuition
 
-*Two workers share a notice board. One writes the data and then raises a flag. The other sees the flag—but what exactly is it allowed to assume about the data?*
+## The picture to carry in your head
 
-### The picture to carry in your head
+Imagine two employees working in separate rooms.
 
-Imagine a hotel with two employees in separate offices. One employee prepares tomorrow's room assignments. When finished, she posts the assignments and turns on a green light to tell her colleague they are ready.
+One prepares hotel-pricing reports. The other distributes those reports to customers.
 
-The colleague has one rule: don't read the new assignments until the green light is on.
+They communicate through a shared notice board.
 
-This sounds perfectly safe. First write the data, then signal completion; first observe the signal, then read the data.
+The first employee writes three values: the hotel identifier, the available-room count, and the calculated price. When the report is complete, she places a green card beside it.
 
-But computers don't always expose shared-memory operations to other threads in the order a human imagines from reading source code. Compilers and processors may rearrange some operations under the language's allowed rules. Different cores have caches and machinery for making memory updates visible. If our code has no proper synchronization, the apparent green-light protocol may not establish the guarantee we think it does.
+The second employee has one instruction:
 
-The first diagram is deliberately simple: our problem isn't merely two threads sharing data. It's whether a signal establishes a trustworthy relationship between the writer's changes and the reader's observation.
+"When you see the green card, read the report."
 
-```mermaid
-sequenceDiagram
-    participant W as Writer thread
-    participant M as Shared state
-    participant R as Reader thread
-    W->>M: Prepare booking data
-    W->>M: Publish ready signal
-    R->>M: Observe ready signal
-    R->>M: Read booking data
-    Note over W,R: Without proper synchronization, visibility is not guaranteed
-```
+The arrangement seems perfectly reasonable.
 
-### 1. A shared variable is not a hand-delivered message
+The first employee writes the information, then raises the flag. The second sees the flag, then reads the information.
 
-In a single-threaded program, you often reason from the order of statements. Set the room number, set the price, then set `ready` to true. Later lines observe changes made earlier in the same execution according to the language's semantics.
+But what makes that sequence reliable?
 
-Across threads, however, shared memory introduces additional questions. Does each access happen atomically? Can operations be reordered? When does another thread become entitled to observe earlier writes? Which operations actually synchronize with each other?
+You might answer: "Because the data was written first."
 
-Picture two employees writing on independent whiteboards and using an unreliable communication system to exchange changes. One employee may know they've written the room assignments, but the other needs a defined method to know those assignments are visible and complete.
+That's the obvious answer. It is also incomplete.
 
-The analogy is imperfect, because real hardware has precise memory-coherence and ordering rules rather than arbitrary delays. But it reminds us to ask for an actual guarantee instead of relying on what source-code order seems to imply.
+We've already learned that concurrent operations can interleave. Now imagine these employees are not merely taking turns. They are genuinely working simultaneously, each on a different processor.
 
-### 2. Atomic doesn't mean “the whole workflow is safe”
+The processors have caches. They use buffers and speculative execution. The compiler may optimize the instructions. Different memory locations may become observable to other threads under rules that are not captured by a simple wall-clock story.
 
-Suppose several threads increment a shared counter. A naïve `counter = counter + 1` appears to be one line. But the conceptual operation reads a value, computes a new one, and writes it back. Another thread may interfere if the accesses aren't coordinated under the language's rules.
+The question becomes more precise:
 
-An **atomic operation** can make a particular update indivisible in the way specified by the memory model. That's useful for counters, flags, and certain synchronization structures.
+**What guarantee establishes that observing the ready flag also establishes the required visibility and ordering of the data written before it?**
 
-But an atomic `ready` flag by itself doesn't automatically make a complex business operation transactionally correct. You must choose the appropriate memory ordering and synchronization relationship for the data being published. And an atomic in-process flag cannot protect a booking invariant spread across ten separate backend services.
+That guarantee must come from a synchronization protocol.
 
-**Checkpoint:** If every thread increments one atomic counter correctly, does that guarantee a hotel can't be double-booked? No. The counter and the authoritative reservation workflow are different correctness boundaries.
+Without such a protocol, the notice board is just shared memory with good intentions.
 
-### 3. The handshake that makes publication meaningful
+## 1. Shared memory creates a new kind of responsibility
 
-Our two employees need a proper handoff protocol.
+In the previous lecture, we examined two asynchronous JavaScript operations that could interleave across `await`.
 
-One suitable pattern is for the writer to prepare ordinary data, then publish an atomic flag using **release** semantics. The reader observes that flag through a compatible atomic **acquire** operation. When the acquire observes the corresponding release under the model's conditions, operations that happened before the release become appropriately ordered and visible to the reader.
+That was a logical race.
 
-This is part of the idea behind a **happens-before** relationship.
+Even though only one main JavaScript thread executed the relevant instructions at a time, two reservations could act on outdated information.
 
-You don't need to memorize the complete memory-ordering formalism yet. The intuition is that the handoff isn't just a boolean. It's a synchronization event with defined consequences for other memory operations.
+Now we're dealing with a different situation.
 
-Locks can provide similar higher-level protection. A writer acquires a mutex, modifies protected data, then releases it. A reader acquires the same mutex before inspecting that data. Correct lock discipline gives the program an understood relationship between the modifications and reads.
+Our pricing engine uses worker threads to execute calculations simultaneously.
 
-There is a cost: locks can create waiting and contention. Some concurrency designs use atomics and lock-free techniques to avoid particular forms of blocking, but those designs can be much harder to reason about correctly.
+Two threads can access the same shared memory while running on different logical processors.
 
-The second diagram contrasts the uncontrolled shared-board arrangement with a synchronized handoff.
+One thread may be reading a location while another writes it.
 
-```mermaid
-flowchart TB
-    A["Writer updates data"] --> B{"Valid synchronization?"}
-    B -->|"No"| C["Reader cannot assume ordered visibility"]
-    B -->|"Release/acquire or lock"| D["Defined happens-before relationship"]
-    D --> E["Reader may rely on protected publication rules"]
-```
+There may be no common event loop deciding which instruction runs first.
 
-### 4. Reordering is not permission for random behavior
+This makes memory-level synchronization essential.
 
-It's tempting to say that CPUs can reorder everything however they like. That would be wrong. Programming languages define what transformations and observations are permitted, and processors must preserve the required architectural behavior.
+A process can contain several threads. Those threads generally share the process's address space, though they have their own execution stacks, register state, and scheduling contexts.
 
-Some languages classify certain unsynchronized conflicting memory accesses as data races. In C and C++, for example, a data race on ordinary non-atomic memory has undefined behavior. Java and JavaScript shared-memory facilities have their own defined memory models. Rust safe code restricts many conflicting references so that unsynchronized data races are prevented under its safety guarantees.
+Sharing an address space makes communication efficient: data need not always be serialized into messages or transferred through a network.
 
-The key point isn't that every shared-memory program inevitably fails. It's that correct behavior needs a model-backed synchronization mechanism, not a belief that two processors will see every operation in the author's intended order.
+But it also means shared mutable state must be coordinated.
 
-### 5. The minute-long replay
+## 2. One line of code may contain several operations
 
-One employee prepares data and raises a flag. Another waits for the flag before reading. In ordinary conversation, this seems enough. In shared-memory programming, a correct handoff must also establish the relevant atomicity, ordering, and visibility guarantees. Release/acquire synchronization or a mutex can give those guarantees under the language model's conditions.
+Suppose both workers increment a shared counter.
 
-L07 will explore what atomics actually promise, what memory order means, and why apparently reasonable unsynchronized programs can fail. The single picture to keep is **a publication protocol**, not mysterious processors randomly disobeying source code.
-
-### Three questions before the Deep Dive
-
-1. **Why isn't a plain shared `ready` flag automatically enough?** It may lack the atomicity and ordering guarantees needed to publish associated data safely.
-2. **What does happens-before describe?** A defined ordering relationship that allows certain observations to be justified.
-3. **Do atomics replace database transactions?** No. In-process shared-memory synchronization doesn't enforce distributed business invariants.
-
-*The intuition pass ends here.*
-
----
-
-# Part II — Deep Dive
-
-# 1. The Booking Snapshot That Was Ready Before It Was Safe
-
-Our hotel-booking platform has developed a new pricing engine.
-
-Previously, the backend calculated prices on the main JavaScript execution thread. That worked for modest workloads, but large batches created latency spikes.
-
-The engineering team moves the expensive calculation into worker threads.
-
-Each worker prepares a pricing snapshot containing three pieces of information: a hotel identifier, an available-room count, and a calculated price. The results are stored in a shared memory region so the main thread doesn't need to copy large amounts of data between workers.
-
-The arrangement seems elegant.
-
-A worker writes the values.
-
-It sets a shared flag called `ready` to true.
-
-The main thread checks the flag.
-
-When the flag becomes true, the main thread reads the snapshot and sends the price to the customer.
-
-The test suite passes.
-
-Then, during a particularly busy evening, something strange happens.
-
-The main thread appears to observe a completed snapshot, yet the accompanying data isn't what the application expects.
-
-A hotel has its new price but an earlier room count. Or a reader sees an incomplete state and incorrectly treats it as final.
-
-The team examines the source code.
-
-The worker clearly writes the fields before setting `ready`.
-
-The reader clearly checks `ready` before accessing the fields.
-
-Nobody can find a line where the business logic explicitly permits the wrong combination.
-
-Naturally, an engineer says:
-
-"But the statements are in the right order."
-
-And that's exactly where our investigation begins.
-
-**Source-code order within one thread isn't automatically a synchronization contract between threads.**
-
-That doesn't mean the processor simply ignores program instructions.
-
-It means that several distinct properties must hold before one thread can safely draw conclusions from another thread's actions.
-
-We need to know whether the memory is genuinely shared, whether accesses are atomic, whether they are ordered, and whether the synchronization establishes the relationship the application depends on.
-
-A correctly designed handoff gives us those guarantees.
-
-An ordinary unsynchronized flag may not.
-
----
-
-# 2. Threads Share an Address Space, Not a Single Stream of Execution
-
-Let's begin beneath the application.
-
-A process can contain multiple threads.
-
-Those threads normally share the process's address space, while retaining their own execution contexts, stacks, and relevant scheduling state.
-
-The operating system can schedule threads onto different logical CPUs.
-
-If the machine has appropriate processing capacity, multiple threads can execute instructions simultaneously.
-
-That's the meaning of actual parallel execution.
-
-## 2.1 Shared memory creates communication without messages
-
-Imagine two worker threads inside one process.
-
-Both can access a suitable shared data structure.
-
-The first writes a value.
-
-The second reads the same memory location.
-
-No network packet is required.
-
-No JSON serialization is inherently required.
-
-The communication happens through shared memory.
-
-That can be extremely efficient.
-
-But it introduces a difficult question.
-
-**What does it mean for one thread's write to be observable by another thread?**
-
-The answer isn't always as simple as "the writer executed first."
-
-We must establish what kind of ordering exists between the operations.
-
-## 2.2 Threads aren't always sharing the same JavaScript objects
-
-In Node.js, worker threads execute JavaScript in separate execution environments.
-
-They don't ordinarily share arbitrary JavaScript object graphs as ordinary mutable objects.
-
-Data passed through worker messaging is generally cloned or transferred according to the relevant API and data type.
-
-But a `SharedArrayBuffer` allows supported memory to be shared.
-
-Different workers can create typed-array views over the same shared backing storage.
-
-Now genuine shared-memory coordination becomes possible.
-
-And because the workers may execute on different CPU cores, our concurrency concerns are no longer merely about callbacks running in surprising order.
-
-They concern simultaneous memory accesses.
-
----
-
-# 3. The First Problem: Read, Modify, Write Isn't One Operation
-
-Before dealing with memory ordering, let's begin with a much simpler mistake.
-
-Suppose our booking service maintains a counter of processed reservations.
-
-Two workers need to increment it.
-
-The source code resembles:
+The source code says:
 
 `counter = counter + 1`
 
-That looks like one operation because it's written on one line.
+That looks like one action.
 
-But conceptually, incrementing a stored value involves several steps.
+But conceptually, the increment involves reading the existing value, adding one, and storing the result.
 
-Read the existing value.
-
-Calculate the next value.
-
-Store the result.
-
-Now imagine the counter begins at ten.
+Imagine the counter begins at ten.
 
 Worker A reads ten.
 
-Worker B also reads ten.
+Worker B reads ten.
 
 Worker A calculates eleven.
 
@@ -286,427 +107,501 @@ Worker A writes eleven.
 
 Worker B writes eleven.
 
-Both workers completed an increment.
-
-The final value is eleven, not twelve.
+Two workers performed an increment, but the final value is eleven rather than twelve.
 
 This is a **lost update**.
 
-## 3.1 Why separate correctness isn't enough
+The problem is not that either worker misunderstood arithmetic.
 
-Each worker followed the intended algorithm.
+It's that the combined read-modify-write operation wasn't coordinated as one indivisible transition.
 
-The problem appears only when the operations overlap.
+For suitable shared counters, an atomic increment can solve this particular problem.
 
-We saw the same broad pattern in CS320-L01 and in our database-transactions course.
+But before celebrating, we need to distinguish three related guarantees.
 
-But there's an important difference here.
+## 3. Atomicity, visibility, and ordering
 
-In a database, we need the database's transaction and isolation machinery to protect shared business state.
+**Atomicity** asks whether an operation behaves as an indivisible action under the applicable memory model.
 
-Inside one process, we're dealing with accesses to shared memory governed by the programming language's memory model.
+For example, an atomic increment avoids two threads independently reading the same old value and losing one increment.
 
-These are separate correctness boundaries.
+**Visibility** concerns which writes made by one thread another thread may observe.
 
-## 3.2 Atomic increment
+A worker may have written a result, but the reader needs a defined synchronization relationship to know which values are safe to observe.
 
-A suitable atomic read-modify-write operation allows the increment to happen as one indivisible operation according to the language's atomic semantics.
+**Ordering** concerns the relationships that must hold between operations across threads.
 
-The two workers no longer independently overwrite each other's increment in the simple lost-update pattern.
+The compiler and processor may be permitted to rearrange or overlap some internal work, provided the resulting behavior satisfies the language and architecture's guarantees.
 
-For example, JavaScript's `Atomics.add` operates on supported shared integer typed arrays.
+These properties are related, but they aren't interchangeable.
 
-Rust provides atomic integer operations such as `fetch_add`.
+An atomic ready flag may correctly change from zero to one.
 
-Java provides appropriate atomic variable classes.
+That doesn't automatically mean the program has correctly published an entire mutable data structure.
 
-Go provides operations through its `sync/atomic` package.
+The flag and the data must participate in a synchronization protocol with the necessary ordering and ownership guarantees.
 
-All of them address the need for indivisible updates to particular atomic locations.
+## 4. The handshake that makes publication meaningful
 
-But atomicity is only our first problem.
+Return to the notice board.
 
-It does not explain why writing a complete record and then signaling readiness may require additional ordering guarantees.
+We need more than a green card.
+
+We need an agreement about what placing and observing the green card means.
+
+In languages exposing acquire and release memory ordering, a common publication pattern works conceptually like this.
+
+The writer prepares the data.
+
+Then it performs a **release** store to the ready flag.
+
+The reader performs an **acquire** load of that same flag.
+
+If the reader observes the value published by the release operation, the matching synchronization establishes an ordering relationship.
+
+Under the language's rules, writes properly sequenced before publication become safely observable to the reader performing the corresponding accesses after acquisition, provided the surrounding data-sharing protocol is otherwise correct.
+
+Think of release as officially handing over the completed report.
+
+Acquire is accepting that handover.
+
+The relationship is more precise than "one happened a few microseconds before the other."
+
+It's a guarantee established by the memory model.
+
+One crucial condition remains: the writer must not start modifying the supposedly completed snapshot again while the reader is using it without another synchronization arrangement.
+
+A correct one-time publication does not automatically create a correct reusable shared buffer.
+
+## 5. Why stronger ordering isn't a universal cure
+
+You might wonder why we don't simply demand that every shared-memory operation execute in one globally agreed order.
+
+Sometimes we do use a strong ordering model called **sequential consistency**.
+
+It provides a particularly understandable way to reason about relevant atomic operations.
+
+But even strong atomic ordering doesn't turn several independent fields into one indivisible snapshot.
+
+Suppose a producer updates the price, inventory count, and hotel identifier separately.
+
+A reader might access those fields while the producer is halfway through the next update.
+
+Each individual atomic access can be perfectly correct.
+
+The collection can still represent a mixture of versions.
+
+We need to protect the invariant spanning the fields.
+
+A mutex might be the simplest solution.
+
+Alternatively, a carefully designed versioned publication scheme could work.
+
+The important idea is that synchronization must match the scope of the state being protected.
+
+## 6. The three questions we'll carry forward
+
+Our notice-board story gives us three durable questions.
+
+**Who owns the shared data while it is being modified?**
+
+**Which synchronization operation makes the completed state available to another thread?**
+
+**What prevents the data from changing while another thread assumes it is stable?**
+
+Those questions are more useful than memorizing a list of atomic instructions.
+
+Before moving on, explain aloud why an atomic ready flag is insufficient if the writer keeps modifying the published data without coordinating with the reader.
+
+*The intuition pass ends here.*
 
 ---
 
-# 4. Atomicity, Visibility, and Ordering Are Three Different Questions
+# Part II — Deep Dive
 
-Let's separate three ideas that developers often collapse into the word "thread-safe."
+## 1. The pricing snapshot that was ready before it was safe
 
-**Atomicity** asks whether an operation can be observed as an indivisible update under the relevant memory model.
+Our hotel-booking backend has moved its expensive pricing calculations off the main JavaScript thread.
 
-**Visibility** asks what writes another thread is allowed to observe and under what conditions.
+The new architecture uses Node.js worker threads.
 
-**Ordering** asks which relationships among operations the programming language guarantees across threads.
+Each worker calculates prices for a collection of hotels. Instead of copying every result through messages, the team has introduced a shared memory region.
 
-These are related properties, but they aren't interchangeable.
+A worker writes a hotel identifier, the current inventory count, and a calculated price.
 
-## 4.1 Atomicity doesn't automatically order unrelated memory
+Then it marks the snapshot ready.
 
-Suppose a worker writes several ordinary fields and then updates an atomic counter.
+The main thread watches for ready snapshots and sends the results to customers.
 
-The counter update may be indivisible.
+The implementation performs well in benchmarks.
 
-But whether another thread can safely use that counter observation to read the fields depends on the synchronization semantics and the program's ownership protocol.
+Then a production incident arrives.
 
-An atomic counter isn't automatically an announcement that every unrelated piece of memory is ready.
+Occasionally, the system publishes a hotel price associated with the wrong inventory version.
 
-We need an appropriate synchronization relationship.
+Sometimes the identifier and price appear to come from different updates.
 
-## 4.2 Visibility needs a contract
+The team suspects a race.
 
-Imagine the worker calculates a price and writes it into shared memory.
+But which race?
 
-The main thread reads that same location.
+Is the data being accessed without appropriate atomic operations?
 
-In a sequential program, the ordering of statements provides a straightforward model.
+Is the publication flag missing a synchronization guarantee?
 
-In a concurrent program, the relevant language rules determine what observations are permitted.
+Or is the writer beginning a new update while the consumer still reads the previous one?
 
-A plain unsynchronized shared read may not be entitled to assume it sees the most recent write in the intuitive wall-clock sense.
+These explanations are different.
 
-And in languages such as C++, a data race involving ordinary non-atomic accesses can make the program's behavior undefined.
+The first is about conflicting shared-memory accesses.
 
-This isn't an invitation to memorize spooky examples.
+The second is about memory ordering.
 
-It's a reason to use well-defined synchronization instead of guessing about processor behavior.
+The third is about ownership and the consistency of a multi-field snapshot.
 
-## 4.3 Ordering is a relationship, not a stopwatch
+To diagnose the problem, we need a precise model of shared-memory execution.
 
-Now imagine two threads running on separate cores.
+## 2. Threads and shared address spaces
 
-There may be no useful universal ordering between every instruction in both threads.
+A process can contain several operating-system threads.
 
-Some operations are independent.
+On Linux, those threads are schedulable execution contexts sharing selected process resources, including the same virtual address space.
 
-Some are explicitly synchronized.
+Each has its own execution state and stack.
 
-Others can overlap.
+On a multicore machine, different threads can execute simultaneously.
 
-A memory model determines which ordering relationships matter and what results they permit.
+That creates opportunities for genuine simultaneous memory access.
 
-This leads to one of the central concepts of concurrent programming.
+### Sharing does not mean everything is shared
 
-**Happens-before.**
+In Node.js, `worker_threads` create additional JavaScript execution environments.
 
----
+Ordinary JavaScript objects are not automatically shared as mutable objects between these environments.
 
-# 5. Happens-Before: A Contract for Explaining What Another Thread May Observe
+Workers can communicate through message passing.
 
-The term *happens-before* sounds like ordinary time.
+They can also share appropriate binary memory through `SharedArrayBuffer`.
 
-But in concurrent programming, it describes a defined ordering relationship.
+That distinction matters.
 
-It isn't simply a statement that one line of code appeared earlier in a source file.
+If the main thread sends an ordinary object through the worker messaging API, the worker generally receives data through structured cloning or supported transfer semantics.
 
-Nor is it merely a claim that one CPU instruction happened earlier according to a wall clock.
+The same shared-object access problem doesn't automatically arise.
 
-It's a relation established through the language's rules, including the relevant within-thread ordering and synchronization operations.
+But if both threads access a typed-array view over the same `SharedArrayBuffer`, they can observe and modify the same underlying bytes.
 
-## 5.1 The two ingredients
+Now synchronization matters directly.
 
-First, a language defines an ordering among operations within a thread.
+### Native code can also share memory
 
-This is often described using terms such as **sequenced-before** or **program order**, depending on the language.
+This isn't only a JavaScript concern.
 
-Second, certain operations establish synchronization relationships between threads.
+Native libraries, Java threads, Go goroutines executing concurrently, and Rust threads can all interact with shared memory under their language and runtime rules.
 
-A matching lock release and subsequent acquisition can do this.
+The underlying processors and caches are similar.
 
-An appropriate atomic release and acquire pair can do this.
+But the languages define different guarantees and expose different synchronization APIs.
 
-Some language runtimes provide additional synchronization mechanisms.
+We must respect those differences rather than assume every language behaves like C++ or JavaScript.
 
-The combination allows us to reason across the thread boundary.
+## 3. The lost increment: atomic read-modify-write
 
-## 5.2 Our publication protocol
+Begin with the simplest possible shared-state operation.
 
-Return to the pricing snapshot.
+Two workers increment one counter.
 
-The writer performs the following conceptual operations.
+A naïve implementation reads the old value, adds one, and writes the result.
 
-First, it prepares the booking data.
+As we saw in Part I, concurrent execution can lose updates.
 
-Second, it publishes a ready signal through a suitable release operation.
+An atomic read-modify-write operation performs the relevant change indivisibly under the language's memory model.
 
-The reader waits until a compatible acquire operation observes the relevant published signal.
+In JavaScript, `Atomics.add` can operate on an appropriate typed-array element backed by shared memory.
 
-Then it reads the booking data.
+If two workers each perform one thousand atomic increments, the final result should reflect two thousand increments, assuming no overflow-related issue or other interfering operation changes the counter.
 
-Under a correct publication protocol, the writes that happened before the release become ordered before the reader's accesses following the corresponding acquire.
+Each individual update participates in the required atomic ordering.
 
-The reader now has a meaningful basis for trusting the published snapshot.
+### Atomicity is scoped
 
-Notice the important limitation.
+Now suppose each worker must update two counters together.
 
-This doesn't permit the writer to keep changing the data concurrently while the reader accesses it without further coordination.
+One represents reservations processed.
 
-The publication protocol must also establish an appropriate lifetime and ownership rule for the data.
+The other represents the corresponding total revenue.
 
-For example, the writer may promise not to mutate the published snapshot again until the reader has finished.
+Atomically incrementing each counter separately doesn't automatically make the pair appear as one indivisible transaction.
 
-Synchronization cannot rescue an incorrectly designed ownership protocol.
+A reader might observe the reservation count updated before the revenue count.
 
-## 5.3 The key condition
+There may be no single consistent snapshot of both fields.
 
-It's not enough that one thread performs an acquire load at some arbitrary moment.
+If the invariant requires the pair to change together, we need a synchronization mechanism protecting the pair as a logical unit.
 
-The acquire must observe the corresponding release, or participate in an appropriate release sequence under the relevant memory model.
+This is the first principle of atomic programming:
 
-Otherwise, the synchronization edge we intended may not exist.
+**An atomic operation protects the operation it defines, not every larger sequence in which it appears.**
 
-This subtlety is why memory ordering is about precise relationships rather than simply placing keywords around variables.
+## 4. What is a data race?
 
-A well-designed library hides much of that complexity.
+The term *race condition* is broader than *data race*.
 
-But when engineers implement shared-memory protocols themselves, the details are essential.
+A race condition occurs when correctness depends on uncontrolled ordering.
 
----
+A data race is a more specific concept defined by a programming language's memory model.
 
-# 6. Why the Compiler and CPU Can Rearrange Work
+In C++ and Rust, for example, conflicting non-atomic accesses to the same memory location from different threads without appropriate ordering can constitute a data race, and such behavior is not permitted in well-defined safe concurrent programs.
 
-The intuitive publication bug becomes more interesting when we ask why source-code order isn't sufficient.
+In C++, a data race produces undefined behavior.
 
-Modern compilers optimize programs.
+Rust's safe abstractions are designed to prevent data races, though unsafe code can violate the required invariants.
 
-Processors also execute instructions through sophisticated mechanisms.
+Java and Go define their own rules for incorrectly synchronized programs.
 
-They may use store buffers, caches, speculative execution, and other techniques that allow independent operations to progress without behaving like a simplistic instruction-by-instruction machine.
+JavaScript also has a shared-memory model, but it should not be described as identical to C++'s undefined-behavior rules. Its ordinary shared typed-array accesses and atomic accesses have different semantics.
 
-But there's an important qualification.
+For learning purposes, the practical rule is straightforward:
 
-Compilers and processors must preserve the behavior required by the relevant language and architecture.
+When several execution agents can access the same mutable memory, use synchronization mechanisms appropriate to the language and ensure that all conflicting accesses follow the intended protocol.
 
-They cannot simply reorder anything without restriction.
+### A logical race can exist without a data race
 
-## 6.1 The single-threaded illusion
+Our earlier double-booking example involved independent asynchronous operations accessing authoritative database state.
 
-Imagine two independent calculations.
+It was logically incorrect even without simultaneous unsynchronized memory writes.
 
-The compiler may discover that executing them in a different internal order produces the same permitted result.
+Conversely, a program can be completely free of low-level data races and still produce a business-level race.
 
-It can rearrange work where allowed.
+A thread-safe counter does not guarantee correct room reservations.
 
-Similarly, a processor may issue or complete independent operations through mechanisms that improve performance.
+Memory correctness and business correctness are separate questions.
 
-Within a correctly defined single-threaded program, these transformations preserve the language's required observable behavior.
+## 5. Happens-before: an ordering guarantee, not a clock reading
 
-But with shared memory, another thread may observe effects.
+Here's the most important formal concept in the lecture.
 
-Now ordering rules become important.
+A **happens-before relationship** is an ordering relationship defined by the language's concurrency model.
 
-## 6.2 Cache coherence isn't enough
+The name sounds temporal, but it isn't merely about which action happened first according to a stopwatch.
 
-Modern multiprocessor systems commonly provide hardware cache-coherence mechanisms.
+Imagine one thread writes a price at 10:00:00.001.
 
-These help maintain coherent behavior for accesses to individual memory locations under the architecture's rules.
+Another thread reads the price at 10:00:00.002.
 
-But coherence is not the same as a universal order across all different memory locations.
+Those timestamps don't establish that the reader has performed the synchronization needed under the programming language's rules.
 
-Imagine writing the price into one location and setting readiness in another.
+The language must define which observations are allowed.
 
-We need the language-level synchronization rule connecting those operations.
+### Two ingredients
 
-The fact that processors maintain coherent caches doesn't automatically prove that our larger publication protocol is correct.
+Happens-before relationships are commonly established through two categories of rules.
 
-This is a distinction worth remembering:
+First, relevant operations within one thread have an ordering relationship defined by the language.
 
-**Coherence concerns the behavior of individual memory locations. Memory ordering concerns relationships among operations, potentially involving several locations.**
+Second, synchronization operations can establish relationships between threads.
 
-## 6.3 x86 and ARM may differ
+Examples include an appropriate mutex unlock followed by an acquisition, or a matching atomic release and acquire sequence.
 
-Different processor architectures expose different memory-ordering constraints.
+The relationships compose transitively.
 
-A low-level shared-memory implementation that appears to work reliably on one architecture may fail on another if it relies on assumptions the language doesn't guarantee.
+If operation A happens-before B, and B happens-before C, then A happens-before C.
 
-For example, some memory-ordering behaviors are stronger by default on common x86 implementations than on other architectures.
+This permits us to reason about data publication across several operations.
 
-But the correct engineering approach isn't to memorize which architecture seems forgiving.
+### Our pricing example
 
-It's to use synchronization primitives defined by the programming language or runtime.
+Suppose a producer prepares a snapshot and then publishes it through a release operation.
 
-Then rely on the implementation to generate the necessary instructions or barriers for the target architecture.
+A consumer performs a corresponding acquire operation that observes the published value.
 
-That's what portability means at this level.
+The synchronized handoff establishes the necessary relationship from the producer's prior writes to the consumer's subsequent reads, subject to the language's rules and correct ownership of the data.
 
----
+The consumer is not merely guessing that sufficient time has elapsed.
 
-# 7. The Memory-Ordering Ladder: Relaxed, Acquire, Release, Sequentially Consistent
+It has observed a defined synchronization event.
 
-Now we're ready to introduce the terminology.
+This is the core difference between reliable shared-memory programming and relying on timing.
 
-Languages such as Rust and C++ expose several atomic memory-ordering modes.
+## 6. Why compilers and CPUs complicate visibility
 
-These allow programmers to express different synchronization requirements.
+Developers often imagine instructions executing exactly in source-code order.
 
-The exact formal rules are complex.
+Modern systems are more sophisticated.
 
-But we can build a useful mental hierarchy.
+Compilers optimize programs by rearranging, combining, or eliminating operations where allowed.
 
-## 7.1 Relaxed atomics
+Processors use caches, store buffers, out-of-order execution, and speculative mechanisms to improve performance.
 
-A **relaxed** atomic operation guarantees atomic access to that location under the relevant language model, without introducing the broader ordering constraints associated with acquire or release operations.
+The result may not resemble a naïve instruction-by-instruction picture.
 
-Imagine several workers incrementing a statistics counter.
+But there is a crucial qualification.
 
-The counter's individual updates must not be lost.
+Compilers and processors are constrained by the behavior required by the relevant language and architecture.
 
-But the counter doesn't necessarily publish any other shared data.
+They cannot arbitrarily violate the guarantees of properly synchronized code.
 
-In that case, relaxed atomic operations may be sufficient.
+### The single-threaded illusion
 
-We care about the integrity of the counter itself.
+Consider two independent calculations.
 
-We aren't using the counter as a handoff signal protecting a separate data structure.
+The compiler may perform them in a different internal order if the program's required observable behavior remains correct.
 
-This is a good example of a comparatively weak synchronization requirement.
+A single thread may never notice.
 
-But be careful: saying relaxed operations are atomic doesn't mean they automatically establish a useful happens-before relationship for unrelated ordinary memory accesses.
+But another thread observing shared memory can expose differences if the program lacks the necessary synchronization.
 
-## 7.2 Release
+The memory model determines which observations are permitted.
 
-A **release** operation is suitable for publishing earlier work.
+### Cache coherence isn't sufficient by itself
 
-Conceptually, it prevents relevant earlier operations from being reordered past the release in ways that would violate the language's memory-model guarantees.
+Modern multiprocessors generally maintain coherent caches for relevant memory.
 
-Imagine our worker has finished constructing a snapshot.
+That helps processors agree about modifications to individual memory locations.
 
-It publishes a ready flag using release semantics.
+But coherence does not automatically make an entire multi-field operation atomic.
 
-That operation can participate in a handoff to another thread.
+Nor does it establish every cross-location ordering relationship a program might require.
 
-The release alone doesn't guarantee that another thread has already consumed the data.
+Even if every processor eventually observes a new value, "eventually" is not an adequate contract for reading a fully initialized shared data structure.
 
-It's the publishing side of the protocol.
+### Architecture matters, but language guarantees come first
 
-## 7.3 Acquire
+x86-64 and ARM processors have different memory-ordering characteristics.
 
-An **acquire** operation is suitable for observing a publication.
+Some ordering patterns that appear reliable on one architecture may expose missing synchronization more readily on another.
 
-When the acquire reads the corresponding released value under the relevant rules, it establishes the synchronization relationship.
+But a program shouldn't rely on accidental behavior of a particular CPU model when its programming language defines a stronger portability contract.
 
-Now subsequent accesses can rely on earlier writes ordered before the release, provided the surrounding program respects the necessary ownership and race-freedom conditions.
+Correct concurrent code is written against the language memory model and synchronization primitives.
 
-This is the receiving side of the protocol.
+Hardware-specific optimization comes later.
 
-Release says, in effect:
+## 7. The memory-ordering ladder
 
-"My preceding work is ready to be published."
+Languages such as C++ and Rust expose several memory-ordering modes for atomic operations.
 
-Acquire says:
+Understanding their purpose helps us reason about concurrency without immediately becoming specialists in lock-free algorithms.
 
-"I've observed the appropriate publication, and I can proceed under its guarantees."
+### Relaxed ordering
 
-## 7.4 Acquire-release
+A relaxed atomic operation preserves atomicity for the accessed location without introducing the broader ordering constraints associated with acquire or release synchronization.
 
-Some atomic operations both read and modify memory.
+Imagine a statistics counter that merely tracks how many jobs have completed.
 
-For those operations, an **acquire-release** ordering can provide both kinds of synchronization behavior where applicable.
+Several threads increment it.
 
-This is useful in certain lock implementations and other read-modify-write protocols.
+We need every increment to be counted correctly.
 
-But it isn't necessary for every atomic counter or flag.
+But we're not using the counter to announce that a separate shared data structure is ready.
 
-The correct ordering follows the actual communication requirement.
+Relaxed atomic increments may be sufficient.
 
-## 7.5 Sequential consistency
+The counter is correct as an atomic variable.
 
-**Sequentially consistent** atomic operations provide stronger ordering guarantees.
+It is not being used to publish another object.
 
-They participate in a single total order of sequentially consistent atomic operations consistent with the relevant rules.
+### Release ordering
 
-This often provides a more intuitive mental model than weaker ordering combinations.
+A release operation is used when a thread publishes preceding work.
 
-But don't interpret it as making an entire multithreaded application execute one instruction at a time.
+Conceptually, the writer prepares the shared data and then performs a release store to the publication flag.
 
-Other non-atomic operations, independent threads, and broader program structure still need correct synchronization.
+The release prevents the preceding operations from being treated as occurring after that publication in ways prohibited by the memory model.
 
-Sequential consistency makes particular atomic reasoning stronger.
+### Acquire ordering
 
-It doesn't replace a sound concurrency design.
+A corresponding acquire operation is used by the reader.
 
-## 7.6 An important JavaScript distinction
+If it observes the value written by the matching release operation, the two operations establish synchronization.
 
-JavaScript's `Atomics` API does not expose Rust-style choices between relaxed, acquire, and release ordering.
+The reader can then safely use the properly published data, assuming the data is otherwise managed without conflicting unsynchronized modification.
 
-JavaScript's atomic operations on shared typed arrays have sequentially consistent semantics.
+Release and acquire are complementary.
 
-So while it's useful for a JavaScript developer to understand release/acquire conceptually, you cannot simply pass a Rust-like `Ordering::Release` option to `Atomics.store`.
+A release store is not a magic broadcast independent of what the reader observes.
 
-The API makes a different design choice.
+The reader must participate in the appropriate synchronization relationship.
 
-It exposes a stronger default atomic ordering model rather than requiring application developers to choose from a memory-ordering ladder.
+### Acquire-release
 
-That's an example of programming-language design affecting the complexity developers must manage.
+Atomic read-modify-write operations may need both effects.
 
----
+For example, a thread might atomically update a synchronization variable while also receiving information published by earlier operations.
 
-# 8. A Correct Shared-Memory Handoff in JavaScript
+Acquire-release ordering provides the corresponding combined constraints for the relevant operation.
 
-Let's return to the Node.js pricing engine.
+### Sequential consistency
 
-Suppose the worker and main thread share a small `SharedArrayBuffer`.
+Sequentially consistent atomic operations provide a stronger, simpler ordering model.
 
-We create an integer typed-array view.
+Roughly, the relevant operations participate in one total order consistent with the model's required relationships.
 
-One location holds a result.
+This is often easier to reason about.
 
-Another holds the ready flag.
+But don't overinterpret it.
 
-The producer writes the result through an atomic store.
+Sequential consistency of individual atomic accesses doesn't turn an entire shared data structure into one indivisible transaction.
 
-It then atomically stores the ready flag.
+And mixing operations with different ordering strengths requires understanding the precise language rules.
 
-The consumer atomically loads the ready flag.
+For ordinary application developers, the sensible default is to prefer well-established synchronization primitives and straightforward guarantees rather than prematurely selecting the weakest possible ordering for performance.
 
-Once it observes the published value, it atomically loads the result.
+## 8. JavaScript's `Atomics` model is different
 
-Because JavaScript's atomic operations are sequentially consistent, the handoff has defined ordering behavior.
+Now return to our Node.js pricing workers.
 
-For this simple one-time publication, it's straightforward to reason about the result.
+JavaScript exposes shared binary memory through `SharedArrayBuffer` and atomic operations through `Atomics`.
 
-## 8.1 Why use atomics for both fields?
+Its standard atomic operations are sequentially consistent.
 
-Using atomic accesses makes the example easier to state precisely.
+Unlike Rust and C++, JavaScript doesn't provide API options to choose relaxed, acquire, or release ordering for these ordinary `Atomics` operations.
 
-The data field and flag participate in the atomic memory model.
+That is a meaningful simplification.
 
-We don't need to rely on ordinary shared-memory accesses with weaker semantics.
+### A one-time publication protocol
 
-The protocol also avoids concurrent mutation after publication.
+Suppose the shared memory contains two integer positions.
 
-There's exactly one producer for the snapshot, and the consumer reads it only after the ready signal.
+The first holds the calculated result.
 
-That's a clean starting point.
+The second is a ready flag.
 
-More complex protocols may use ordinary shared data protected by a suitable synchronization relationship, but they require careful adherence to the memory model and ownership rules.
+The producer uses `Atomics.store` to write the result.
 
-## 8.2 Why the ready flag must be shared
+Then it uses `Atomics.store` to set the ready flag to one.
 
-An ordinary JavaScript boolean variable in one worker's execution context isn't automatically visible as the same mutable variable to another worker.
+The consumer uses `Atomics.load` to examine the ready flag.
 
-The workers need an explicit shared-memory mechanism or a message-passing channel.
+Once it observes one, it loads the result through `Atomics.load`.
 
-`SharedArrayBuffer` makes the relevant backing memory available to both.
+For this simple one-time publication, assuming only the designated producer publishes the value, the atomic operations provide a straightforward synchronization story.
 
-`Atomics` supplies operations with the required synchronization semantics.
+The consumer observes the published state through the defined sequentially consistent ordering.
 
-This separates two concerns.
+### Why use atomic access to the result too?
 
-Sharing determines whether both agents can address the same memory.
+It makes the teaching example easier to reason about.
 
-Synchronization determines whether their concurrent accesses are correct.
+We avoid depending on the more subtle behavior of ordinary shared-memory accesses.
 
-You need both when using shared memory.
+The result and ready flag participate in the atomic model.
 
----
+But there is still a problem if the writer starts modifying the result again immediately after publication.
 
-# 9. `Atomics.wait` and `Atomics.notify`: Don't Spin Forever
+The consumer might observe the ready flag from one publication and read data belonging to the next update.
 
-A consumer needs to wait until the snapshot becomes ready.
+The atomic operations themselves could all be correct.
 
-One possible design repeatedly loads the flag.
+The surrounding protocol would still be wrong.
+
+To reuse the buffer, we need an explicit ownership or versioning protocol, or we need to serialize access.
+
+This is why a pair of correct atomic instructions is not automatically a correct shared-data architecture.
+
+## 9. Waiting for shared state without wasting CPU
+
+Imagine the consumer repeatedly checking the ready flag.
 
 Still zero.
 
@@ -714,1682 +609,1261 @@ Still zero.
 
 Still zero.
 
-This is a **spin loop**.
+It performs millions of checks while waiting for the producer.
 
-It may consume significant CPU time while making no useful progress.
+This is called **spinning** or busy waiting.
 
-For very short waits in carefully designed low-level algorithms, spinning can sometimes be appropriate.
+For extremely short expected waits in specialized algorithms, spinning can sometimes be useful.
 
-But long or indefinite spinning is usually undesirable.
+But long or indefinite spinning wastes processor time and can create unnecessary contention.
 
-## 9.1 Waiting on an atomic condition
+### `Atomics.wait`
 
-JavaScript provides `Atomics.wait` for suitable shared integer typed-array locations in execution contexts where blocking waits are permitted.
+JavaScript provides `Atomics.wait` for suitable shared integer typed arrays in execution contexts that permit blocking waits.
 
-Conceptually, a thread can say:
+The operation checks whether a shared location still contains an expected value.
 
-"Wait while this location still contains the expected value."
+If it does, the calling thread can wait until notification or timeout under the API's semantics.
 
-The runtime can block the waiting thread rather than making it repeatedly consume CPU.
+Another thread can update the value and call `Atomics.notify` to wake waiters.
 
-Another thread updates the value and calls `Atomics.notify`.
+This can avoid continuously burning CPU.
 
-A waiting thread can then wake and recheck the condition.
+However, blocking waits are generally inappropriate on a main event-loop thread.
 
-In browser environments, blocking waits are not allowed on the main UI thread. Web workers are the typical place for such waits.
+Browsers prohibit `Atomics.wait` on their main thread. Node.js permits more threading arrangements, but blocking its main JavaScript thread would undermine responsiveness.
 
-In Node.js, worker threads are likewise a natural place for blocking waits.
+Worker threads are the natural place for this sort of blocking coordination.
 
-Blocking the main application event-loop thread would be counterproductive.
+An asynchronous alternative, `Atomics.waitAsync`, exists for supported environments and use cases.
 
-## 9.2 Notification is not the condition itself
+### Notification isn't proof
 
-An important mistake is treating notification as proof that the desired state exists.
+Suppose a thread wakes after a notification.
 
-A notification means something relevant may have changed.
+It must still check the shared condition.
 
-The consumer must still examine the shared state.
+A notification may wake it even if the application-level condition it needs is no longer true.
 
-A worker could be awakened for a reason that doesn't mean its exact condition is satisfied.
+This is conceptually similar to condition variables in other languages.
 
-The robust design is to wait for a condition, not merely for a notification.
+The correct pattern is to wait for a predicate, not to assume that receiving a notification means the desired state exists.
 
-This principle also appears in condition variables and operating-system synchronization primitives.
+## 10. Mutexes: protect the entire invariant
 
-## 9.3 Avoiding lost wakeups
+Our snapshot becomes more complicated.
 
-Imagine the writer completes the snapshot just before the reader begins waiting.
+It now contains a hotel identifier, inventory count, price, discount, currency, and version number.
 
-If the reader blindly waits for a future notification, it might wait forever.
+We could design a sophisticated atomic publication algorithm.
 
-A proper wait protocol checks the current value and only blocks if it still equals the expected value.
+But perhaps we don't need one.
 
-The check-and-wait behavior must be coordinated atomically by the appropriate primitive.
+A **mutex** provides mutual exclusion.
 
-That's why `Atomics.wait` is more useful than inventing a homemade sleep-and-poll protocol.
+A thread acquires the mutex before entering the protected critical section.
 
-It isn't merely a way to pause execution.
+Other participating threads must wait until the lock is released.
 
-It participates in a defined synchronization scheme.
+If every read and write of the protected snapshot follows the same locking discipline, the reader can obtain a consistent view while holding the mutex.
 
----
+### The lock must cover the real invariant
 
-# 10. Mutexes: The Boring Tool That Solves Most Shared-State Problems
+Suppose the writer locks only while updating the price.
 
-We have spent considerable time on atomics.
+Then it unlocks.
 
-Does that mean every shared data structure should be implemented through atomic operations?
+Later it locks while updating the inventory count.
 
-Absolutely not.
+A reader might acquire the mutex between those operations.
 
-For most application-level shared mutable structures, a **mutex** is easier to reason about.
+Each individual update was protected.
 
-A mutex provides mutual exclusion.
+But the reader can still observe a mixture of snapshot versions.
 
-Only an appropriate holder can enter a protected critical section at a time.
+The mutex wasn't defective.
 
-Other contenders must wait.
+The protected region was too small.
 
-## 10.1 The booking snapshot with a mutex
+The correct critical section must cover the set of operations that must appear consistent together.
 
-Imagine our snapshot contains many fields.
+### Locks have costs
 
-Hotel identifier.
+Mutexes serialize access to protected resources.
 
-Arrival date.
+Under contention, threads may wait.
 
-Departure date.
+Long critical sections can reduce parallelism.
 
-Room inventory.
+Holding a lock while performing slow I/O is especially dangerous because unrelated contenders may remain blocked.
 
-Price.
+But these costs don't make locks bad.
 
-Discount information.
+A simple correct mutex design is often preferable to a highly sophisticated lock-free structure that nobody on the team can safely maintain.
 
-Version number.
+### Lock ownership matters
 
-A flag plus individually coordinated atomic fields could become complicated.
+A mutex may have ownership requirements: the thread that acquires it is responsible for releasing it according to the primitive's rules.
 
-Instead, the writer acquires a mutex protecting the snapshot.
+A semaphore is related but not identical. It typically manages permits rather than exclusive ownership of one critical section.
 
-It updates the fields.
+Use the primitive that expresses the intended constraint.
 
-It releases the mutex.
+## 11. Condition variables: wait for state changes
 
-The reader acquires the same mutex.
+Now imagine a queue shared by several producer and consumer threads.
 
-It reads a consistent protected state.
+Producers add work.
 
-Then it releases the mutex.
-
-Provided all accesses follow the same locking discipline, the synchronization mechanism establishes the relevant ordering and mutual-exclusion guarantees.
-
-The design is conceptually simple.
-
-Only one thread modifies or reads protected mutable state within the required exclusive critical section at a time.
-
-## 10.2 Locking protects an invariant, not just a variable
-
-Here's a useful improvement to our mental model.
-
-Suppose the snapshot has two fields.
-
-`availableRooms` and `reservedRooms`.
-
-Together, they must satisfy a local invariant relative to an inventory total.
-
-If we protect each field with a different mutex, a reader might acquire them at different moments and observe values belonging to different logical states.
-
-Each individual field access could be properly synchronized.
-
-The combined snapshot might still be inconsistent.
-
-We should choose synchronization boundaries around the **invariant that must remain coherent**.
-
-This is deeper than merely locking individual variables.
-
-It asks which pieces of state must be observed together.
-
-A good critical section protects the logical unit of state rather than a random collection of memory locations.
-
-## 10.3 Locks come with costs
-
-A mutex introduces the possibility of waiting.
-
-If one thread holds it for a long time, others may be delayed.
-
-If many threads frequently contend for the same lock, throughput can decline.
-
-If code acquires several locks in inconsistent orders, deadlocks can occur.
-
-And if a thread holds a lock while performing slow I/O, unrelated operations may become blocked behind an external dependency.
-
-This is why synchronization design involves both correctness and performance.
-
-But the correct response isn't to eliminate locks at all costs.
-
-**A simple correct mutex design is often better than a clever lock-free design that nobody can reliably verify.**
-
----
-
-# 11. Condition Variables: Wait for a State Change Without Burning CPU
-
-Now imagine our shared work queue.
-
-Producer threads add tasks.
-
-Consumer threads remove tasks.
+Consumers remove work.
 
 What should a consumer do when the queue is empty?
 
-It could repeatedly acquire the mutex, inspect the queue, release the mutex, and try again.
+Repeatedly lock the queue, check it, unlock it, and try again?
 
-That wastes work.
+That wastes resources.
 
-Instead, many threading libraries provide **condition variables**.
+Many threading libraries provide **condition variables**.
 
-A condition variable allows a thread to wait for a relevant state transition while coordinating with a mutex.
+A consumer acquires the queue mutex and checks whether work is available.
 
-## 11.1 The critical sequence
+If not, it waits on the condition variable.
 
-The consumer acquires the mutex.
+The wait operation atomically releases the mutex and blocks under the primitive's semantics.
 
-It checks whether the queue contains work.
+When awakened, the consumer reacquires the mutex before continuing.
 
-If the queue is empty, it waits on the condition variable.
+Then it checks the queue condition again.
 
-The wait operation releases the mutex appropriately while blocking.
+### Why the wait must release the mutex
 
-When awakened, the consumer reacquires the mutex before continuing under the condition-variable contract.
+Imagine the consumer keeps the mutex while sleeping.
 
-It then checks the condition again.
+The producer needs the same mutex to add work.
 
-That last step matters enormously.
+The producer cannot acquire it.
 
-A notification does not guarantee the queue is still nonempty when the consumer resumes.
+The consumer waits forever for work that the producer cannot insert.
 
-Another consumer may have taken the available work.
+A correctly used condition variable avoids this problem by releasing the lock as part of the wait operation.
 
-Spurious wakeups are also permitted by some condition-variable interfaces.
+### Why the condition must be checked in a loop
 
-Therefore, the usual pattern is a **loop that rechecks the predicate**.
+A notification doesn't guarantee that work remains available.
 
-Not a single `if` statement that assumes every wakeup means success.
+Another consumer may have acquired the mutex first and removed the item.
 
-## 11.2 Why the mutex must be released while waiting
+Some condition-variable implementations also permit spurious wakeups.
 
-Imagine the consumer held the mutex while waiting for the producer.
+Therefore, the consumer checks the predicate again after waking.
 
-The producer would need the same mutex to insert work.
+The rule is not "wait until notified."
 
-The consumer would refuse to continue until work appeared.
+It's "wait until the condition protected by this mutex is true."
 
-The producer couldn't insert work because the consumer never released the lock.
+That difference is small in syntax and enormous in correctness.
 
-We would have built a deadlock.
+## 12. Deadlocks: when correct locks form an incorrect system
 
-Condition-variable waiting avoids this problem by coordinating the release, wait, and reacquisition behavior.
+Our pricing engine uses two mutexes.
 
-It lets the producer make the state change that the consumer is waiting for.
+One protects the snapshot cache.
 
-This is another example of a synchronization API doing more than simply pausing a thread.
-
-It establishes an appropriate protocol around shared state.
-
----
-
-# 12. Deadlocks: Correct Locks, Incorrect Ordering
-
-Now our pricing engine uses two mutexes.
-
-One protects a snapshot cache.
-
-The other protects a shared statistics structure.
+The other protects shared statistics.
 
 Worker A acquires the snapshot lock.
 
-Then it tries to acquire the statistics lock.
+Then it attempts to acquire the statistics lock.
 
-Worker B acquires the statistics lock.
+Worker B has already acquired the statistics lock.
 
-Then it tries to acquire the snapshot lock.
+It attempts to acquire the snapshot lock.
 
-Both locks are implemented correctly.
+Now A waits for B.
 
-Both threads follow their local code correctly.
+B waits for A.
 
-But the system stops making progress.
+Neither can proceed.
 
-Worker A holds the resource B needs.
+This is a **deadlock**.
 
-Worker B holds the resource A needs.
+Each mutex works correctly.
 
-Neither can release its first lock because each is waiting for the second.
+The failure emerges from how the operations are composed.
 
-That's a **deadlock**.
+### The classic conditions
 
-## 12.1 The simple prevention rule
+Deadlocks are commonly explained through four necessary conditions in the traditional resource-allocation model:
 
-One common strategy is to establish a global lock-acquisition order.
+Mutual exclusion: some resources can be held exclusively.
 
-For example:
+Hold and wait: a participant holds resources while waiting for others.
 
-Always acquire the snapshot lock before the statistics lock.
+No preemption: resources aren't forcibly taken away in the relevant protocol.
 
-Every relevant code path follows that order.
+Circular wait: participants form a cycle of dependencies.
 
-Now the cyclic wait pattern above cannot arise through those two locks in the same way.
+Breaking an applicable condition can prevent the corresponding deadlock.
 
-This is a design rule, not a special CPU instruction.
+A particularly useful strategy is establishing a consistent global order for acquiring locks.
 
-The important insight is that synchronization correctness includes relationships among locks, not merely whether each lock works individually.
+For example, always acquire the snapshot lock before the statistics lock.
 
-## 12.2 Lock contention isn't deadlock
+If every relevant path obeys that order, the particular reversed-order cycle cannot occur.
 
-Suppose one worker holds a mutex for two hundred milliseconds.
+### Deadlock isn't ordinary contention
 
-Other workers wait.
+A heavily contended mutex may delay many threads, but eventually the lock holder releases it and work proceeds.
 
-Eventually, the holder releases it.
+In a deadlock, the participating operations cannot make progress under their current dependency cycle.
 
-The waiters continue.
+The distinction matters for diagnosis.
 
-That is contention.
+More CPU capacity may help ordinary contention if it allows lock holders to execute more promptly.
 
-It may be slow, but it isn't necessarily a deadlock.
+It doesn't solve a circular wait where no participant can reach the release operation.
 
-Now suppose the holder never releases the lock because it is itself waiting for a resource that requires a blocked waiter to make progress.
+### Priority inversion
 
-That's a different failure.
+Another synchronization-related scheduling problem occurs when a high-priority thread waits for a lock held by a lower-priority thread.
 
-Diagnosis needs to distinguish long waits from cyclic dependencies.
+If other work prevents the lower-priority holder from executing, the high-priority thread remains blocked.
 
-## 12.3 Priority inversion revisited
+Some lock implementations support priority inheritance to mitigate this scenario.
 
-In CS320-L04, we studied priority inversion.
+But scheduling priority is not a substitute for sound lock design.
 
-A high-priority task may wait for a lock held by a lower-priority task.
+## 13. Compare-and-swap: conditional atomic updates
 
-Scheduling policy and lock ownership can interact in surprising ways.
+Now suppose we want to update a shared counter without acquiring a mutex for every operation.
 
-Some synchronization mechanisms provide priority inheritance.
+A useful primitive is **compare-and-swap**, often abbreviated CAS.
 
-But ordinary mutexes shouldn't be assumed to provide every real-time scheduling guarantee.
+Its conceptual contract is:
 
-The correct response is to understand the lock's behavior and the scheduling environment.
+"Replace the current value with this new value, but only if it still equals the value I expected."
 
----
+Suppose a counter contains five.
 
-# 13. Compare-and-Swap: The Atomic Building Block Behind Many Concurrent Structures
+Worker A reads five and proposes six.
 
-Now imagine we want an atomic state transition.
+Worker B also reads five and proposes six.
 
-A counter currently holds five.
+A performs the conditional atomic update first.
 
-We want to change it to six, but only if nobody else has changed it since we last observed five.
+The value becomes six.
 
-This is where **compare-and-swap**, often called CAS, becomes useful.
+B attempts the same operation but discovers that the current value is no longer five.
 
-The conceptual operation is:
+Its update fails.
 
-"Compare the current value with an expected value. If they match, replace it with the new value as one atomic operation."
+B can read the new value, calculate another result, and retry.
 
-If another thread changed the value first, the comparison fails.
+This is optimistic concurrency at the memory level.
 
-The caller can inspect the result and decide whether to retry.
+### CAS loops
 
-## 13.1 Optimistic concurrency in memory
+Some algorithms repeatedly load a value, calculate a candidate replacement, and attempt a compare-and-swap.
 
-This may sound familiar.
+If another participant changed the value, the operation retries.
 
-In database systems, optimistic concurrency control often checks whether a version still matches before committing an update.
+These algorithms can avoid locking under certain conditions.
 
-CAS resembles that pattern at the level of atomic memory operations.
+But retrying has a cost.
 
-Instead of acquiring a mutex before attempting every update, a thread can make a conditional atomic change and retry if necessary.
+Under heavy contention, many threads may repeatedly fail their CAS attempts.
 
-But the analogy has limits.
+A theoretically lock-free design can consume substantial CPU and deliver disappointing throughput.
 
-A CPU atomic operation affects a particular atomic memory location or supported operation.
+### The ABA problem
 
-A database transaction can coordinate persistent state across many rows and constraints.
+There's a subtle failure.
 
-One doesn't replace the other.
+Suppose a thread reads value A.
 
-## 13.2 CAS loops
+Another thread changes it from A to B and then back to A.
 
-A common atomic update pattern reads a current value.
+The first thread performs compare-and-swap expecting A.
 
-Computes a desired replacement.
+The comparison succeeds.
 
-Attempts a compare-and-swap.
+But the shared state changed in between.
 
-If the comparison fails, it retries based on the new value.
-
-This can be useful for counters and some concurrent data structures.
-
-But it introduces another potential issue.
-
-Under heavy contention, many threads may repeatedly fail and retry.
-
-They consume CPU without necessarily making proportional progress.
-
-So even a lock-free-looking operation may have performance costs under contention.
-
-## 13.3 The ABA problem
-
-Here's a famous trap.
-
-Suppose a thread reads the value A.
-
-While it's doing other work, another thread changes A to B.
-
-Then another operation changes B back to A.
-
-The first thread performs compare-and-swap.
-
-The current value is A again.
-
-Its comparison succeeds.
-
-But the shared state may have changed substantially in between.
+If the algorithm assumed that seeing A means nothing changed, its assumption is false.
 
 This is the **ABA problem**.
 
-It matters especially in certain pointer-based lock-free data structures, where reusing the same pointer value may conceal object replacement or reclamation.
+In simple counters, the intermediate history may not matter.
 
-Solutions can involve version tags, carefully designed reclamation, or different algorithms.
+In lock-free pointers, queues, or resource-lifetime protocols, it can matter enormously.
 
-We don't need to implement those techniques today.
+Common solutions involve version tags, carefully designed reclamation, or other specialized algorithms.
 
-The important lesson is that **an atomic equality check doesn't prove nothing happened between observations**.
+CAS detects whether the current value matches.
 
-It proves only the condition guaranteed by the atomic operation.
+It doesn't automatically prove that the object's history or identity remained unchanged.
 
----
+## 14. Lock-free doesn't mean wait-free
 
-# 14. Lock-Free Doesn't Mean Simple, Fast, or Free of Waiting
+The phrase *lock-free* sounds like a promise of speed.
 
-Now we reach an especially seductive term.
+It is not.
 
-**Lock-free programming.**
+It describes a type of progress guarantee.
 
-It sounds like removing locks should make everything faster.
+Roughly speaking, a lock-free algorithm guarantees system-wide progress under its model even when individual threads are delayed.
 
-Sometimes lock-free designs are extremely valuable.
+An individual participant may still fail repeatedly and starve.
 
-But the terminology is more precise than the marketing suggests.
+**Wait-free** algorithms provide a stronger individual progress guarantee: each operation completes within a bounded number of its own steps under the defined assumptions.
 
-## 14.1 Progress guarantees
+These are technical properties.
 
-A lock-free algorithm provides a particular system-wide progress guarantee.
+They do not mean "uses no mutex-looking object" or "always outperforms locking."
 
-Roughly speaking, under the relevant execution assumptions, the system can make progress even if an individual participating thread is delayed.
-
-That does not mean every thread finishes quickly.
-
-A particular thread can repeatedly lose races and fail to complete its own operation.
-
-A stronger property, **wait-freedom**, guarantees that each operation completes within a bounded number of its own steps under the defined model.
-
-These are technical progress properties.
-
-They don't simply mean "uses atomics" or "has no mutex object in the source code."
-
-## 14.2 Lock-free isn't contention-free
-
-A lock-free structure can still have substantial contention.
-
-Several threads may repeatedly update the same cache line.
-
-Their atomic operations may cause coherence traffic between cores.
-
-Retries may waste CPU.
-
-And memory reclamation can become extremely difficult when other threads might still hold references to removed nodes.
-
-A design without mutexes can therefore be slower, more complicated, and harder to validate than a straightforward locked implementation.
-
-## 14.3 Memory reclamation is the hidden difficulty
+### The hidden problem of memory reclamation
 
 Imagine a lock-free linked structure.
 
-One thread removes a node.
+A thread reads a pointer to a node.
 
-It wants to free the node's memory.
+Another thread removes that node.
 
-But another thread might still be reading it.
+When may the removed memory be freed?
 
-How do we know reclamation is safe?
+If the first thread still holds a reference, freeing the node too early can lead to invalid memory access.
 
-Traditional mutexes can simplify the ownership story because exclusive access is explicit.
+Lock-free data structures often require sophisticated memory-reclamation strategies, such as hazard pointers or epoch-based reclamation.
 
-Lock-free structures often require specialized memory-reclamation techniques such as hazard pointers, epoch-based reclamation, or related approaches.
+This is one reason implementing custom lock-free structures is difficult.
 
-These are sophisticated topics.
+The atomic update may be the easy part.
 
-The important architectural lesson is not to adopt lock-free techniques casually.
+Managing object lifetime under concurrent access is often the real challenge.
 
-Use established libraries and well-tested algorithms unless there is compelling evidence that a custom low-level structure is necessary.
+For application engineering, prefer mature concurrency primitives and proven libraries unless the workload genuinely justifies a specialized implementation.
 
-> **Sticky note #1:** Avoiding a mutex is not the same as avoiding synchronization cost. Atomics, retries, cache coherence, and memory reclamation still impose real obligations.
+## 15. False sharing: correct code, disappointing speed
 
----
+Now imagine eight pricing workers.
 
-# 15. False Sharing: When Independent Variables Fight Over One Cache Line
+Each maintains its own independent counter.
 
-Let's examine a performance failure that has nothing to do with logical data races.
+No worker modifies another worker's counter.
 
-Our pricing engine has eight worker threads.
+There is no logical need for synchronization between them.
 
-Each worker maintains its own counter.
-
-No two workers update the same counter.
-
-The code appears embarrassingly parallel.
-
-Yet performance doesn't scale as expected.
-
-Why?
+Yet performance scales poorly.
 
 One possibility is **false sharing**.
 
-## 15.1 Cache lines, not individual integers
+Processors manage cache coherence at a granularity commonly called a cache line.
 
-Processors move and maintain coherence for memory in cache-line-sized units.
-
-A common cache-line size is sixty-four bytes, although it varies by architecture.
+A frequently encountered cache-line size is sixty-four bytes, although the actual value is architecture-dependent.
 
 Suppose several independent counters occupy the same cache line.
 
-Different cores repeatedly write their own counters.
+Worker A repeatedly updates counter A.
 
-Even though the logical variables are distinct, the hardware may need to coordinate ownership of the cache line.
+Worker B repeatedly updates counter B.
 
-That creates cache-coherence traffic.
+Although the logical variables are different, the processors may need to coordinate ownership of the same cache line.
 
-The threads aren't logically contending for the same counter.
+The line can move between cores or generate coherence traffic.
 
-But their data occupies the same unit of hardware coherence.
+That increases execution overhead.
 
-## 15.2 The mitigation
+### False sharing isn't a data race
 
-One approach is to separate frequently updated per-thread values so they don't share cache lines in a harmful way.
+The counters may be correctly atomic or otherwise independently owned.
 
-Another is to accumulate results in local registers or thread-local storage and combine them less frequently.
+No worker needs another worker's value.
 
-This can reduce coherence traffic.
+The problem is physical placement within the hardware's cache-coherence unit.
 
-But padding every structure is not automatically beneficial.
+This is a performance problem, not necessarily a logical correctness problem.
 
-It increases memory footprint and may hurt locality in other ways.
+### Possible mitigation
 
-As always, the optimization should follow profiling and representative measurement.
+Separating frequently written fields onto different cache lines can reduce contention in appropriate workloads.
 
-The broader lesson is that concurrency performance depends not only on logical ownership but also on physical data layout.
+Padding, alignment, and layout changes are common techniques.
 
-**Two independent variables can still compete through the hardware's memory hierarchy.**
+But blindly padding every field wastes memory and may harm cache efficiency elsewhere.
 
----
+We should measure the relevant workload before changing layout.
 
-# 16. Java, Go, Rust, and JavaScript: Same Problem, Different Guarantees
+This is another example of an important performance principle:
 
-We've now developed the concepts.
+**Logical independence doesn't always imply physical independence.**
 
-Let's compare how several languages expose them.
+## 16. The same principles across languages
 
-## 16.1 Rust
+Now let's compare how several languages express these ideas.
 
-Rust provides atomic types and explicit memory-ordering choices.
+The mechanisms are broadly similar, but the language contracts are different.
 
-A developer can use relaxed, acquire, release, acquire-release, or sequentially consistent ordering where supported by the operation.
+### Rust
 
-Rust also offers mutexes, channels, and other synchronization tools.
+Rust's ownership and borrowing system prevents many unsafe sharing patterns in safe code.
 
-Its ownership and borrowing system prevents many unsafe aliasing patterns in ordinary safe code.
+Its `Send` and `Sync` traits participate in the rules governing values transferred or shared across threads.
 
-Safe Rust is designed to prevent data races.
+Rust provides mutexes, channels, and atomic types.
 
-But logical race conditions, deadlocks, and incorrect synchronization protocols can still exist.
+Its atomics support ordering choices such as Relaxed, Acquire, Release, AcqRel, and SeqCst.
 
-In particular, memory safety is not the same as business correctness.
+Safe Rust aims to prevent memory data races.
 
-## 16.2 Java
+But it cannot prevent every logical race, deadlock, capacity problem, or business invariant violation.
 
-Java has a formal memory model that defines happens-before relationships.
+A Rust service can still double-book a hotel if its database workflow is incorrect.
 
-A write to a `volatile` field has synchronization effects with subsequent reads of that field under the language's rules.
+### Java
 
-Monitor unlock and subsequent lock operations also establish ordering relationships.
+Java has a defined memory model governing shared variables and synchronization.
 
-Java offers atomic variable classes, synchronized blocks, locks, condition variables, and higher-level concurrency utilities.
+The `synchronized` construct provides monitor-based mutual exclusion and relevant happens-before relationships.
 
-The JVM must implement these language-level guarantees on the underlying hardware.
+A write to a `volatile` field can synchronize with subsequent reads of that field under the memory model's rules.
 
-But marking every field `volatile` isn't a replacement for protecting a complex invariant.
+Java also provides atomic classes and higher-level concurrency utilities.
 
-An atomic field update doesn't automatically make a multi-field business operation atomic.
+But `volatile` doesn't magically turn a multi-statement workflow into a transaction.
 
-## 16.3 Go
+If several fields must form one consistent snapshot, their update and publication protocol still matters.
 
-Go's memory model defines synchronization relationships for goroutines.
+### Go
 
-The `sync` and `sync/atomic` packages provide relevant synchronization primitives.
+Go supports goroutines, mutexes, channels, and atomic operations.
 
-Go's atomic operations have sequentially consistent semantics under its documented memory model.
+Its memory model specifies synchronization relationships.
 
-Channel sends and receives can also establish synchronization relationships.
+Channel sends and corresponding receives can establish happens-before guarantees.
 
-This is particularly useful because Go encourages communication through channels for many concurrent designs.
+The `sync/atomic` operations provide sequentially consistent atomic behavior under Go's specified semantics.
 
-But goroutines can still have data races.
+Go's documentation strongly encourages programs to avoid unsynchronized shared-memory races.
 
-Go's race detector can identify many such bugs during testing.
+The common engineering advice is useful: share memory through communication where appropriate, rather than making every goroutine coordinate mutable state directly.
 
-And channels themselves don't guarantee that the surrounding application logic is correct.
+But channels and goroutines don't eliminate deadlocks or business-level races.
 
-## 16.4 JavaScript
+### JavaScript
 
-JavaScript worker threads can communicate through messages or appropriate shared memory.
+JavaScript's ordinary main-thread execution model often avoids simultaneous access to the same JavaScript object from independent JavaScript threads.
 
-With `SharedArrayBuffer`, workers may access common memory through typed-array views.
+Node.js worker threads introduce additional execution environments.
 
-The `Atomics` API supplies sequentially consistent atomic operations.
+Explicitly shared binary memory through `SharedArrayBuffer` can be accessed from multiple workers.
 
-It includes loads, stores, arithmetic updates, compare-and-exchange, and waiting/notification operations for appropriate types and contexts.
+The `Atomics` API provides sequentially consistent atomic operations for supported typed-array elements.
 
-JavaScript doesn't expose the weaker memory-ordering options available in Rust and C++.
+Message passing provides another communication model.
 
-But its atomic APIs still require correct protocol design.
+As in other languages, a correct atomic access doesn't automatically establish an entire application-level invariant.
 
-A ready flag must represent an actual completed publication.
+The correct question remains: which state is shared, and what synchronization contract protects it?
 
-A shared counter doesn't protect unrelated business state.
+## 17. Message passing: sometimes the best shared memory is none
 
-And an `Atomics` operation doesn't coordinate a PostgreSQL transaction.
+Our pricing engine originally chose shared memory to avoid copying results.
 
-## 16.5 Different syntax, same engineering questions
+That can be justified for large data structures or high-throughput computation.
 
-Across all four languages, the meaningful questions remain stable.
+But shared mutable memory introduces substantial coordination complexity.
 
-What memory is shared?
-
-Who is allowed to modify it?
-
-Which operations are atomic?
-
-What synchronization establishes ordering?
-
-What prevents readers from observing partially updated state?
-
-What happens when a thread waits?
-
-Can the design deadlock, starve, or contend excessively?
-
-These are language-independent engineering questions.
-
-The language determines which answers can be enforced statically and which mechanisms are available at runtime.
-
----
-
-# 17. When Message Passing Is Better Than Shared Memory
-
-Now imagine the engineering team reconsiders the architecture.
-
-Instead of having workers directly modify one shared pricing snapshot, each worker calculates a result independently and sends a message to the main thread.
+What if each worker simply calculates its result and sends a message to the main thread?
 
 The main thread receives the result and updates its own state.
 
-This is **message passing**.
+Now each worker can own its working data until publication.
 
-It changes the ownership relationship.
+The main thread owns the final application-facing state.
 
-Rather than multiple threads reading and writing the same shared object, each worker communicates explicit results across a boundary.
+The communication boundary is explicit.
 
-## 17.1 Why message passing is easier to reason about
+### Advantages
 
-Imagine our worker calculates a hotel price.
+Message passing can reduce shared mutable state.
 
-When finished, it sends the result to the main thread.
+It makes ownership easier to understand.
 
-The receiver processes that result.
+It can provide clearer task lifetimes and error-handling boundaries.
 
-If the message transfers or clones the relevant data under the API's semantics, we can avoid many shared-mutable-state concerns.
+The programmer reasons about complete messages rather than partially updated memory regions.
 
-The worker and main thread don't need to coordinate concurrent writes to the same object.
+### Costs
 
-This can substantially simplify correctness reasoning.
+Messages may require serialization, structured cloning, copying, or transfer of ownership, depending on the API.
 
-## 17.2 Message passing still has costs
+Large data structures can introduce overhead.
 
-Messages may require serialization, copying, ownership transfer, or queueing.
+Communication queues need capacity control.
 
-Large data transfers can be expensive.
+Messages can arrive in surprising orders.
 
-Queues have finite capacity.
+If several workers produce versions of the same logical entity, the receiver still needs rules determining which version is authoritative.
 
-A receiver may become overloaded.
+Message passing is not a universal correctness guarantee.
 
-A message may arrive after the requesting operation has been cancelled.
+It is often a useful way to simplify ownership and synchronization.
 
-Ordering guarantees depend on the messaging mechanism.
+### The design choice
 
-So message passing doesn't eliminate concurrency design.
+Use shared memory when the workload benefits significantly from low-overhead access and the team can maintain a correct protocol.
 
-It changes the kinds of problems we need to solve.
+Use message passing when explicit ownership and manageable communication overhead make the system easier to understand.
 
-## 17.3 The right choice
+For many application-level workloads, clarity is worth more than avoiding every memory copy.
 
-For a CPU-heavy Node.js worker returning one relatively small result, message passing may be the simplest approach.
+## 18. Why atomics don't prevent double booking
 
-For a large shared numerical buffer that many workers need to read efficiently, shared memory may be attractive.
+We began this course with a booking race.
 
-The choice depends on throughput requirements, data size, update frequency, ownership complexity, and the team's ability to maintain the synchronization protocol.
+Let's close the conceptual loop.
 
-The useful default is:
+Suppose our pricing worker has a perfectly synchronized shared-memory inventory counter.
 
-**Prefer clear ownership and simple communication. Introduce shared mutable memory when the measured benefit justifies its additional complexity.**
-
----
-
-# 18. Why Atomics Don't Prevent Double Booking
-
-Now let's connect the whole lecture to the booking system.
-
-Imagine our shared-memory inventory counter is atomic.
-
-The available-room count begins at one.
-
-Two threads attempt to decrement it.
-
-A carefully designed compare-and-exchange loop can ensure that only one in-process claim succeeds when the count is one.
+All increments and decrements are atomic.
 
 Excellent.
 
-But what if the actual inventory is stored in PostgreSQL and accessed by several independent backend processes?
+Now imagine the booking platform runs five backend replicas.
 
-Their local atomic counters don't automatically represent one shared authoritative value.
+Each replica has its own processes and its own memory.
 
-Each process has its own memory.
+The authoritative inventory is stored in PostgreSQL.
 
-A Node.js `SharedArrayBuffer` shared between workers in one process doesn't turn into a distributed atomic variable across independent servers.
+Does a correct atomic counter inside one Node.js process prevent the entire system from overselling?
 
-Our problem has moved to another boundary.
+No.
 
-## 18.1 Three different atomicity domains
+The atomics protect local shared memory.
 
-First, there's **atomic memory access**.
+They don't automatically coordinate independent processes across machines.
 
-A single atomic operation updates a shared memory location according to the language and hardware model.
+A database transaction or another appropriate durable coordination mechanism must protect the actual booking invariant.
 
-Second, there's **local synchronization**.
+There are therefore several distinct correctness boundaries.
 
-Mutexes and other mechanisms can protect complex in-process state transitions.
+**Memory atomicity:** an operation on shared memory is indivisible under the language memory model.
 
-Third, there's **authoritative transactional state**.
+**Application-state consistency:** a collection of local state changes respects its required invariant.
 
-A database transaction or equivalent mechanism can enforce invariants across concurrent application instances.
+**Distributed business correctness:** operations across services, databases, and external systems preserve the intended business contract.
 
-These are related concepts.
+Success at one boundary doesn't imply success at the others.
 
-But they aren't interchangeable implementations of one universal guarantee.
+This is why technology names are not answers.
 
-## 18.2 The application-level invariant
+"Use Rust."
 
-Suppose our booking service must never confirm more reservations than available inventory.
+"Use atomics."
 
-That invariant needs enforcement at the authoritative inventory boundary.
+"Use a mutex."
 
-A database atomic conditional update, appropriate constraint, transaction isolation strategy, or equivalent coordinated mechanism may be required.
+"Use Redis."
 
-An in-process mutex can help coordinate local workers.
+None of these statements explains what state is being protected, which participants can modify it, or what failure model must be handled.
 
-But it doesn't protect against another process accessing the same database.
+A correct design starts with the invariant and its actual ownership boundary.
 
-Likewise, a database transaction doesn't automatically protect arbitrary unsynchronized memory accesses inside one process.
+## 19. Diagnosing our pricing-snapshot failure
 
-Correct systems use the appropriate mechanism at each boundary.
+We now have a systematic investigation method.
 
----
+Our pricing workers publish snapshots through shared memory.
 
-# 19. Diagnosing a Real Shared-Memory Failure
+The main thread occasionally observes inconsistent data.
 
-Let's return to the original pricing snapshot.
+First, identify exactly what is shared.
 
-The worker writes data and sets `ready`.
+Is there a `SharedArrayBuffer`?
 
-The main thread occasionally reports inconsistent snapshots.
+Are there multiple typed-array views over the same bytes?
 
-What should we investigate?
+Are ordinary objects transferred or cloned instead?
 
-## 19.1 Identify actual sharing
+Does a native addon participate?
 
-First, establish how data is shared.
+Second, list the writers and readers.
 
-Is it a `SharedArrayBuffer`?
-
-Is it a message-passing result?
-
-Are several workers modifying one typed array?
-
-Is the application using a native addon with shared state?
-
-We need to know what memory is actually accessible concurrently.
-
-## 19.2 Identify every reader and writer
-
-Next, list the operations.
-
-Which thread writes the price?
+Which thread writes the hotel identifier?
 
 Which writes the inventory count?
 
-Which updates the ready flag?
+Which publishes the price?
 
-Does any thread reuse the snapshot while another thread is reading it?
+Who sets the ready flag?
 
-Could the writer begin the next update before the reader finishes the previous one?
+Can multiple workers write the same snapshot?
 
-A protocol may publish the initial snapshot correctly and still fail during reuse.
+Third, examine the synchronization operations.
 
-That's a common source of subtle errors.
+Are the accesses atomic where required?
 
-## 19.3 Check the synchronization contract
+Does the publication step establish the necessary ordering?
 
-Are the shared accesses atomic where required?
+Does the reader actually observe the correct publication event?
 
-What ordering does the language guarantee?
+Fourth, examine lifecycle and reuse.
 
-Does the reader observe a signal that actually synchronizes with the writer's publication?
+Is the producer modifying the snapshot again before the consumer finishes reading it?
 
-Is the data stable after publication?
+Does the reader have an ownership claim or a consistent versioning protocol?
 
-Are readers and writers using the same lock or compatible atomic protocol?
+Fifth, reduce the failure to a controlled experiment.
 
-Do not assume source-code order alone answers these questions.
+Instead of relying on thousands of random runs, force the producer and consumer to reach the relevant boundary at specific times.
 
-## 19.4 Reduce the reproduction
+A deterministic barrier can expose a particular invalid interleaving.
 
-Create a minimal test containing only the shared state and participating workers.
+For native code, use suitable race-detection tools where available.
 
-Remove the database, network calls, business logic, and unrelated application code.
+For JavaScript shared memory, construct targeted tests that exercise the actual ownership and publication contract.
 
-Now test the publication protocol directly.
+### The incident's resolution
 
-If the reduced program still fails, we have isolated the shared-memory mechanism.
+Suppose we discover that the ready flag was updated atomically, but the writer immediately reused the same buffer for the next result.
 
-But remember: failing to reproduce a race doesn't prove that the program is correct.
+The consumer sometimes read fields after the next update began.
 
-A rare concurrency bug may require an unusual execution schedule.
+The atomic flag worked.
 
-Repeated successful tests are useful evidence, but they aren't a substitute for a valid synchronization design.
+The protocol did not.
 
-## 19.5 Use the right tools
+We can fix this by using a mutex around the complete snapshot, a carefully designed versioned buffer protocol, or message passing that transfers a completed result without concurrent mutation.
 
-In Rust, compiler checks and appropriate concurrency testing tools can identify certain unsafe patterns.
+The best choice depends on performance requirements.
 
-In Go, race detection can reveal many concurrent-access bugs.
+But the diagnosis is now precise.
 
-In Java, concurrency-specific tests and runtime diagnostics can help.
+We didn't merely have "a race somewhere."
 
-In Node.js, worker-thread tests with deliberately varied scheduling can exercise the shared-memory protocol.
+We had a shared-memory ownership protocol that allowed a writer to mutate data while a reader assumed it was stable.
 
-But different tools offer different guarantees.
-
-A race detector may miss an execution path.
-
-A stress test may never encounter the relevant interleaving.
-
-And a program can be race-free while still containing a logical deadlock or incorrect business transition.
-
-The strongest evidence combines appropriate tools with a clear argument about the synchronization relationships.
+That's an actionable explanation.
 
 ---
 
-# 20. The Incident, Resolved
+# The Oral Examination
 
-Our investigation reveals that the pricing snapshot used ordinary shared-memory writes and a plain readiness field without an adequate synchronization protocol.
+Answer aloud before reading the solutions. These questions are designed to distinguish memorized terminology from actual understanding.
 
-The worker wrote the fields in the intended source-code order.
+**Question 1 — The lost increment**
 
-The reader checked readiness as intended.
+Two threads each execute `counter = counter + 1` one thousand times. Why might the final counter be smaller than two thousand?
 
-But the program didn't establish the required cross-thread guarantees.
+**Question 2 — The ready flag**
 
-The team replaces the protocol.
+A worker writes three ordinary fields and sets a ready flag. Another thread sees the flag. Why is the publication protocol incomplete unless appropriate synchronization and data ownership rules are established?
 
-For a simple one-time result, it uses atomic shared-memory operations with defined ordering.
+**Question 3 — Atomicity versus snapshot consistency**
 
-For more complicated mutable records, it adopts clearer ownership and controlled synchronization.
+Every field of a six-field snapshot is individually atomic. Can a reader still observe a mixture of two different logical versions?
 
-It also establishes a rule:
+**Question 4 — Release and acquire**
 
-Once a snapshot is published, the writer cannot overwrite it until the consumer has acknowledged completion or the protocol has safely transferred ownership to another buffer.
+Explain what relationship is established when an acquire load observes the value published by a matching release store. Why does this matter for preceding data writes?
 
-This prevents a second class of bug involving snapshot reuse.
+**Question 5 — Relaxed ordering**
 
-The team then tests the design under concurrent workloads.
+When might a relaxed atomic increment be appropriate? Why shouldn't a relaxed counter automatically be used as a publication flag for unrelated data?
 
-The results are stable.
+**Question 6 — The condition variable**
 
-But more importantly, the team can explain **why** the protocol is correct under the language's memory model.
+A consumer waits for a queue to become nonempty. Why must waiting release the mutex, and why must the condition be checked again after waking?
 
-That's the real improvement.
+**Question 7 — The deadlock**
 
-The goal isn't merely to find a configuration that appears to work.
+Worker A holds lock X and waits for Y. Worker B holds Y and waits for X. Which design rule can prevent this particular cycle?
 
-It's to build a concurrency design whose correctness doesn't depend on lucky timing.
+**Question 8 — Compare-and-swap**
 
----
+What does CAS guarantee? Explain how the ABA problem can defeat an algorithm that assumes an unchanged value means unchanged history.
 
-# 21. The Senior Engineer's Shared-Memory Checklist
+**Question 9 — False sharing**
 
-When reviewing concurrent code, begin with ownership.
+Two threads update different counters, yet performance degrades because the counters occupy one cache line. Is this necessarily a data race? What's the hardware mechanism?
 
-Who owns the data?
+**Question 10 — The distributed boundary**
 
-Who can read it?
-
-Who can change it?
-
-Then identify synchronization.
-
-Which operations coordinate access?
-
-Which are atomic?
-
-Which establish happens-before relationships?
-
-Next, identify the protected invariant.
-
-Is it one counter?
-
-A multi-field snapshot?
-
-A queue?
-
-A cache?
-
-A state machine?
-
-Make sure the synchronization boundary protects the actual invariant, not merely individual fields.
-
-Then examine progress and performance.
-
-Could the design deadlock?
-
-Could it starve one participant?
-
-Are threads spinning unnecessarily?
-
-Is lock contention significant?
-
-Does memory layout create false sharing?
-
-Finally, establish the system boundary.
-
-Does the invariant belong entirely inside one process?
-
-Or must it be enforced across databases, services, or machines?
-
-That last question prevents a particularly dangerous mistake: using the correct synchronization mechanism at the wrong scope.
+Why doesn't a perfect atomic counter inside a Node.js worker prevent double booking across several backend replicas using PostgreSQL?
 
 ---
 
-# 22. The Oral Examination
+# Solutions and Discussion
 
-Answer these questions aloud before reading the solutions.
+## Solution 1 — Read, modify, write can interleave
 
-### Challenge A — The Lost Increment
+The increment involves reading the old value, computing a replacement, and storing it.
 
-Two threads each execute `counter = counter + 1` on the same ordinary shared variable.
+Two threads can read the same old value and both write the same new value.
 
-Both intend to increment the counter once.
+One increment is effectively lost.
 
-Why can the final count be smaller than expected?
+An appropriate atomic read-modify-write operation prevents this particular lost-update problem.
 
-Which atomic operation would be appropriate for a simple shared counter?
+## Solution 2 — A flag needs a synchronization contract
 
-### Challenge B — The Ready Flag
+The reader must use an appropriate synchronization mechanism to establish that preceding writes have been published safely.
 
-A worker writes a booking snapshot and then sets a plain shared `ready` flag.
+The writer must also avoid conflicting mutation while the reader uses the data.
 
-A reader waits until the flag is true and then reads the snapshot.
+Atomicity of the flag alone does not make the entire snapshot stable.
 
-Why isn't this automatically a safe publication protocol?
+## Solution 3 — Individual atomics don't create a multi-field transaction
 
-Explain the role of atomicity, ordering, and the relevant synchronization relationship.
+Yes.
 
-### Challenge C — Relaxed Atomics
+A reader may see some fields from one update and others from a later update if the protocol permits concurrent modification.
 
-Several Rust threads increment one atomic statistics counter.
+Protect the entire invariant using a mutex or a correctly designed publication/versioning mechanism.
 
-The counter doesn't publish any other data.
+## Solution 4 — Happens-before through synchronization
 
-Could relaxed atomic increments be appropriate?
+An appropriate release store and corresponding acquire load can establish a synchronizes-with relationship when the acquire observes the published value.
 
-Why would relaxed ordering be insufficient for a flag intended to publish an accompanying ordinary data structure?
+That orders preceding producer writes before subsequent consumer reads according to the language model.
 
-### Challenge D — Release and Acquire
+The surrounding shared-data protocol must still avoid conflicting unsynchronized mutation.
 
-A writer prepares data and performs a release store to a flag.
+## Solution 5 — Atomic counting without publication
 
-A reader performs an acquire load and observes the value written by that release.
+Relaxed ordering can be suitable for an independent statistics counter when we need accurate atomic updates but don't use the counter to publish other state.
 
-What relationship is established?
+A publication protocol requires appropriate synchronization of the data being announced, not merely an atomic numeric update.
 
-What additional ownership rule is needed if the writer wants to modify the data again?
+## Solution 6 — Release the lock and recheck the predicate
 
-### Challenge E — JavaScript Atomics
+The wait must release the mutex so producers can acquire it and change the protected state.
 
-A developer wants to use `Atomics.store` with an explicit release-order parameter because they read about it in a Rust tutorial.
+After waking, the consumer reacquires the mutex and checks the condition again.
 
-Does JavaScript expose that choice?
+Another consumer may have taken the work, or a permitted spurious wakeup may have occurred.
 
-What ordering semantics do JavaScript atomic operations use?
+Notification is not equivalent to the predicate being true.
 
-### Challenge F — The Mutex That Doesn't Protect the Invariant
+## Solution 7 — Consistent lock ordering
 
-A booking snapshot has two fields that must be observed consistently.
+Establish a global order for acquiring the relevant locks.
 
-Each field has its own mutex.
+For example, always acquire X before Y.
 
-The reader locks and reads the first field, releases that lock, then locks and reads the second field.
+If every participating code path follows that rule, this particular circular-wait pattern cannot occur.
 
-Can it still observe an inconsistent combined snapshot?
+## Solution 8 — CAS compares the current value, not its history
 
-How would you redesign the synchronization boundary?
+CAS atomically replaces a value only if it matches the expected value.
 
-### Challenge G — Deadlock
+But another thread could change A to B and back to A before the comparison.
 
-Thread A acquires mutex X and then attempts mutex Y.
+The value matches, yet the object or structure may have changed in a meaningful way.
 
-Thread B acquires mutex Y and then attempts mutex X.
+Version tags and other specialized techniques can address ABA when necessary.
 
-Both threads become blocked.
+## Solution 9 — False sharing is hardware contention
 
-What happened?
+Not necessarily a data race.
 
-Name one common design rule that reduces this risk.
+The variables may be independently owned or correctly atomic.
 
-### Challenge H — Compare-and-Swap and ABA
+But writes to different values occupying the same cache line can require cache-coherence coordination between processors.
 
-A thread reads a shared pointer value A.
+That can reduce throughput despite logical independence.
 
-Another thread changes it to B and later back to A.
+## Solution 10 — The wrong synchronization scope
 
-The first thread performs a successful compare-and-swap expecting A.
+Local atomics coordinate shared memory accessible to the participating threads.
 
-Why doesn't success prove that the underlying object or state remained unchanged during the interval?
+Independent backend replicas don't automatically share that atomic location.
 
-### Challenge I — False Sharing
-
-Eight threads update eight different counters.
-
-No logical counter is shared between writers.
-
-Yet throughput is poor.
-
-How can physical memory layout still create contention?
-
-What design change might help?
-
-### Challenge J — Local Versus Distributed Atomicity
-
-A Node.js application uses an atomic inventory counter shared among worker threads.
-
-Two independent backend instances access the same PostgreSQL reservation inventory.
-
-Can the in-process atomic counter guarantee that the hotel won't be double-booked?
-
-Where must the global invariant be enforced?
+The authoritative inventory invariant must be enforced through the database or another appropriate durable coordination mechanism.
 
 ---
 
-# 23. Solutions and Discussion
+# The Mental Model Worth Keeping
 
-*Read this section after answering out loud. The practical lab appears after the spoken lecture ends.*
+When several threads access shared state, ask four questions:
 
-### Solution A — The Lost Increment
+**Ownership:** Who may read or modify the data at each point in its lifetime?
 
-The source expression conceptually consists of a read, calculation, and write.
+**Atomicity:** Which operations must be indivisible?
 
-Another thread may interleave its own operations.
+**Ordering:** What synchronization establishes that writes are safe for another thread to observe?
 
-Both may read the same old value and write the same incremented result.
+**Scope:** Does the mechanism protect the actual state and participants involved in the invariant?
 
-An appropriate atomic read-modify-write operation, such as `Atomics.add` in JavaScript or `fetch_add` in Rust, prevents that simple lost-update pattern for the atomic location.
+An atomic variable is a building block. A mutex is a coordination mechanism. A correct concurrency protocol defines how all participants use them.
 
-### Solution B — The Ready Flag
+**Thread safety is not the presence of atomics or locks. It is the preservation of the required invariants under every execution ordering the system permits.**
 
-A plain shared flag may lack the atomicity and ordering properties needed for safe publication.
+# Next Lecture — Operating-System and Runtime Forensics
 
-Correctness requires an appropriate synchronization protocol connecting the writer's data preparation to the reader's observation.
+We've studied processes, scheduling, memory, I/O, application concurrency, and shared-memory synchronization.
 
-The reader must also avoid accessing the snapshot while the writer is concurrently modifying it without coordination.
+Now imagine a production service that begins accumulating open sockets.
 
-### Solution C — Relaxed Atomics
+Retries increase.
 
-Relaxed ordering can be appropriate for a counter whose individual updates must be atomic but which doesn't communicate the state of unrelated data.
+Memory usage rises.
 
-A publication flag needs stronger synchronization semantics if the reader is supposed to rely on earlier writes to another data structure.
+Latency deteriorates.
 
-A relaxed flag doesn't, by itself, establish the required release/acquire relationship.
+The CPU dashboard looks healthy.
 
-### Solution D — Release/Acquire Handoff
+Then containers begin restarting.
 
-When the reader's acquire observes the corresponding release under the relevant model, a synchronization relationship is established.
+Which symptom is the cause?
 
-Earlier writes ordered before the release become appropriately visible to the reader's subsequent accesses.
+Which is merely a consequence?
 
-But the writer must not concurrently modify the data again while the reader accesses it without additional synchronization.
+And which measurement will distinguish the competing explanations?
 
-The publication protocol needs a clear ownership or reuse rule.
+In CS320-L08, we'll bring the entire course together through one production incident. We'll follow the evidence through operating-system and runtime boundaries, identify the first broken contract, and build a defensible remediation.
 
-### Solution E — JavaScript Ordering
-
-JavaScript's `Atomics` API doesn't expose separate relaxed, acquire, or release ordering parameters.
-
-Its atomic operations have sequentially consistent semantics.
-
-The developer should use the provided API and design the appropriate protocol rather than attempting to transfer Rust syntax directly.
-
-### Solution F — Protect the Whole Snapshot
-
-Even though both field accesses use mutexes, they occur at different moments.
-
-Another thread may update the state between the two reads.
-
-The reader can observe fields from different logical versions.
-
-A better design protects the related state under a coherent synchronization boundary, or uses an appropriately designed versioned snapshot protocol.
-
-### Solution G — Deadlock
-
-The threads have formed a circular wait.
-
-Each holds a lock needed by the other.
-
-One common prevention strategy is a globally consistent lock-acquisition order.
-
-Both code paths should acquire X before Y, rather than using opposite orders.
-
-### Solution H — ABA
-
-CAS verifies the relevant expected-value comparison at the atomic operation.
-
-It doesn't establish that the value remained unchanged throughout the earlier interval.
-
-The value may have changed away from A and then back.
-
-For pointer-based structures, this can create correctness and memory-reclamation problems.
-
-Versioning or suitable specialized algorithms may be required.
-
-### Solution I — False Sharing
-
-The independent counters may occupy the same cache line.
-
-Repeated writes from different cores can create cache-coherence traffic even though the variables are logically unrelated.
-
-Separating frequently written per-thread counters, or accumulating locally and combining less often, may reduce the cost.
-
-The change should be measured rather than assumed beneficial.
-
-### Solution J — The Wrong Scope
-
-The atomic counter protects a memory location shared within the relevant process.
-
-It doesn't coordinate independent backend instances or guarantee authoritative database inventory.
-
-The global booking invariant must be enforced at the appropriate shared-state boundary, typically through atomic database operations, constraints, or transactions with suitable isolation and retry behavior.
+*The spoken lecture ends here. The remaining material is for practical investigation and screen-based revision.*
 
 ---
 
-# 24. The Mental Model Worth Keeping
+# Optional Practical Lab — Shared Memory Without Guesswork
 
-Threads can execute simultaneously while sharing memory.
+These experiments are designed for Node.js 20 or newer and a local development machine.
 
-That makes communication efficient, but it creates responsibilities.
+They are not intended for production systems.
 
-**Atomicity** determines whether an operation is indivisible under the memory model.
+## Lab A — Demonstrate lost updates and atomic increments
 
-**Visibility** concerns which writes another thread may observe.
-
-**Ordering** defines relationships among memory operations.
-
-**Happens-before** expresses the ordering guarantees that allow cross-thread reasoning.
-
-**Relaxed atomics** provide atomic access without broader publication ordering.
-
-**Release/acquire synchronization** can establish a safe handoff when the acquire observes the appropriate release.
-
-**Sequential consistency** provides stronger ordering guarantees for atomic operations.
-
-**Mutexes** protect shared state through mutual exclusion and synchronization.
-
-**Condition variables** allow threads to wait for predicates while coordinating lock release and reacquisition.
-
-**Compare-and-swap** supports conditional atomic updates.
-
-**Deadlock** arises when participants wait in a cycle that prevents progress.
-
-**Lock-free algorithms** provide particular progress guarantees, not universal performance superiority.
-
-**False sharing** creates hardware contention between logically independent variables occupying common cache lines.
-
-And **message passing** can eliminate entire classes of shared-mutable-state problems by giving information clearer ownership boundaries.
-
-The five questions worth keeping are:
-
-1. What memory is shared?
-2. Which accesses may occur concurrently?
-3. What atomicity and ordering guarantees exist?
-4. Which synchronization protects the actual invariant?
-5. Does that invariant live inside one process or across independent systems?
-
-The deepest principle is:
-
-**A correct concurrent program needs more than the right instructions. It needs a justified relationship between what each participant does and what the others are allowed to observe.**
-
----
-
-# 25. Next Lecture — Operating-System and Runtime Forensics
-
-We've now studied processes, scheduling, virtual memory, system calls, asynchronous I/O, threads, and memory ordering.
-
-Each mechanism introduces its own failure modes.
-
-A thread may be runnable but unable to obtain CPU time.
-
-A process may be killed by a memory-cgroup limit despite free host RAM.
-
-A filesystem operation may block an event loop or queue behind a saturated worker pool.
-
-A shared-memory program may use an incorrect publication protocol.
-
-But production incidents rarely arrive with labels naming the mechanism responsible.
-
-Instead, they arrive as symptoms.
-
-Latency spikes.
-
-Memory growth.
-
-Disappearing workers.
-
-Failed connections.
-
-Exhausted descriptors.
-
-And logs that seem to contradict the infrastructure dashboard.
-
-In **CS320-L08 — Operating-System and Runtime Forensics**, we'll bring the entire course together.
-
-We'll investigate a production service with several competing symptoms, reconstruct the timeline, and decide which evidence can distinguish one failure mechanism from another.
-
-The final skill isn't remembering every Linux command.
-
-It's knowing what question to ask next.
-
----
-
-## Optional Practical Lab — Shared Memory Without Guesswork
-
-*The spoken lecture ends here. The following experiments are for on-screen execution and investigation. Some involve intentionally incorrect synchronization to demonstrate failure modes. Run them only in isolated development environments.*
-
-### Lab A — A Shared Counter in Node.js
-
-Create a Node.js experiment with several worker threads incrementing a counter inside a `SharedArrayBuffer`.
-
-Use an `Int32Array` view.
-
-First, use an ordinary increment expression.
-
-Then repeat with `Atomics.add`.
-
-Compare the results.
-
-An illustrative worker-side operation is:
+Create a file named `shared-counter.mjs`:
 
 ```javascript
-// Ordinary shared-memory update:
-shared[0] = shared[0] + 1;
-
-// Atomic alternative:
-Atomics.add(shared, 0, 1);
-```
-
-The ordinary version performs a non-atomic read-modify-write and has no guarantee of preserving every concurrent increment.
-
-The atomic version provides an indivisible read-modify-write operation.
-
-Note that an incorrect concurrent program may appear to work in some runs.
-
-A successful result isn't proof of synchronization correctness.
-
-### Lab B — A Correct One-Time Publication in Node.js
-
-The following CommonJS example creates one worker and two shared integer slots.
-
-Slot zero holds the payload.
-
-Slot one holds the ready flag.
-
-The main thread publishes the payload and notifies the worker.
-
-```javascript
-// publication.js
-const {
+import {
   Worker,
   isMainThread,
   parentPort,
-  workerData,
-} = require("node:worker_threads");
+  workerData
+} from "node:worker_threads";
+
+const WORKERS = 4;
+const INCREMENTS = 200_000;
 
 if (isMainThread) {
-  const sharedBuffer = new SharedArrayBuffer(
-    Int32Array.BYTES_PER_ELEMENT * 2
+  const buffer = new SharedArrayBuffer(4);
+  const counter = new Int32Array(buffer);
+
+  async function run(useAtomics) {
+    Atomics.store(counter, 0, 0);
+
+    await Promise.all(
+      Array.from({ length: WORKERS }, () =>
+        new Promise((resolve, reject) => {
+          const worker = new Worker(
+            new URL(import.meta.url),
+            {
+              workerData: {
+                buffer,
+                increments: INCREMENTS,
+                useAtomics
+              }
+            }
+          );
+
+          worker.once("message", resolve);
+          worker.once("error", reject);
+          worker.once("exit", code => {
+            if (code !== 0) {
+              reject(new Error(`Worker exited: ${code}`));
+            }
+          });
+        })
+      )
+    );
+
+    return Atomics.load(counter, 0);
+  }
+
+  console.log("Expected:", WORKERS * INCREMENTS);
+  console.log("Non-atomic:", await run(false));
+  console.log("Atomic:", await run(true));
+} else {
+  const {
+    buffer,
+    increments,
+    useAtomics
+  } = workerData;
+
+  const counter = new Int32Array(buffer);
+
+  for (let i = 0; i < increments; i++) {
+    if (useAtomics) {
+      Atomics.add(counter, 0, 1);
+    } else {
+      counter[0] = counter[0] + 1;
+    }
+  }
+
+  parentPort.postMessage("done");
+}
+```
+
+The non-atomic result may be smaller than the expected count, but the exact result is nondeterministic. A particular run isn't guaranteed to exhibit a lost update.
+
+The atomic version should account for all increments, provided no other operation modifies the counter and the numerical range remains appropriate.
+
+**Questions:** Why is the ordinary increment unsafe? Why does `Atomics.add` protect this particular update? Would atomic increments of two separate fields automatically protect an invariant between them?
+
+## Lab B — Publish a snapshot through shared memory
+
+Create `snapshot.mjs`:
+
+```javascript
+import {
+  Worker,
+  isMainThread,
+  parentPort,
+  workerData
+} from "node:worker_threads";
+
+const RESULT = 0;
+const READY = 1;
+
+if (isMainThread) {
+  const buffer = new SharedArrayBuffer(8);
+  const shared = new Int32Array(buffer);
+
+  const worker = new Worker(
+    new URL(import.meta.url),
+    { workerData: { buffer } }
   );
 
-  const shared = new Int32Array(sharedBuffer);
-
-  const worker = new Worker(__filename, {
-    workerData: sharedBuffer,
+  worker.once("message", () => {
+    console.log("Ready:", Atomics.load(shared, READY));
+    console.log("Result:", Atomics.load(shared, RESULT));
   });
 
-  worker.on("message", (message) => {
-    console.log("Worker received:", message);
-  });
-
-  worker.on("error", console.error);
-
-  worker.on("online", () => {
-    Atomics.store(shared, 0, 42);
-    Atomics.store(shared, 1, 1);
-    Atomics.notify(shared, 1, 1);
-  });
+  worker.once("error", console.error);
 } else {
-  const shared = new Int32Array(workerData);
+  const shared = new Int32Array(workerData.buffer);
 
-  // Wait while ready is still zero.
-  Atomics.wait(shared, 1, 0);
+  Atomics.store(shared, RESULT, 42);
+  Atomics.store(shared, READY, 1);
 
-  const ready = Atomics.load(shared, 1);
-  const payload = Atomics.load(shared, 0);
-
-  parentPort.postMessage({ ready, payload });
+  parentPort.postMessage("published");
 }
 ```
 
-Run:
+The example performs one publication without modifying the result again.
 
-```bash
-node publication.js
-```
+Its atomic operations make the shared-memory ordering straightforward.
 
-Explain why the worker can safely observe the published payload.
+The message indicates that the worker has completed publication; it isn't being used as a substitute for the shared-memory protocol itself.
 
-Also explain why the design still needs a reuse protocol if the main thread intends to overwrite the same slots while the worker reads them.
+**Challenge:** What would need to change if the worker reused the same two slots for a continuous stream of new snapshots?
 
-### Lab C — Release and Acquire in Rust
+## Lab C — Waiting for a condition
 
-Rust provides explicit atomic memory-ordering choices.
+Consider a shared `Int32Array` location containing a ready flag.
 
-This example uses a relaxed atomic payload and a release/acquire flag.
+A worker may wait while that flag remains zero:
 
-The publication ordering makes the payload observation safe under the specified one-producer, one-consumer protocol.
-
-```rust
-use std::sync::atomic::{
-    AtomicBool,
-    AtomicUsize,
-    Ordering,
-};
-use std::thread;
-
-fn main() {
-    let payload = AtomicUsize::new(0);
-    let ready = AtomicBool::new(false);
-
-    thread::scope(|scope| {
-        scope.spawn(|| {
-            payload.store(42, Ordering::Relaxed);
-
-            ready.store(true, Ordering::Release);
-        });
-
-        while !ready.load(Ordering::Acquire) {
-            thread::yield_now();
-        }
-
-        assert_eq!(
-            payload.load(Ordering::Relaxed),
-            42
-        );
-    });
+```javascript
+while (Atomics.load(shared, READY) === 0) {
+  Atomics.wait(shared, READY, 0, 1000);
 }
 ```
 
-Explain why the release/acquire relationship on the ready flag is relevant to the payload.
+The producer can publish and notify:
 
-Then explain why changing both flag operations to relaxed ordering would remove the intended publication guarantee.
-
-Do not interpret the result as permission to use unsynchronized non-atomic shared memory arbitrarily.
-
-### Lab D — A Mutex-Protected Snapshot in Rust
-
-Create a small booking snapshot shared through an `Arc<Mutex<T>>`.
-
-One thread updates the snapshot.
-
-Another reads it only while holding the mutex.
-
-```rust
-use std::sync::{Arc, Mutex};
-use std::thread;
-
-#[derive(Debug)]
-struct Snapshot {
-    rooms: u32,
-    price_minor: u64,
-}
-
-fn main() {
-    let snapshot = Arc::new(Mutex::new(Snapshot {
-        rooms: 10,
-        price_minor: 15000,
-    }));
-
-    let writer_snapshot = Arc::clone(&snapshot);
-
-    let writer = thread::spawn(move || {
-        let mut data = writer_snapshot.lock().unwrap();
-
-        data.rooms = 9;
-        data.price_minor = 16500;
-    });
-
-    writer.join().unwrap();
-
-    let data = snapshot.lock().unwrap();
-
-    println!("{:?}", *data);
-}
+```javascript
+Atomics.store(shared, RESULT, 42);
+Atomics.store(shared, READY, 1);
+Atomics.notify(shared, READY, 1);
 ```
 
-Discuss what happens if multiple readers and writers run concurrently.
+Use blocking waits only in an execution context where they are appropriate.
 
-Then consider whether one mutex should protect the entire snapshot or whether separate locks would be safe for the invariant.
+Do not put an indefinite blocking wait on the main event-loop thread.
 
-### Lab E — A Deadlock Thought Experiment
+**Questions:** Why does the consumer check the condition in a loop? What happens if the producer updates the flag before the consumer begins waiting? Why is a notification not itself proof of a particular value?
 
-Design two threads and two mutexes.
+## Lab D — Diagnose a two-lock deadlock
 
-Thread A acquires lock X and then lock Y.
+Imagine this pseudocode:
 
-Thread B acquires lock Y and then lock X.
+```text
+Worker A:
+  acquire(snapshotLock)
+  acquire(statsLock)
+  update snapshot and statistics
+  release(statsLock)
+  release(snapshotLock)
 
-Draw the wait-for graph.
+Worker B:
+  acquire(statsLock)
+  acquire(snapshotLock)
+  read snapshot and statistics
+  release(snapshotLock)
+  release(statsLock)
+```
 
-Explain how the circular dependency forms.
+Do not execute this as an uncontrolled blocking experiment.
 
-Then redesign the code so both threads acquire locks in one globally consistent order.
+Instead, draw the wait-for relationships that arise when A acquires its first lock and B acquires its first lock before either attempts the second.
 
-You don't need to hang a real program to understand this failure mode.
+Then rewrite both operations using one consistent acquisition order.
 
-### Lab F — A Condition Variable
+**Question:** Why does a consistent lock order prevent this particular circular-wait pattern without necessarily eliminating all possible contention?
 
-Implement a producer-consumer queue using a mutex and condition variable in a language with well-supported threading primitives.
+## Lab E — Reason about the ABA problem
 
-The consumer must wait in a loop checking whether work is available.
+Consider one atomic state variable.
 
-The wait operation must release the associated mutex while sleeping and reacquire it before returning under the primitive's contract.
+Its value begins at 5.
 
-Explain why using a single `if` check instead of a loop can be incorrect.
+Thread A reads 5 and prepares a compare-and-exchange operation.
 
-Also explain why waiting while permanently holding the mutex would prevent the producer from adding work.
+Thread B changes the value to 9.
 
-### Lab G — Compare-and-Swap
+Thread B later changes it back to 5.
 
-Implement an atomic counter update using a compare-and-exchange loop in Rust, Java, Go, or another language with suitable atomic primitives.
+Thread A performs its conditional update expecting 5.
 
-The algorithm should:
+The comparison succeeds.
 
-1. Load the current value.
-2. Compute the desired value.
-3. Attempt compare-and-exchange.
-4. Retry after a failed comparison.
+**Challenge:** Under what assumptions would this be harmless? Under what assumptions would it violate correctness? Design a versioned state representation that distinguishes the original 5 from a new state that happens to contain the value 5.
 
-Measure how performance changes as more threads contend for the counter.
+## Lab F — False sharing investigation
 
-Explain why repeated CAS failures consume CPU without completing the desired operation.
+Design a benchmark with several worker threads, each updating a separate atomic counter.
 
-### Lab H — False Sharing
+In the first arrangement, counters occupy nearby locations in the same shared typed array.
 
-Create an experiment with multiple threads repeatedly incrementing separate counters.
+In the second, place frequently modified counters far enough apart to reduce the likelihood that they share a hardware cache line.
 
-Compare a representation where counters are closely packed with a representation designed to reduce cache-line sharing.
+Measure elapsed time over repeated runs.
 
-Measure performance under representative load.
+Control for worker creation overhead, CPU contention, JIT warmup, and variability.
 
-Avoid drawing conclusions from a single run.
+Do not assume the second layout must always be faster.
 
-Explain why logically independent variables can still compete through cache-coherence mechanisms.
+**Question:** Why can increasing the distance between independent counters improve performance without changing the number of arithmetic operations?
 
-### Lab I — Local and Distributed Invariants
+## Lab G — The senior engineering diagnosis
 
-Consider a hotel with one remaining room.
+You are given this hypothetical production evidence:
 
-First, design an in-process atomic counter protecting one worker pool.
+```text
+Service:
+  Node.js pricing engine with four worker threads
 
-Then imagine a second independent backend process accessing the same database inventory.
+Shared state:
+  SharedArrayBuffer containing:
+    hotelId
+    roomCount
+    price
+    readyFlag
 
-Explain why the local counter no longer protects the global state.
+Observation:
+  readyFlag is written through Atomics.store
+  readyFlag is read through Atomics.load
+  snapshot fields are updated repeatedly
+  consumers sometimes report mismatched field versions
 
-Propose an authoritative transactional design.
+Additional evidence:
+  writer begins next snapshot immediately after publishing
+  reader has no ownership acknowledgment
+  no snapshot-level mutex or versioning protocol exists
+```
 
-Compare the guarantees of the atomic counter and database operation.
+Prepare a diagnosis that answers:
 
-### Lab J — Review the Original Production Incident
+1. Which parts of the existing implementation are individually correct?
+2. Which guarantee is missing?
+3. Why doesn't sequential consistency of the flag solve the problem?
+4. How could a mutex protect the complete snapshot?
+5. How could a versioned handoff or message-passing design remove the conflicting access?
+6. What controlled test would prove the proposed fix?
 
-Our pricing engine uses worker threads and a shared snapshot.
-
-The writer publishes data.
-
-The reader observes a ready flag.
-
-Occasionally, the reader reports an inconsistent result.
-
-Prepare a technical diagnosis addressing:
-
-- The actual shared-memory layout.
-- Which threads read and write each location.
-- The atomicity of the accesses.
-- The publication ordering.
-- The possibility of concurrent reuse.
-- The validity of the ownership protocol.
-- A corrected synchronization design.
-- The smallest useful stress test.
-
-Your final answer should explain why the corrected protocol is sound, not merely why the test usually passes.
+The best answer should identify the ownership and publication protocol, not merely recommend "adding more atomics."
 
 ---
 
-## Further Reading — Optional Technical References
+# Further Reading
 
-1. [MDN — Atomics](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Atomics) — JavaScript atomic operations on shared typed arrays.
-2. [MDN — SharedArrayBuffer](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer) — Shared-memory foundations.
-3. [MDN — JavaScript Execution Model](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Execution_model) — Agents, shared memory, and ordering.
-4. [Node.js — Worker Threads](https://nodejs.org/api/worker_threads.html) — Parallel JavaScript execution and shared buffers.
-5. [Rust — Atomic Ordering](https://doc.rust-lang.org/std/sync/atomic/enum.Ordering.html) — Relaxed, acquire, release, and sequentially consistent operations.
-6. [The Rustonomicon — Atomics](https://doc.rust-lang.org/nomicon/atomics.html) — Deeper reasoning about memory ordering.
-7. [Go — The Memory Model](https://go.dev/ref/mem) — Synchronization and happens-before relationships.
-8. [Go — Data Race Detector](https://go.dev/doc/articles/race_detector) — Finding concurrent-access bugs.
-9. [Java Language Specification — Threads and Locks](https://docs.oracle.com/javase/specs/jls/se25/html/jls-17.html) — Java's memory model and synchronization guarantees.
-10. [Linux man-pages — futex(2)](https://man7.org/linux/man-pages/man2/futex.2.html) — Kernel-assisted waiting on shared-memory conditions.
-11. [C++ Reference — Memory Order](https://en.cppreference.com/w/cpp/atomic/memory_order.html) — Formal background for acquire/release and sequential consistency.
-12. Mara Bos, *Rust Atomics and Locks* — Practical and conceptual guide to low-level shared-memory synchronization.
-13. Anthony Williams, *C++ Concurrency in Action* — Broader concurrency patterns and memory-model reasoning.
-14. Maurice Herlihy and Nir Shavit, *The Art of Multiprocessor Programming* — Advanced concurrent data structures and progress guarantees.
+Primary references:
+
+1. MDN — JavaScript Execution Model and Shared Memory  
+   https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Execution_model
+
+2. MDN — `Atomics`  
+   https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Atomics
+
+3. MDN — `Atomics.wait()`  
+   https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Atomics/wait
+
+4. Node.js — Worker Threads  
+   https://nodejs.org/api/worker_threads.html
+
+5. Rust Standard Library — Atomic Ordering  
+   https://doc.rust-lang.org/std/sync/atomic/enum.Ordering.html
+
+6. C++ Reference — Memory Ordering  
+   https://en.cppreference.com/w/cpp/atomic/memory_order
+
+7. Java Language Specification — Threads and Locks  
+   https://docs.oracle.com/javase/specs/jls/se25/html/jls-17.html
+
+8. Go — The Go Memory Model  
+   https://go.dev/ref/mem
+
+Related programme chapters:
+
+- CS220-L03 — Type Systems, Generics, Ownership, and Valid States
+- CS220-L07 — Native Runtimes: Go, Rust, and Execution Trade-offs
+- CS320-L06 — Concurrency, Event Loops, and Cancellation
+- CS320-L08 — Operating-System and Runtime Forensics
+- CS430-L05 — Designing Reliable Business Workflows
 
 ---
 
 ## Dense Cheatsheet — Interview Glance Card
 
-*Fenced for voice-reader skipping. Use for quick review of shared-memory correctness and synchronization choices.*
-
 ```text
-CS320-L07 — THREADS, ATOMICS & MEMORY ORDERING
+CS320-L07 — THREADS, ATOMICS, AND MEMORY ORDERING
 
-CENTRAL PROBLEM
-  Source order in writer != automatically cross-thread visibility.
-  Shared memory needs explicit synchronization where required.
-  Correctness requires an ordering contract, not lucky timing.
+CORE DISTINCTIONS
+  Concurrency = overlapping progress
+  Parallelism = simultaneous execution
+  Logical race != necessarily shared-memory data race
+  Thread shares process address space
+  SharedArrayBuffer explicitly shares binary memory in JS
 
-THREADS
-  Same process: often share address space.
-  Different threads: separate execution contexts and stacks.
-  Can run simultaneously on different logical CPUs.
-  Node worker_threads have separate JS execution contexts.
-  SharedArrayBuffer enables explicit shared backing memory.
-
-THREE DIFFERENT PROPERTIES
-  Atomicity   Indivisible operation under memory model.
-  Visibility  Which writes another thread may observe.
-  Ordering    Defined relationships between operations.
+THREE GUARANTEES
+  Atomicity = indivisible operation under memory model
+  Visibility = what writes another thread may observe
+  Ordering = required relationships among operations
+  One atomic field != atomic multi-field snapshot
 
 LOST UPDATE
-  counter++ conceptually read -> add -> write.
-  Two threads can read same value and overwrite increments.
-  Atomic RMW (Atomics.add/fetch_add/etc.) protects location.
-
-DATA RACE
-  Conflicting concurrent memory accesses without required ordering.
-  C/C++ ordinary non-atomic data race -> undefined behavior.
-  Rust safe code designed to prevent data races.
-  Go/Java/JS have their own memory models.
-  Race-free != logically correct application.
+  Read 10 -> A calculates 11
+  Read 10 -> B calculates 11
+  A writes 11; B writes 11
+  Expected 12, actual 11
+  Use appropriate atomic RMW or synchronization
 
 HAPPENS-BEFORE
-  Defined ordering relation, not merely elapsed clock time.
-  Within-thread ordering + synchronization edges.
-  Mutex unlock -> matching later lock.
-  Release store -> acquire load observing matching release.
-  Reader can rely on published preceding writes under proper protocol.
-  Later concurrent modifications still require coordination.
+  Language-defined ordering, not wall-clock order
+  Within-thread relationships + synchronization
+  Transitive across related operations
+  Release/acquire can publish preceding writes
+  Acquire must observe corresponding release value
+  Ownership must prevent conflicting later mutation
 
-ATOMIC ORDERING (RUST / C++)
-  Relaxed     Atomicity on location; no wider ordering.
-  Release     Publish preceding operations.
-  Acquire     Observe appropriate publication.
-  AcqRel      Both aspects for supported RMW operations.
-  SeqCst      Stronger global ordering of SeqCst atomic operations.
-  Stronger order != whole business workflow atomicity.
+MEMORY ORDERING
+  Relaxed = atomicity without wider publication ordering
+  Release = publish preceding writes
+  Acquire = consume matching publication
+  AcqRel = combined effects for suitable RMW operations
+  SeqCst = stronger total order for relevant atomics
+  Strong ordering != multi-field transaction
 
-JAVASCRIPT ATOMICS
-  Uses sequentially consistent atomics.
-  No user-visible relaxed/release/acquire ordering arguments.
-  Atomics.load/store/add/compareExchange/...
-  Atomics.wait blocks permitted worker contexts.
-  Atomics.notify wakes waiting agents.
-  Notification != condition satisfied; recheck predicate.
+JAVASCRIPT
+  Atomics are sequentially consistent
+  No explicit Relaxed/Acquire/Release selector
+  Atomics.load/store/add/compareExchange
+  SharedArrayBuffer + typed arrays share binary state
+  Ordinary shared accesses have different semantics
+  Atomic ready flag != safe reusable buffer automatically
 
-PUBLICATION PROTOCOL
-  Writer initializes data.
-  Writer publishes synchronization signal.
-  Reader observes appropriate signal.
-  Reader accesses published data.
-  Writer must not concurrently overwrite data without further protocol.
-  Correct handoff includes ownership/lifetime, not just ready flag.
+WAIT / NOTIFY
+  Atomics.wait can block suitable worker contexts
+  Atomics.notify requests wakeup
+  Check shared predicate in loop
+  Notification != proof condition true
+  Blocking main event-loop thread is inappropriate
 
 MUTEX
-  Mutual exclusion + synchronization.
-  Lock protects actual multi-field invariant, not random variables.
-  All relevant readers/writers follow same locking discipline.
-  Long critical section -> contention.
-  Lock held across slow I/O -> unnecessary waiting.
-  Multiple locks acquired inconsistently -> deadlock.
+  Mutual exclusion for protected critical section
+  All relevant accesses must obey same lock
+  Protect WHOLE invariant, not just one field
+  Long lock hold -> contention/latency
+  Mutex ownership differs from generic semaphore permits
 
 CONDITION VARIABLE
-  Check predicate while holding mutex.
-  Wait releases mutex appropriately.
-  On wake, reacquire and recheck predicate.
-  Always reason with a loop (spurious wakeups / competing consumers).
-  Notification != guaranteed work still available.
+  Check predicate under mutex
+  Wait atomically releases mutex
+  Wake reacquires mutex
+  Recheck predicate after waking
+  Spurious wakeups / competing consumers possible
 
-CAS / COMPARE-EXCHANGE
-  If current == expected, atomically replace.
-  Failure means expected state did not match.
-  CAS loop retries under contention.
-  ABA: A -> B -> A can fool value-only identity check.
-  CAS != guarantee nothing changed between observations.
+DEADLOCK
+  A holds X, waits Y
+  B holds Y, waits X
+  Circular wait prevents progress
+  Consistent lock acquisition order can prevent pattern
+  Deadlock != ordinary lock contention
+  Priority inversion can delay lock holders
 
-PROGRESS PROPERTIES
-  Blocking     Operation may wait on another participant.
-  Lock-free    System-wide progress under defined model.
-  Wait-free    Per-operation bounded-step progress under model.
-  Lock-free != universally faster.
-  Lock-free != contention-free.
-  Reclamation, ABA, retries, cache traffic remain hard.
+CAS
+  Compare current with expected; conditionally replace
+  Failed CAS may require retry
+  Retries create contention under load
+  ABA: A -> B -> A fools history assumptions
+  Version tagging can distinguish states
 
-HARDWARE INTERACTION
-  Compiler optimization/reordering under language rules.
-  CPU execution and store buffering under architectural rules.
-  Coherence relates to per-location behavior.
-  Ordering relates to operations across locations.
-  False sharing: independent variables on same cache line.
-  Fix data layout only after measuring.
+LOCK-FREE
+  System-wide progress guarantee under model
+  Individual thread may starve
+  Wait-free = stronger bounded individual progress
+  Lock-free != always faster
+  Memory reclamation is difficult
 
-LANGUAGE COMPARISON
-  JS      SharedArrayBuffer + seq-cst Atomics.
-  Rust    Explicit atomic orderings, Mutex, ownership.
-  Go      seq-cst atomics, channels, mutexes; race detector.
-  Java    volatile happens-before, synchronized, atomic classes.
-  Different APIs; common invariant and ownership questions.
+FALSE SHARING
+  Independent variables share physical cache line
+  Cache-coherence traffic hurts performance
+  Not necessarily data race
+  Alignment/padding can help, measure first
+
+LANGUAGE DIFFERENCES
+  Rust: ownership + Send/Sync + explicit atomic orderings
+  Java: happens-before, volatile, synchronized, atomics
+  Go: channels, mutexes, sequentially consistent atomics
+  JS: SharedArrayBuffer + sequentially consistent Atomics
+  Different APIs; same ownership/synchronization questions
 
 MESSAGE PASSING
-  Explicit data exchange between workers.
-  Often simpler than shared mutable state.
-  Copy/transfer/queue overhead can matter.
-  Shared memory justified when measured benefit outweighs complexity.
+  Prefer explicit ownership when practical
+  Clone/transfer/message instead of shared mutation
+  Costs: copies, queues, ordering and lifecycle
+  Message passing isn't automatic business correctness
 
-CORRECTNESS BOUNDARIES
-  Atomic variable       One shared memory location/operation.
-  Mutex                 In-process protected state.
-  DB transaction        Authoritative persistent state.
-  Distributed protocol  Coordination across services.
-  Atomics don't replace inventory transactions.
+THREE ATOMICITY SCOPES
+  Atomic memory access
+  Consistent local application state
+  Distributed durable business invariant
+  Local Atomics cannot protect PostgreSQL across replicas
 
-DIAGNOSE SHARED-MEMORY INCIDENT
-  1. Identify actual sharing and ownership.
-  2. Enumerate all readers and writers.
-  3. Identify concurrent conflicting accesses.
-  4. Identify atomic operations and ordering.
-  5. Prove synchronization edges.
-  6. Ensure protected data isn't reused unsafely.
-  7. Test varied schedules; use detectors where available.
-  8. Prefer simple well-tested synchronization.
-  9. Separate local races from distributed-state failures.
+DIAGNOSTIC FRAMEWORK
+  1. Identify actual shared memory
+  2. Map readers/writers
+  3. Identify protected invariant
+  4. Establish synchronization/happens-before
+  5. Examine reuse and object lifetime
+  6. Control dangerous interleavings in tests
+  7. Prefer simple primitives and verify performance
 
-INTERVIEW RECOVERY
-  "Why isn't ready=true enough?"
-    No guaranteed publication without relevant synchronization.
-  "Atomic counter, wrong booking state?"
-    Atomicity scope too small; invariant spans other data.
-  "Relaxed vs release/acquire?"
-    Counter integrity vs publication of associated data.
-  "Mutex for two fields?"
-    Protect coherent snapshot under same boundary.
-  "Lock-free always faster?"
-    No: retries, cache contention, reclamation overhead.
-  "Two Rust services double-book?"
-    DB transaction needed; borrow checker isn't distributed lock.
+SENIOR INTERVIEW ANSWER
+  "I'd identify which memory is actually shared, define the
+   invariant and ownership protocol, establish synchronization
+   and happens-before relationships, and choose the simplest
+   primitive protecting the entire state transition. Atomics
+   protect individual operations; they don't automatically
+   make a complex workflow correct."
 
-SENIOR LINE
-  "I'd identify the shared state, define the invariant and ownership,
-   establish the exact happens-before relationships, then choose
-   the simplest synchronization primitive that enforces them.
-   Race freedom, algorithmic progress, and business correctness
-   are different guarantees."
+MENTAL MODEL
+  Who owns the data?
+  Which operation is indivisible?
+  How is completed state published?
+  Which boundary does the guarantee actually protect?
 ```

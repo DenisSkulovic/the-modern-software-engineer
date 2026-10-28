@@ -3,159 +3,237 @@ id: CS320-L08
 course: CS320
 title: "Operating-System and Runtime Forensics"
 type: core
-manuscript: manuscript
-edition: "2.0.0"
+manuscript: revised
+edition: "2.1.0"
 legacy_ids: []
 prev: CS320-L07
 next: null
 ---
 
 
-
-# CS320 — Operating Systems, Concurrency, and Runtimes
+# CS320 — Operating Systems and Concurrency
 
 ## Lecture 08: Operating-System and Runtime Forensics
 
-*A production backend shows intermittent latency, memory growth, disappearing workers, and exhausted file descriptors—and several plausible explanations compete.*
-
-**Estimated study time:** 90–110 minutes, including the optional investigation lab.
-
----
-
-### How to listen to this lecture
-
-This is the capstone of CS320.
-
-**Part I — Intuition** establishes the investigator's mental model: symptoms are observations, not explanations. One underlying failure can generate several different symptoms, and our job is to find the first broken boundary.
-
-**Part II — Deep Dive** follows a sustained production incident involving a Node.js service in Kubernetes. We will reconstruct a timeline, rank competing explanations, choose measurements that distinguish them, investigate process state, CPU scheduling, memory accounting, file descriptors, sockets, asynchronous work, and container termination.
-
-This is not another vocabulary lecture. The earlier CS320 chapters taught us what the machinery does. Now we use that knowledge under uncertainty.
-
-The oral examination asks you to act as the incident investigator. The practical lab follows the spoken lecture and provides a reproducible local investigation.
-
----
+*At 09:00, your team deploys a small change to a supplier integration. By 09:16, API latency is climbing, sockets are accumulating, memory usage is rising, and Kubernetes is restarting workers. CPU looks fine. The database looks fine. Everyone has a theory. Your job is to determine which theory is actually true.*
 
 # Part I — Intuition
 
-*A production service has four alarming symptoms. Instead of restarting it, we become detectives and locate which promise broke first.*
+## The picture to carry in your head
 
-### The picture to carry in your head
+Imagine arriving at a hotel during a particularly disastrous morning.
 
-Imagine a hotel on a busy holiday weekend. Guests are waiting at reception. An elevator occasionally stops. The laundry department says it has no clean towels. And the building manager receives alerts about power consumption.
+Guests are waiting at reception. The elevators have stopped working properly. The laundry department is overwhelmed, and the building manager reports unusually high electricity consumption.
 
-A panicked manager might turn off the lights, replace the elevator, hire more receptionists, and order new towels—all at once. Perhaps one of those changes helps. But afterward nobody knows what caused the problem or which intervention mattered.
+Every department offers its own explanation.
 
-A careful investigator asks a different question: what observations can distinguish the possible explanations?
+Reception blames the elevators.
 
-Production software is similar. High latency, rising memory, worker restarts, and exhausted file descriptors may appear together, but they don't necessarily have the same cause. The job isn't to recite Linux commands. It's to **build a causal timeline and locate the resource or boundary where expected behavior stops**.
+Maintenance blames the electrical system.
 
-The opening diagram illustrates the investigative loop. You begin with symptoms, test a discriminating hypothesis, then revise your explanation using evidence.
+The laundry supervisor says the hotel accepted too many guests.
 
-```mermaid id="dpk6bs"
-flowchart TB
-    A["Symptoms: slow, leaking, restarting"] --> B["Rank plausible causes"]
-    B --> C["Choose measurement that separates causes"]
-    C --> D["Observe process/OS evidence"]
-    D --> E{"Does evidence fit?"}
-    E -->|"No"| B
-    E -->|"Yes"| F["Validate intervention and recovery"]
-```
+Someone proposes hiring more receptionists.
 
-### 1. A symptom is not a diagnosis
+Someone else suggests installing a larger electrical transformer.
 
-The dashboard shows CPU utilization of 25%. Does that prove the service isn't CPU-bound? No. One critical thread or container CPU quota can still be saturated while the host average remains low.
+The manager wants to restart the building's central control system.
 
-The Node.js heap chart looks flat. Does that prove memory isn't leaking? No. Native buffers, mapped memory, page cache, and other allocations may affect process or cgroup memory accounting differently.
+All these proposals might change something. But none begins by establishing what actually happened.
 
-The HTTP endpoint returns timeouts. Does that prove the application handler is stuck? No. Requests may be waiting for a database connection, a remote supplier, a network route, or a blocked event-loop callback.
+A capable investigator starts differently.
 
-Each metric is an observation at a defined boundary. It doesn't automatically reveal the cause. The investigative skill is knowing which additional observation would support or undermine a hypothesis.
+She reconstructs the timeline.
 
-**Checkpoint:** If memory usage increases and the process is later killed, should you immediately conclude there's a JavaScript object leak? No. First identify which memory accounting measure grew and whether it reflects retained JS objects, native allocations, caching, or another cause.
+She asks which symptoms appeared first.
 
-### 2. Follow one request and one process
+She identifies which systems share resources.
 
-Suppose a payment request takes five seconds. Start by following that specific request through its stages.
+She looks for one observation that distinguishes competing explanations.
 
-Was it admitted immediately, or did it wait for a connection? Did the application callback begin promptly? Was it blocked on a lock, filesystem operation, or database transaction? Did a remote service spend most of the time processing or waiting? Did a timeout occur before the underlying business operation finished?
+Perhaps the elevator problem started when a maintenance procedure left a door sensor engaged. Guests then used the stairs, overwhelming the reception area's access system. The laundry delays and electricity alerts may be consequences of other systems attempting to compensate.
 
-Now follow the process handling the request. Was its main thread running or runnable? Was it throttled by its CPU quota? Did it open files or sockets without closing them? Did its resident memory rise while JavaScript heap usage remained stable?
+Or perhaps these symptoms really do have independent causes.
 
-We don't need every available metric at once. We need evidence at the boundary most likely to explain the symptom.
+The investigator's job is not to force them into one satisfying story.
 
-In the hotel analogy, if guests wait at reception, first discover whether the receptionist is absent, waiting for the booking system, or unable to unlock the cash drawer. Hiring ten more receptionists solves only some of those problems.
+It is to establish which causal relationships the evidence supports.
 
-### 3. A timeline connects apparently separate failures
+Production software works the same way.
 
-Imagine the following production sequence.
+## 1. A symptom is not a diagnosis
 
-At 10:00, a deployment begins.
+Suppose an API request takes five seconds.
 
-At 10:04, a worker starts opening many supplier connections.
+That's an observation.
 
-At 10:07, open file-descriptor counts rise sharply.
+"The CPU is overloaded" is a hypothesis.
 
-At 10:09, new outgoing connections begin failing.
+"The supplier is slow" is another hypothesis.
 
-At 10:11, requests time out and retry.
+"The database is blocked" is a third.
 
-At 10:13, in-flight requests accumulate and memory usage climbs.
+All three could produce a five-second response.
 
-At 10:15, containers restart.
+So could a request waiting for an available connection from a pool, a callback delayed by a blocked event loop, or an operation waiting to obtain CPU time under a cgroup restriction.
 
-If you examine only the final memory spike, you might decide the root cause is a memory leak. But the timeline suggests a different hypothesis: leaked or excessively opened descriptors caused connection failures, retries, and accumulating work, with memory growth as a downstream effect.
+Latency tells us how long something took.
 
-That hypothesis still needs verification. Perhaps the rising descriptor count is expected or the errors have another cause. But the timeline helps us choose the next test.
+It does not tell us where that time was spent.
 
-The second diagram shows why cause and symptom often form a chain rather than appearing as independent incidents.
+This distinction will guide the entire investigation.
 
-```mermaid id="nxbv4y"
-flowchart LR
-    A["Too many open connections"] --> B["Resource limit reached"]
-    B --> C["New connections fail"]
-    C --> D["Retries and waiting increase"]
-    D --> E["Latency and memory rise"]
-    E --> F["Workers may restart"]
-```
+**An observation establishes what happened. A mechanism explains how it could happen. A causal conclusion requires evidence connecting the two.**
 
-### 4. The smallest useful test beats the largest dashboard
+## 2. Follow one request through the machinery
 
-Imagine two competing explanations.
+Our hotel-booking backend receives an availability request.
 
-Hypothesis A: the process has a JavaScript memory-retention bug.
+The application validates the search, contacts an external supplier, processes the response, and returns available rooms to the customer.
 
-Hypothesis B: it accumulates native buffers while waiting for remote operations.
+Imagine tracing that request through the layers we've studied.
 
-Another graph of total memory usage may not distinguish them. A comparison of managed heap measurements, resident process memory, buffer accounting, and workload timing would be more informative.
+At the application layer, the request has a deadline, a business identifier, and a collection of asynchronous tasks.
 
-Or suppose a service is slow because the main JavaScript event loop is blocked. A generic CPU percentage may not establish that. Event-loop delay measurements and a targeted CPU profile may separate heavy JS computation from waiting on a dependency.
+At the runtime layer, Node.js coordinates callbacks, Promises, sockets, native operations, and memory allocation.
 
-This is the purpose of **discriminating evidence**: select observations whose possible outcomes would lead you toward different explanations.
+At the operating-system layer, Linux manages threads, file descriptors, network sockets, memory mappings, CPU scheduling, and resource limits.
 
-Don't gather metrics simply because tools make them available. Gather them because they answer a question.
+Each layer has its own notion of progress.
 
-### 5. Fixing the symptom isn't the same as fixing the failure mode
+A Promise can reject while its underlying network connection remains open.
 
-Restarting a process may temporarily release file descriptors or memory. Increasing a timeout may reduce immediate errors. Adding workers may absorb a traffic burst.
+A socket can be readable while its JavaScript callback hasn't executed.
 
-But if the underlying code keeps leaking resources, accumulating unbounded requests, or holding a shared lock, the incident may return under the same conditions.
+A process can have low JavaScript heap usage while its container approaches a memory limit.
 
-A complete investigation therefore needs a mechanism, a controlled intervention, and evidence that the system behaves correctly afterward. It should also explain why the failure wasn't detected or contained earlier.
+A host can have idle processors while one container is being throttled.
 
-The goal isn't to avoid all restarts. Sometimes restarts are the correct emergency mitigation. The goal is to avoid treating a successful restart as proof that the cause has been understood.
+These aren't contradictions.
 
-### 6. The minute-long replay
+They're observations made at different boundaries.
 
-Our incident shows high latency, memory growth, failed connections, and restarts. Those are observations, not explanations. We reconstruct the order of events, identify the most plausible common mechanisms, then inspect the right OS and runtime evidence. Once a hypothesis survives testing, we apply a fix and verify recovery.
+A strong investigation asks which boundary controls the behavior currently causing trouble.
 
-L08's Deep Dive will walk through process state, CPU and memory profiles, cgroup accounting, sockets, descriptors, and production investigation tools. The mental map is one detective's notebook: **what happened, what could explain it, and which measurement would prove us wrong?**
+## 3. One failure can produce several symptoms
 
-### Three questions before the Deep Dive
+Consider a request that contacts a supplier.
 
-1. **Does low host CPU prove a request wasn't CPU-delayed?** No. Per-core saturation or quota throttling may be hidden.
-2. **Why inspect the sequence of events rather than only the final symptom?** An earlier resource failure can cause several later secondary symptoms.
-3. **What makes a diagnostic measurement useful?** It distinguishes plausible causes and changes what we should investigate next.
+The supplier doesn't respond before our application's deadline.
+
+We return a timeout error.
+
+But suppose the application forgets to close the associated connection.
+
+That connection remains alive.
+
+After enough timed-out requests, the process accumulates sockets.
+
+Open sockets consume file descriptors and other resources.
+
+Pending operations may also retain JavaScript objects, buffers, timers, and native state.
+
+Now the service begins approaching its descriptor limit.
+
+New connection attempts fail.
+
+The application retries.
+
+Retries create more attempts.
+
+Memory usage rises.
+
+Eventually, the container may encounter an OOM condition.
+
+From the outside, we see timeouts, connection errors, memory pressure, and restarts.
+
+It would be easy to conclude that four things are broken.
+
+But the chain may begin with one incorrectly managed resource lifetime, amplified by an uncontrolled retry policy.
+
+This is the incident we'll investigate.
+
+## 4. The first clue is not always the root cause
+
+In our story, the supplier response was slow.
+
+Was the supplier responsible for the incident?
+
+It might have triggered the failure.
+
+But a well-designed client should tolerate ordinary slow responses without accumulating resources indefinitely.
+
+The supplier can be slow without causing a local resource leak in a correctly implemented client.
+
+This is why we distinguish a **trigger** from a **root cause**.
+
+A trigger creates the circumstances in which a defect becomes visible.
+
+The root cause explains why the system failed to behave correctly under those circumstances.
+
+Contributing factors determine how severely the failure spreads.
+
+The distinction isn't always perfectly objective, but it makes our explanation more useful.
+
+If we only blame the supplier, we may leave the cleanup defect untouched.
+
+If we fix the cleanup defect but ignore an unlimited retry policy, the next supplier outage may still overwhelm the service through a different mechanism.
+
+## 5. The investigator's most valuable question
+
+Imagine three competing explanations for the current latency.
+
+The main JavaScript thread is blocked.
+
+The supplier is slow.
+
+Timed-out operations are leaking connections.
+
+What should we measure next?
+
+Not everything.
+
+We should choose a measurement whose possible outcomes distinguish these explanations.
+
+If lightweight endpoints are also delayed, main-thread blockage becomes more plausible.
+
+If supplier calls are slow from independent clients but resource usage remains bounded, genuine external latency becomes more plausible.
+
+If socket counts keep increasing after application requests time out, the resource-lifetime hypothesis becomes much stronger.
+
+A good investigator doesn't merely collect more data.
+
+She collects data that reduces uncertainty.
+
+## 6. Remember the difference between mitigation and understanding
+
+During a severe incident, restarting a worker may restore service.
+
+Rolling back a deployment may reduce customer impact.
+
+Increasing a limit may buy time.
+
+Those can be reasonable emergency actions.
+
+But they don't automatically explain what happened.
+
+A restart closes connections, releases memory, and resets process-local state.
+
+Of course a resource leak disappears temporarily when the leaking process disappears.
+
+The question is whether the same failure will return under the same conditions.
+
+**Mitigation reduces the current damage. Remediation removes or controls the mechanism that caused it.**
+
+We need both, but we shouldn't confuse them.
+
+## Three questions before the Deep Dive
+
+1. Why does a rising memory graph not automatically establish that a JavaScript memory leak is the root cause?
+2. Why might a supplier timeout and an open TCP connection legitimately coexist?
+3. What makes a targeted comparison between two competing explanations more valuable than collecting dozens of unrelated dashboard metrics?
+
+Keep one mental picture: a chain of system boundaries, each with its own state and guarantees. Our job is to locate the first broken contract and trace its consequences.
 
 *The intuition pass ends here.*
 
@@ -163,2483 +241,1614 @@ L08's Deep Dive will walk through process state, CPU and memory profiles, cgroup
 
 # Part II — Deep Dive
 
-# 1. Welcome to the Incident Room
+## 1. Thursday, 09:00 — the deployment
 
-It's Thursday morning at our hotel-booking company.
+Our hotel-booking platform operates a Node.js availability service running in Kubernetes.
 
-At 09:00, the backend team deploys an updated supplier integration. The change appears modest: a new timeout wrapper, better retry behavior, and more detailed logging around supplier availability requests.
+The service receives customer searches and requests availability from external suppliers.
 
-For the first few minutes, everything looks healthy.
+Each request can involve several concurrent supplier operations.
 
-Then the availability API's p95 latency begins climbing.
+At 09:00, the team deploys a new supplier-client implementation.
 
-At 09:08, a few customers receive HTTP 504 responses. At 09:11, memory consumption rises. At 09:14, one worker restarts. At 09:16, another starts failing outbound connections.
+The changes seem modest.
 
-The infrastructure dashboard is a confusing collection of reassuring and alarming signals.
+The client now uses a shorter timeout.
 
-Host CPU utilization is twenty percent.
+It introduces a revised retry policy.
 
-The database is healthy.
+It also records more detailed timing information.
 
-The Node.js heap appears relatively stable.
+For the first few minutes, everything appears healthy.
 
-The external supplier's status page is green.
+Then latency begins to rise.
 
-Yet the backend is intermittently unusable.
+At 09:08, the first cluster of HTTP 504 responses appears at the application gateway.
 
-The operations team has several theories.
+At 09:11, container memory usage begins climbing.
 
-One engineer suspects the supplier's network.
+At 09:14, one worker restarts.
 
-Another suspects the Kubernetes CPU limits.
+At 09:16, another begins reporting errors while opening outbound connections.
 
-A third blames V8 garbage collection.
+The incident dashboard contains contradictory-looking signals.
 
-Someone points at the rising container memory graph and announces a memory leak.
+Host CPU utilization is around twenty percent.
 
-And someone else has already prepared a pull request increasing the HTTP timeout from two seconds to ten.
+PostgreSQL latency remains normal.
 
-Before accepting any of those explanations, ask one question.
+The Node.js managed heap appears relatively stable.
 
-**What observation would each theory predict that the others would not?**
+The supplier's public status page reports no incident.
 
-If the supplier's network is slow, we might see long outbound requests even while the application's event loop remains responsive.
+But customers are struggling to search for hotels.
 
-If the event loop is blocked, unrelated lightweight endpoints may also suffer delays, and the runtime's event-loop metrics may reveal them.
+Someone suggests increasing the number of replicas.
 
-If CPU throttling is responsible, cgroup CPU accounting should provide evidence of a restrictive quota and throttling during relevant intervals.
+Someone else suspects Kubernetes CPU throttling.
 
-If the process is running out of memory, we need to identify which memory boundary is being exhausted and whether the growth is the cause or a consequence of another failure.
+Another engineer blames garbage collection.
 
-If file descriptors are being leaked, the number of open descriptors should rise in a way that persists beyond completed or timed-out requests.
+Before changing the system, we need a better account of what happened.
 
-One incident.
+The following figures are illustrative evidence for our teaching incident, not measurements from a real production system.
 
-Several hypotheses.
+## 2. Define the incident precisely
 
-Different predictions.
+"The backend is slow" is not an adequate incident definition.
 
-That is our starting point.
+A better description is:
 
----
+"Following the 09:00 supplier-client deployment, availability requests involving delayed supplier responses began experiencing elevated tail latency and timeouts. Open socket counts and container memory usage subsequently increased, followed by descriptor errors and worker restarts."
 
-# 2. Don't Confuse an Observation With an Explanation
+Notice what this description does.
 
-Before touching production, we need to establish how an investigator reasons.
+It identifies the affected operation.
 
-Suppose we observe:
+It specifies the time relationship to a deployment.
 
-"API requests take five seconds."
+It distinguishes early request failures from later resource exhaustion.
 
-That is a measurement.
+And it does not prematurely claim that the deployment caused the problem.
 
-Now suppose somebody says:
+We have a correlation and a timeline.
 
-"The supplier is slow."
+We still need a mechanism.
 
-That is a hypothesis.
+### Build competing hypotheses
 
-The distinction is important because the same measurement may be consistent with many different mechanisms.
+At this stage, four possibilities deserve investigation.
 
-A five-second request might contain fifty milliseconds of CPU work and four seconds of network waiting.
+First, the new client may perform expensive synchronous work on the event-loop thread.
 
-Or it might spend four seconds waiting for a database connection from an exhausted pool.
+Second, a supplier may genuinely be responding more slowly, causing otherwise healthy requests to exceed their deadlines.
 
-Or it might be ready to run while the container is CPU-throttled.
+Third, the revised timeout implementation may abandon requests without terminating their underlying operations.
 
-Or its network operation may have completed promptly, with the JavaScript continuation delayed behind a synchronous computation.
+Fourth, resource restrictions or contention may be delaying otherwise runnable work.
 
-The elapsed duration alone doesn't distinguish these possibilities.
+We don't need to investigate these with equal intensity forever.
 
-## 2.1 Three levels of an investigation
+We need observations that quickly distinguish them.
 
-I find it useful to organize an incident into three layers.
+## 3. Preserve evidence without making the outage worse
 
-**Observation:** What happened, where was it measured, and at what time?
+An incident commander asks whether we should immediately restart the unhealthy pods.
 
-**Mechanism:** What system behavior could produce the observation?
+That's a legitimate mitigation question.
 
-**Cause:** Why did the mechanism become active in this incident?
+But we should first preserve whatever evidence can be captured quickly and safely.
 
-For example:
+The deployment version and configuration.
 
-Observation: The process has approximately four thousand open file descriptors.
+The relevant request and error timeline.
 
-Mechanism: Open sockets consume process descriptor entries.
-
-Cause: A newly deployed code path retains timed-out sockets without closing them.
-
-Notice the progression.
-
-The first statement is a measurement.
-
-The second explains a relevant operating-system rule.
-
-The third attributes that mechanism to a concrete implementation defect.
-
-We should not jump directly from the first statement to the third.
-
-## 2.2 Evidence needs a boundary
-
-Every metric comes from somewhere.
-
-A request timer measures an interval selected by application code.
-
-A CPU profiler samples execution.
-
-A Node.js memory measurement reports specific runtime and process quantities.
-
-A cgroup counter reports resource accounting at a particular group boundary.
-
-A socket diagnostic tool observes kernel network state.
-
-None of these is an all-knowing representation of the complete system.
-
-For example, a flat JavaScript heap graph doesn't rule out growth in process RSS.
-
-Low host CPU doesn't rule out one saturated thread or a throttled container.
-
-And a TCP connection in the `ESTABLISHED` state doesn't tell us whether the business operation using it is healthy.
-
-The metric is useful only when we understand what it can and cannot establish.
-
-> **Sticky note #1:** Never promote a metric into a diagnosis without explaining the mechanism that connects them.
-
----
-
-# 3. The First Rule: Preserve Evidence Before Changing the System
-
-Now we're ten minutes into the incident.
-
-An engineer proposes restarting every pod.
-
-This might restore service temporarily.
-
-Sometimes that's exactly what the business needs.
-
-But before changing anything, think about which evidence may disappear.
-
-When a process terminates, its live thread state disappears.
-
-Its open file descriptors close.
-
-Its in-memory queues vanish.
-
-Its current heap and native allocations are released.
-
-And a new healthy container doesn't automatically tell us what the previous one looked like immediately before it died.
-
-## 3.1 Mitigation and investigation are separate goals
-
-During a serious incident, user impact matters.
-
-You may need to roll back, drain traffic, restart unhealthy instances, or disable a feature immediately.
-
-But try to preserve the evidence that's cheap and safe to capture.
-
-The current deployment revision.
-
-The container's termination reason.
-
-Relevant logs.
-
-Time-series metrics.
+Previous container termination reasons.
 
 Open descriptor counts.
 
-Resource limits.
+Socket-state distributions.
+
+Runtime and container memory metrics.
+
+CPU restrictions and throttling counters.
 
 A representative request trace.
 
-These observations can be gathered without necessarily delaying urgent mitigation.
+We don't need a perfect forensic snapshot before helping customers.
 
-And if preservation would create unacceptable risk or delay, mitigation takes priority.
+If the outage is severe, rollback or traffic diversion may take priority.
 
-The important thing is to know what you lost.
+But evidence that costs little to collect can prevent hours of speculation afterward.
 
-## 3.2 Beware the disappearing previous container
+### The disappearing evidence problem
 
-In Kubernetes, `kubectl logs --previous` may retrieve logs from a previous instance of a container when that instance's logs remain available.
+When a process terminates, its open descriptors are closed.
 
-It isn't a guaranteed historical archive.
+Its in-memory queues disappear.
 
-If the pod has been replaced, deleted, or restarted repeatedly, the desired evidence may no longer be accessible through that command.
+Its live thread states disappear.
 
-Similarly, the current pod's memory usage doesn't establish how much memory the earlier container consumed before an OOM kill.
+Its native allocations are released.
 
-A reliable production environment needs centralized logs and monitoring if we want useful historical evidence.
+A newly started replacement process may look completely healthy.
 
-## 3.3 Make the timeline explicit
+That doesn't prove the previous process was healthy.
 
-For our incident, we assemble this preliminary sequence.
+It means the old process's ephemeral state no longer exists.
 
-At 09:00, the supplier integration was deployed.
+In Kubernetes, previous-container logs and recorded termination status may remain available, but retention is not unlimited or guaranteed across every replacement scenario.
 
-At 09:04, outbound request counts began rising.
+A production incident needs a deliberate evidence-retention strategy.
 
-At 09:07, the number of open descriptors increased faster than request throughput.
+## 4. Follow one representative request
 
-At 09:09, the application logged errors opening new connections.
+Let's investigate a customer search that takes five seconds and eventually times out.
 
-At 09:11, pending requests and retries accumulated.
+The expected path is straightforward.
 
-At 09:13, resident memory increased sharply.
+The request arrives at the Node.js service.
 
-At 09:14, Kubernetes recorded an OOM-related container termination.
+The handler validates the request.
 
-These observations don't prove a cause by themselves.
+The supplier client initiates an outbound connection or obtains one from its configured pool.
 
-But the order matters.
+The service sends the supplier request.
 
-The descriptor growth preceded the memory spike.
+The supplier replies.
 
-That makes a descriptor-retention problem a stronger early candidate than a purely spontaneous heap leak.
+The runtime processes the response.
 
-It doesn't eliminate other explanations.
+The application produces an availability result.
 
-It tells us where to investigate first.
+The HTTP response is returned.
 
----
+But our request doesn't complete normally.
 
-# 4. Follow One Request Before You Investigate the Whole Machine
+Where does it stop?
 
-A production service is a crowded place.
+### Measure boundaries, not just totals
 
-Thousands of requests may be active.
+We want timestamps or duration measurements for meaningful stages.
 
-Multiple workers may be running.
+When the handler began.
 
-The kernel may be managing many sockets, files, and background operations.
+When the supplier operation was initiated.
 
-It's easy to become overwhelmed by system-wide measurements.
+How long obtaining a connection took.
 
-So we begin with one representative slow request.
+When the request was actually sent.
 
-Imagine a customer asks for hotel availability.
+When the first response byte arrived, if it did.
 
-The request passes through a load balancer to our Node.js API.
-
-The API validates the request, consults local data, and calls the external supplier.
-
-The supplier response is transformed into the application's availability model.
-
-The API returns the result.
-
-That's the expected journey.
-
-## 4.1 Instrument the boundaries
-
-We want to know when each stage began and ended.
-
-When the request reached the application.
-
-When the handler began executing.
-
-When the supplier connection attempt started.
-
-When the connection was established.
-
-When the request was sent.
-
-When the first relevant response arrived.
-
-When the response finished.
+When the supplier operation settled.
 
 When the handler completed.
 
-We don't necessarily need all those timestamps for every request forever.
+These measurements can distinguish connection-pool waiting from remote response latency and from callback-delivery delay.
 
-But during an incident, we need sufficient visibility to locate the delay.
+But telemetry itself must be interpreted carefully.
 
-A request that spends most of its time waiting for an outbound supplier response suggests a different investigation from one delayed before its handler begins.
+An application timer measuring "supplier duration" may begin before a connection is acquired.
 
-## 4.2 A timeout doesn't say what happened remotely
+A tracing span might include local queueing.
 
-Suppose our application gives up waiting after two seconds.
+A timeout may occur before any request bytes leave the process.
 
-Does that prove the supplier didn't receive the request?
+Labels such as "network latency" can therefore mislead if the measured interval isn't defined.
+
+The useful question is: **what happened during the interval, and who was responsible for making progress?**
+
+## 5. The first strong clue: file descriptors
+
+At 09:12, an engineer notices that the Node.js process has an unusually large number of open file descriptors.
+
+The count has increased steadily since the deployment.
+
+At 09:16, the service begins logging `EMFILE`.
+
+On Linux, `EMFILE` indicates that the process has reached its applicable limit for open file descriptors.
+
+This is much more specific than "the API is slow."
+
+It tells us that a process-level resource boundary has been reached.
+
+It does not yet tell us why.
+
+### What owns the descriptors?
+
+The process might have many open files.
+
+It might have numerous sockets.
+
+It might retain pipes or other descriptor-backed resources.
+
+We inspect the descriptor targets and socket information.
+
+Most of the increase corresponds to outbound TCP sockets associated with supplier communication.
+
+Now the hypothesis space narrows.
+
+A growing count of supplier sockets could reflect legitimate traffic growth, a change in connection-pooling policy, slower requests remaining active longer, or connections not being released properly.
+
+We need to distinguish these.
+
+### `CLOSE_WAIT` is a particularly useful clue
+
+Suppose several sockets are in `CLOSE_WAIT`.
+
+In TCP, this state generally means the local TCP stack has received a FIN from the peer, but the local endpoint hasn't completed its own close.
+
+A substantial, persistent accumulation can indicate that application-side connection cleanup isn't happening.
+
+But don't treat every `CLOSE_WAIT` socket as proof of a leak.
+
+Some connections may briefly pass through this state during normal shutdown.
+
+We need persistence, scale, ownership, and the associated application behavior.
+
+### Don't blame `TIME_WAIT` blindly
+
+`TIME_WAIT` is different.
+
+It is a normal part of TCP connection termination, generally associated with the endpoint performing the active close.
+
+It can help prevent delayed packets from an earlier connection from being confused with a later connection using the same connection identity.
+
+Large numbers of `TIME_WAIT` entries may matter for connection churn or certain resource limits.
+
+But they are not automatically leaked open application file descriptors.
+
+A TCP-state count and a process descriptor count describe different things.
+
+The investigator must not treat them as interchangeable.
+
+## 6. The code review: the timeout that canceled nothing
+
+We inspect the new supplier client.
+
+It opens a TLS connection and starts waiting for a response.
+
+The application also creates a timer Promise that rejects after two seconds.
+
+The implementation races the supplier operation against that timer.
+
+When the timer wins, the caller receives a timeout error.
+
+The request handler logs the failure and returns an error to the customer.
+
+From the caller's perspective, the operation is finished.
+
+But the underlying supplier request wasn't canceled.
+
+The socket remains active.
+
+A custom registry still holds its reference.
+
+The operation may continue waiting for data, and associated resources remain retained.
+
+### Why `Promise.race` doesn't cancel losers
+
+`Promise.race` settles according to the first input Promise that settles.
+
+It does not inherently stop the operations represented by the other Promises.
+
+If the timeout rejects first, the aggregate rejects.
+
+The underlying network request can continue.
+
+The application may no longer care about its result, but the resource still has a lifetime.
+
+In other words:
+
+**Promise settlement is an application-level observation. Connection closure is a separate resource-management action.**
+
+The kernel doesn't know that our high-level Promise returned a timeout error.
+
+And the runtime doesn't automatically infer a universal cancellation policy for every operation involved in the race.
+
+### A timeout wrapper isn't enough
+
+A correct deadline implementation needs to decide what happens to underlying work.
+
+For APIs supporting cancellation, an AbortSignal or equivalent mechanism can request that work stop.
+
+For manually managed sockets, the code must use the appropriate resource-lifecycle operations.
+
+For pooled connections, it must distinguish a reusable healthy connection from one that should be closed or discarded.
+
+The caller, timeout, network operation, registry, listeners, and timers must have coherent ownership.
+
+The bug in our teaching incident is not simply that a timer fired.
+
+It's that the code treated the end of waiting as the end of the operation.
+
+## 7. Why the supplier's latency matters—but isn't the root cause
+
+Someone says, "The supplier was slow. That's why everything broke."
+
+Let's test that explanation.
+
+Suppose the supplier occasionally takes five seconds to respond.
+
+Our application has a two-second deadline.
+
+Timeouts are therefore expected under those conditions.
+
+But why should a timeout permanently increase open socket count?
+
+It shouldn't, if the client correctly handles the operation's resource lifetime.
+
+A healthy implementation may cancel the request, close a disposable connection, or manage a pooled connection according to its documented semantics.
+
+After the operation is properly completed or abandoned, its resources should no longer remain unintentionally retained.
+
+The supplier's slow response is a **trigger**.
+
+The failed cleanup is the **defect**.
+
+The connection count rises because timed-out operations are not being properly released.
+
+### A discriminating comparison
+
+Imagine running two versions of the supplier client against the same controlled delayed-response server.
+
+The previous version times out but releases the appropriate resources.
+
+The new version times out and retains connections.
+
+That difference strongly supports the cleanup hypothesis.
+
+It is much more informative than merely observing that the supplier sometimes responds slowly.
+
+The experiment holds the trigger approximately constant while changing the suspected implementation.
+
+That's how causal investigations become stronger.
+
+## 8. Retry amplification: when recovery becomes another failure
+
+Now consider the revised retry policy.
+
+A supplier request times out.
+
+The application retries.
+
+But the previous request may still be active at the transport level.
+
+The retry starts another connection.
+
+If that attempt also times out, the application may create yet another.
+
+The system is accumulating unfinished work while generating new work.
+
+This is retry amplification.
+
+### A simple capacity illustration
+
+Suppose one hundred customer searches per second each trigger one supplier operation.
+
+If ten percent encounter timeouts and each timeout produces two additional attempts, the retry policy introduces extra request demand.
+
+Under certain failure patterns, retries can increase dramatically as failures become more common.
+
+The precise rate depends on retry rules, request durations, and how attempts overlap.
+
+But the causal direction is clear.
+
+The dependency becomes slow.
+
+The application produces more attempts.
+
+More attempts consume connection slots, buffers, memory, and supplier capacity.
+
+Those additional demands can make the service even slower.
+
+### Backoff isn't sufficient by itself
+
+Exponential backoff with jitter can reduce synchronization and repeated load bursts.
+
+That's useful.
+
+But a retry policy also needs a maximum attempt budget, a deadline, and consideration of whether the operation is safe to retry.
+
+A retry that begins while the previous attempt remains active can increase real concurrency.
+
+If the operation has side effects, an ambiguous timeout creates business-correctness questions.
+
+Our availability lookup is principally a read, but the same policy applied to payments could be dangerous.
+
+Retry logic must account for operation identity, idempotency, and uncertainty.
+
+### More attempts, less useful progress
+
+During the incident, total outbound requests increase.
+
+But successful availability results do not increase.
+
+This distinction matters.
+
+Higher request volume isn't necessarily higher useful throughput.
+
+The service is performing more work while delivering fewer successful outcomes.
+
+The retry mechanism has become a load amplifier.
+
+## 9. The memory mystery
+
+At 09:11, container memory begins rising.
+
+The JavaScript heap dashboard looks comparatively stable.
+
+An engineer concludes that the memory alert is unrelated to the socket problem.
+
+That's too quick.
+
+In CS320-L04, we established that V8 heap usage, process RSS, and cgroup memory charges are different measurements.
+
+Open connections can involve native socket state, kernel buffers, JavaScript objects, listeners, TLS state, and other resources.
+
+Pending operations can also retain application state.
+
+The managed heap may grow, but it need not account for every additional byte.
+
+### How retained work becomes memory demand
+
+Imagine each abandoned operation retaining a connection wrapper and some request metadata.
+
+Some operations also retain response buffers or closures.
+
+The kernel maintains associated socket state while the connection remains active.
+
+Meanwhile, retries create additional operations.
+
+The number of unfinished objects and resources grows.
+
+Our process's resident footprint can rise.
+
+Cgroup charges can rise through several relevant memory categories.
+
+Eventually, the workload may encounter reclaim pressure.
+
+The system can become slower before it crashes.
+
+### A stable heap isn't an acquittal
+
+A flat `heapUsed` graph does not prove that no resource leak exists.
+
+It only describes one portion of runtime memory under that metric's semantics.
+
+Conversely, rising RSS does not automatically prove a JavaScript object leak.
+
+Allocator retention, native allocations, file cache, and other causes are possible.
+
+The appropriate investigation compares runtime memory, process RSS, cgroup usage, and relevant breakdowns without adding overlapping categories.
+
+The objective is to identify which resources and allocations persist longer than intended.
+
+### OOMKilled is a termination fact
+
+Suppose the previous Kubernetes container status reports `OOMKilled`.
+
+That tells us the process encountered an OOM-related termination condition under the platform's reported semantics.
+
+It does not, by itself, identify the precise allocation or application bug.
+
+The cgroup may have reached a hard memory boundary.
+
+But the ultimate cause might be excessive legitimate concurrency, native allocation growth, cache pressure, or a leak.
+
+In this incident, we have a plausible causal chain from abandoned operations to retained resources and rising memory.
+
+We still want supporting timeline and reproduction evidence before declaring that chain established.
+
+## 10. The CPU dashboard: an attractive distraction
+
+Host CPU utilization is only twenty percent.
+
+Can we rule out CPU-related delays?
 
 No.
 
-The supplier might still be processing it.
+A single JavaScript thread might be saturated while other cores remain idle.
 
-The request might have succeeded remotely while the response was lost.
+A container may have a restrictive CPU quota.
 
-Or the transport operation might still be active after the application's promise rejected.
+Threads might be runnable but waiting for CPU service.
 
-A local timeout expresses a decision by the local caller.
+Lock contention could delay work independently of overall host utilization.
 
-It does not inherently cancel every underlying operation or undo any remote side effects.
+So we check.
 
-This matters especially for payments and reservations.
+For our teaching incident, suppose the evidence shows:
 
-For ordinary availability reads, a retry may be relatively harmless if properly bounded.
+The main event loop remains responsive during much of the supplier waiting.
 
-For state-changing operations, retries require an idempotency and reconciliation strategy appropriate to the business.
+There is no sustained increase in per-thread CPU execution matching the five-second request delays.
 
-## 4.3 The crucial question
+The container's CPU-throttling counters do not increase materially during the incident.
 
-Our traces show that many supplier requests time out locally.
+A controlled lightweight endpoint remains responsive while supplier operations accumulate.
 
-But their underlying connections appear to remain active.
+These observations weaken the hypothesis that CPU scheduling or main-thread computation is the primary cause.
 
-Some persist for much longer than the application's timeout.
+They don't prove CPU can never contribute.
 
-Now we have a specific hypothesis.
+They show that CPU is not currently the best explanation for the dominant symptom.
 
-The new timeout wrapper may stop waiting for results without actually terminating the underlying transport operation.
+### What about the native worker pool?
 
-That would explain how the application could accumulate sockets even while logging that requests have finished.
+We also consider libuv worker-pool saturation.
 
-But let's test it.
+Certain asynchronous filesystem, cryptographic, and DNS-related operations can use native workers.
 
----
+If those workers are occupied, pool-dependent operations can queue.
 
-# 5. File Descriptors: The First Strong Clue
+But the suspect supplier client primarily waits on network connections.
 
-On Linux, files and sockets are commonly represented by file descriptors.
+The evidence points toward retained transport operations and descriptor pressure rather than a saturated filesystem worker pool.
 
-A file descriptor is a process-local handle for an open resource.
+Again, the point is not to eliminate every conceivable contributing factor.
 
-Opening a socket consumes a descriptor.
+It's to identify which mechanisms are supported by actual observations.
 
-Closing it releases that descriptor.
+## 11. Why thread states alone are insufficient
 
-Processes have limits on how many descriptors they may hold open simultaneously.
+An engineer inspects the Node.js process and finds many sleeping threads.
 
-Our Node.js service has a configured soft descriptor limit.
+"Everything is blocked!" she announces.
 
-During the incident, the open descriptor count approaches that limit.
+But sleeping threads are common in healthy systems.
 
-## 5.1 What `EMFILE` actually tells us
+A worker-pool thread may sleep waiting for a task.
 
-The application begins logging `EMFILE` errors.
+An event-loop thread may wait for I/O readiness.
 
-On Linux, `EMFILE` indicates that a process has reached its limit on open file descriptors.
+A thread may wait for a synchronization primitive.
 
-That's a much more specific observation than "the network is slow."
+The state alone doesn't tell us whether the wait is expected.
 
-The process cannot open another descriptor because its descriptor table has reached the applicable limit.
+### Runnable versus blocked
 
-This can affect files and sockets.
+A runnable thread has work ready but isn't necessarily receiving CPU service.
 
-It's not automatically proof of a network failure or a memory leak.
+A blocked thread is waiting for some other condition.
 
-It's evidence of resource exhaustion at the descriptor boundary.
+The remedies differ.
 
-We should also distinguish it from `ENFILE`, which refers to a system-wide open-file-table limit in the relevant interfaces.
+If the thread is runnable but CPU-throttled, inspect its effective CPU budget.
 
-The distinction matters because the remedies differ.
+If it is blocked on I/O, inspect the relevant I/O operation.
 
-A process-local descriptor exhaustion problem doesn't necessarily mean the entire operating system has run out of open resources.
+If it is waiting for a mutex, inspect lock ownership and contention.
 
-## 5.2 What kind of descriptors are accumulating?
+A thread-state code is useful only when tied to a question about progress.
 
-A process may legitimately hold many descriptors.
+### A deadlock is another distinct possibility
 
-Listening sockets.
+Suppose two threads each hold a lock needed by the other.
 
-Established connections.
+That can create a deadlock.
 
-Files.
+But our supplier incident doesn't currently require a shared-memory deadlock to explain the evidence.
 
-Pipes.
+We have a more direct explanation: network operations remain active beyond their intended application lifetime.
 
-Event facilities.
+We should not invent a lock problem merely because the course recently taught deadlocks.
 
-Other runtime resources.
+Forensics is about using relevant knowledge, not displaying every concept we know.
 
-So we need to classify them.
+## 12. The socket that outlived its request
 
-Are the growing descriptors primarily sockets?
+Let's inspect the transport state more closely.
 
-Do they belong to outbound connections toward the supplier?
+The application records:
 
-Are they associated with particular remote addresses or ports?
+"Supplier request timed out after 2000 milliseconds."
 
-Are they in `ESTABLISHED`, `CLOSE_WAIT`, or other relevant states?
+But the corresponding TCP connection remains present.
 
-Do they remain present after the application's request-level timeout?
+That is possible because the application and operating system maintain different kinds of state.
 
-These observations make the hypothesis testable.
+The application knows about request deadlines, Promises, and business operation identifiers.
 
-## 5.3 The `CLOSE_WAIT` clue
+The kernel knows about socket state, buffers, and transport-level events.
 
-Suppose some sockets are in `CLOSE_WAIT`.
+A Promise rejection doesn't automatically close a socket.
 
-That state ordinarily means the peer has sent an orderly close indication, but the local application has not yet fully closed its side of the connection.
+### Connection pooling complicates the picture
 
-A large, persistent population of `CLOSE_WAIT` sockets can therefore suggest that application-side cleanup isn't happening promptly.
+Not every socket that remains open after an HTTP request is leaked.
 
-But one `CLOSE_WAIT` connection isn't automatically a leak.
+HTTP clients often maintain connection pools.
 
-It might exist briefly during normal cleanup.
+A healthy reusable connection may remain open intentionally so future requests can avoid establishing a new connection.
 
-What matters is whether the count grows, persists, and corresponds to application behavior.
+Therefore, finding an open socket after a request completes is not sufficient evidence of a leak.
 
-Likewise, `ESTABLISHED` connections aren't automatically healthy.
+We need to ask who owns it.
 
-A socket can remain established while its application-level request has been abandoned.
+Is it part of a bounded pool?
 
-## 5.4 Don't confuse `TIME_WAIT` with leaked descriptors
+Is it eligible for reuse?
 
-This is another important trap.
+Does it have a sensible idle lifetime?
 
-You may see many TCP connections in `TIME_WAIT`.
+Is there a configured maximum number of active and idle connections?
 
-That state is commonly part of normal TCP connection teardown.
+Is the corresponding request still active?
 
-In many ordinary cases, `TIME_WAIT` sockets are maintained by the kernel after the application's file descriptor has already been closed.
+Can abandoned operations accumulate without bound?
 
-Therefore, a large `TIME_WAIT` count doesn't directly mean the process has the same number of open file descriptors.
+A healthy connection pool has resource-lifetime rules.
 
-It can indicate high connection churn, but it is not by itself proof of an FD leak.
+Our custom registry does not.
 
-A good investigator compares process descriptor state with kernel socket state rather than treating them as identical.
+### The dangerous registry
 
----
+In the suspect implementation, each request creates an entry in a map of active connections.
 
-# 6. The Suspect Code: A Timeout That Didn't Cancel Anything
+The timeout branch rejects the caller's Promise but leaves the entry in the registry.
 
-We inspect the recently deployed supplier client.
+Because the registry retains the connection object, application-managed cleanup does not occur.
 
-The code opens a new TLS connection for a request.
+The connection may remain open, and the registry continues growing.
 
-It stores the socket in a registry keyed by request identifier.
+The exact native and kernel state depends on the transport library and peer behavior, but the architectural defect is clear.
 
-It begins reading the supplier response.
+The application has lost track of the difference between a request whose result is no longer wanted and a resource whose lifetime must still be managed.
 
-Then it races the response against a timeout promise.
+## 13. The reproduction that settles the argument
 
-If the timeout wins, the caller receives a timeout error.
+At this point, we have a strong hypothesis.
 
-But the timeout branch never destroys the socket.
-
-And the registry entry remains.
-
-The request has ended **from the perspective of the awaiting application function**.
-
-The underlying connection has not necessarily ended.
-
-The cleanup responsibility was lost.
-
-## 6.1 Application completion versus resource lifetime
-
-This distinction is subtle.
-
-The developer thought:
-
-"The request is finished because the promise rejected."
-
-But the operating system doesn't know that a JavaScript promise was rejected.
-
-The kernel manages the socket until the relevant close and cleanup operations occur.
-
-The promise is a JavaScript coordination abstraction.
-
-The socket is a kernel-managed resource.
-
-They have different lifetimes.
-
-The application must connect those lifetimes deliberately.
-
-## 6.2 Why a registry makes the problem worse
-
-Our custom client also retains each socket in an active-connection map.
-
-The entries aren't deleted on timeout.
-
-This prevents the application from forgetting the socket's associated JavaScript objects.
-
-The process may retain timers, callbacks, request metadata, and buffers associated with the abandoned operation.
-
-Now we have two related consequences.
-
-The kernel keeps open socket resources.
-
-The application retains references to the objects managing those resources.
-
-As more requests time out, both populations can grow.
-
-## 6.3 Why the errors appear gradually
-
-At first, there are only a few abandoned connections.
-
-The service continues functioning.
-
-Then hundreds accumulate.
-
-New connections still open, but resource consumption rises.
-
-Eventually, thousands of sockets and related objects remain active.
-
-The process reaches its descriptor limit.
-
-New connection attempts fail.
-
-The application retries some of them.
-
-Those retries create additional pressure.
-
-The service has entered a feedback loop.
-
-This is why the incident becomes dramatically worse several minutes after deployment rather than failing immediately.
-
-The defect is cumulative.
-
----
-
-# 7. Why the Supplier Could Be Slow Without Being the Root Cause
-
-Now someone objects.
-
-"Hold on. The supplier requests were timing out before our descriptors exploded. Surely the supplier is the cause."
-
-Possibly a contributing factor.
-
-But we need to distinguish a **trigger** from the defect that turns a trigger into a failure.
-
-Imagine the supplier occasionally responds slowly.
-
-That is normal enough for a distributed system.
-
-Our application should handle delays, timeouts, and partial failures.
-
-If a slow response causes us to keep a socket open forever after abandoning the request, that's a cleanup bug in our application.
-
-The supplier's slowness may expose it.
-
-But a correctly designed timeout path should not leak resources merely because an external service is delayed.
-
-## 7.1 A healthy system under the same trigger
-
-Imagine the previous version of our integration.
-
-A slow supplier response occurs.
-
-The application reaches its deadline.
-
-The relevant operation is cancelled or cleaned up according to the client library's contract.
-
-Its resources are released appropriately.
-
-A bounded retry policy may apply.
-
-The service remains healthy.
-
-Now imagine the new version.
-
-The same supplier delay occurs.
-
-The local timeout rejects a promise.
-
-The transport remains active.
-
-The registry retains the socket.
-
-Repeated requests accumulate resources.
-
-The same external condition produces a completely different local outcome.
-
-This tells us why the deployment matters.
-
-## 7.2 The best discriminating test
-
-We can reproduce the problem with a controlled local server that intentionally delays responses.
-
-We don't need to rely on the real supplier's production behavior.
-
-Run the old and new client implementations against that server under the same request schedule.
-
-Measure open descriptors and active registry entries after requests time out.
-
-If the new version retains them while the old version doesn't, we have direct evidence supporting the cleanup hypothesis.
-
-This is much stronger than observing that the production supplier was slow.
-
-The test isolates the relevant mechanism.
-
----
-
-# 8. The Retry Storm: How One Failure Produces Several Others
-
-Now the descriptor limit approaches exhaustion.
-
-Some outbound operations fail immediately.
-
-Others wait.
-
-The application's retry logic interprets certain errors as transient and attempts another request.
-
-But every additional attempt consumes resources.
-
-If retries aren't bounded and concurrency isn't controlled, the system can amplify its own failure.
-
-## 8.1 More attempts, less progress
-
-Imagine the supplier is capable of processing a certain rate of requests.
-
-Our service begins retrying failed attempts aggressively.
-
-The number of initiated operations increases.
-
-But the number of successfully completed business requests doesn't necessarily increase.
-
-Instead, the service may produce more network activity, more pending timers, more queued callbacks, and more memory allocations.
-
-This is **retry amplification**.
-
-It can turn a partial external problem into a much larger local incident.
-
-## 8.2 The application starts retaining in-flight work
-
-Our request-handling code stores pending supplier operations and associated response metadata.
-
-As retries accumulate, these structures grow.
-
-Some of the objects contain Buffers or references to native resources.
-
-The number of pending operations increases even though successful throughput is declining.
-
-Now memory usage begins rising.
-
-This is not necessarily an independent memory leak.
-
-It may be a downstream effect of the connection-cleanup defect and the retry policy.
-
-But we should verify the relationship rather than assuming it.
-
-## 8.3 The causal chain
-
-At this stage, our leading hypothesis predicts the following sequence.
-
-The new timeout wrapper fails to clean up abandoned connections.
-
-Open socket descriptors accumulate.
-
-The process approaches its descriptor limit.
-
-New operations begin failing.
-
-Retries amplify demand.
-
-Pending operations and retained buffers increase memory consumption.
-
-Eventually, the container may hit its memory limit.
-
-The diagram shows the proposed chain.
-
-```mermaid id="a7cmrt"
-flowchart TB
-    A["Timeout rejects request promise"] --> B["Underlying socket not closed"]
-    B --> C["Open descriptors accumulate"]
-    C --> D["EMFILE and connection failures"]
-    D --> E["Retries increase in-flight work"]
-    E --> F["Buffers, callbacks, queues retained"]
-    F --> G["Cgroup memory limit reached"]
-    G --> H["OOM kill / worker restart"]
-```
-
-A causal diagram is a hypothesis until supported.
-
-We need to check whether each arrow corresponds to evidence in our incident.
-
----
-
-# 9. The Memory Mystery: Heap, RSS, and Cgroup Charges
-
-The worker is now consuming more memory.
-
-The JavaScript heap dashboard looks comparatively calm.
-
-What do we make of that?
-
-From CS320-L05, we already know that several measurements coexist.
-
-**V8 heap usage** describes managed JavaScript heap memory.
-
-**RSS** describes resident physical memory mapped into the process.
-
-**Cgroup memory accounting** includes memory charged to the relevant cgroup under Linux's controller rules.
-
-Those measurements overlap, but they are not identical.
-
-## 9.1 What the runtime sees
-
-Node.js exposes useful information through `process.memoryUsage()`.
-
-Relevant fields include `heapUsed`, `heapTotal`, `external`, `arrayBuffers`, and `rss`.
-
-If our retained operations contain Buffer data, the external and ArrayBuffer-related measurements may be informative.
-
-But `arrayBuffers` is included within the external-memory accounting reported by Node.js.
-
-It isn't an independent total to add blindly.
-
-RSS can also include native allocations and other resident memory that the managed heap graph doesn't describe.
-
-## 9.2 What the container sees
-
-On Linux systems using cgroup v2, the memory controller exposes files such as `memory.current`, `memory.stat`, and `memory.events`.
-
-`memory.current` represents charged memory usage at that cgroup boundary.
-
-`memory.stat` provides categories of accounting.
-
-`memory.events` records relevant threshold and OOM-related events.
-
-Our container is configured with a hard memory limit.
-
-A growing set of sockets, retained buffers, and pending work can contribute to memory pressure.
-
-The host can still have available RAM.
-
-The container doesn't automatically gain permission to exceed its own limit merely because the host isn't globally exhausted.
-
-## 9.3 How to distinguish cause and consequence
-
-Suppose cgroup memory usage begins increasing sharply only after the number of failed connections and retries explodes.
-
-That timing supports the idea that memory growth is downstream.
-
-But it doesn't prove it.
-
-We should inspect memory composition and reproduce the request pattern.
-
-Does the memory slope flatten when abandoned sockets are cleaned up?
-
-Does bounding retries reduce peak memory?
-
-Does the same workload with correct resource cleanup avoid the OOM?
-
-Those are stronger tests than simply increasing the memory limit and observing that the restart takes longer to occur.
-
-## 9.4 OOMKilled is a termination fact
-
-Kubernetes reports that one container was terminated with reason `OOMKilled`.
-
-That's important evidence.
-
-But it doesn't tell us whether the memory demand came from a JavaScript object leak, native allocations, buffers, file cache, or excessive concurrency.
-
-It's evidence about the enforcing boundary.
-
-The underlying cause still requires investigation.
-
-Likewise, exit code 137 alone is not proof of OOM. It commonly indicates termination by `SIGKILL` under standard shell conventions, which can have other causes.
-
-We need the full termination context.
-
----
-
-# 10. What About CPU? The Green Dashboard Is Not a Verdict
-
-Now let's revisit the host CPU graph.
-
-It reports twenty percent utilization.
-
-Somebody concludes that CPU cannot be involved in the latency incident.
-
-That's too confident.
-
-We learned in CS320-L04 that overall host utilization can conceal several constraints.
-
-One thread can saturate its available execution lane.
-
-A container can have restrictive CPU quotas.
-
-Threads can be runnable but wait for scheduling.
-
-And shared locks can delay work even when host CPU use is low.
-
-So we investigate CPU as one of the competing hypotheses.
-
-## 10.1 CPU time versus wall time
-
-A representative slow request takes five seconds.
-
-How much processor time does its handling consume?
-
-If most of the interval is waiting for a supplier, a database connection, or a queued native operation, the answer may be relatively little.
-
-If the main JavaScript thread is executing an expensive synchronous calculation, it may consume substantial CPU time.
-
-If the thread is runnable but quota-throttled, it may require CPU service that the cgroup cannot currently supply.
-
-We need measurements at the correct execution boundary.
-
-## 10.2 Inspect CPU throttling
-
-On cgroup v2, files such as `cpu.max` and `cpu.stat` can provide evidence about configured CPU bandwidth and throttling.
-
-A restrictive CPU quota may produce substantial delays even while the node has spare capacity.
-
-But in our incident, the relevant counters don't show a new pattern of significant CPU throttling during the latency increase.
-
-That weakens the CPU-quota hypothesis.
-
-It doesn't establish that CPU is irrelevant to every part of the workload.
-
-It means quota throttling isn't the best explanation for the observed timing.
-
-## 10.3 Inspect the event loop
-
-Node.js provides event-loop delay and utilization metrics.
-
-If the main JavaScript thread were blocked by long synchronous operations, we might observe substantial event-loop delay.
-
-We collect those measurements.
-
-The event loop experiences some increased activity during the retry storm.
-
-But the earliest slow supplier requests occur without a corresponding event-loop stall large enough to explain their elapsed time.
-
-That weakens the theory that an expensive synchronous callback initiated the incident.
-
-The later retry amplification may still make CPU behavior worse.
-
-A later secondary effect doesn't have to be the original cause.
-
-## 10.4 The important result
-
-We haven't proved that CPU can never matter.
-
-We've established that the observed descriptor accumulation and connection failures provide a more direct explanation of this incident than host CPU utilization.
-
-That's how a good investigation progresses.
-
-It doesn't require every alternative hypothesis to be philosophically impossible.
-
-It requires evidence strong enough to justify the next diagnostic step and eventual intervention.
-
----
-
-# 11. A Sleeping Thread Isn't Necessarily Doing Nothing
-
-Let's connect the investigation to process states.
-
-On Linux, threads can be running, runnable, sleeping, or in other relevant states.
-
-A thread in interruptible sleep may be waiting for an event.
-
-A thread in uninterruptible sleep may be waiting in a kernel path, often associated with I/O-related conditions.
-
-A runnable thread may be waiting for CPU service.
-
-These states help us choose the next question.
-
-But they aren't complete diagnoses.
-
-## 11.1 The misleading state code
-
-Suppose we inspect the process and see many sleeping threads.
-
-That doesn't mean the application is broken.
-
-Thread pools commonly maintain workers that wait for tasks.
-
-Event loops may sleep while waiting for I/O readiness.
-
-A healthy server can contain many threads that are not currently consuming CPU.
-
-The question is whether a thread that's needed for useful work is blocked unexpectedly.
-
-## 11.2 Thread stacks reveal the nature of waiting
-
-When available, thread stack traces can help explain what a particular thread is doing.
-
-A thread might be blocked on a mutex.
-
-Waiting on a condition variable.
-
-Performing a filesystem operation.
-
-Executing JavaScript.
-
-Or waiting for a native worker task.
-
-Different tools expose different levels of detail.
-
-JavaScript stack traces show application execution contexts.
-
-Native stack traces can reveal lower-level runtime operations.
-
-Kernel tracing can reveal scheduling and system-call behavior.
-
-No one stack trace necessarily explains the complete request.
-
-But targeted evidence can show where an execution path stopped progressing.
-
-## 11.3 Why our incident doesn't require a thread deadlock
-
-Our leading hypothesis involves leaked socket resources and retries.
-
-There's no requirement for two threads to hold locks in a circular wait.
-
-If we inspected only long-running pending promises and called them "deadlocked," we'd be using the wrong concept.
-
-A pending asynchronous operation is not automatically a mutex deadlock.
-
-Its underlying resource may simply never be closed, cancelled, or completed.
-
-The correct terminology helps us choose the correct evidence.
-
----
-
-# 12. When Kernel Socket State and Application State Disagree
-
-We now have a compelling clue.
-
-The application logs report that some supplier operations have timed out.
-
-But kernel tools still show corresponding sockets open.
-
-How can that happen?
-
-Because the operating system and application maintain different kinds of state.
-
-The kernel manages TCP connection state and socket resources.
-
-The application manages request deadlines, promises, business identifiers, and client-library state.
-
-A local timeout can expire while the underlying socket remains active.
-
-The kernel doesn't automatically interpret the rejected promise as a request to close the connection.
-
-## 12.1 Application-level completion is not transport cleanup
-
-Suppose our timeout wrapper returns a rejected promise after two seconds.
-
-The caller catches the error.
-
-It logs "supplier timeout."
-
-Then it returns an HTTP error to the customer.
-
-From the handler's perspective, the request path has ended.
-
-But the TLS socket may remain open.
-
-The custom connection registry may still hold a reference to it.
-
-And event listeners may remain installed.
-
-That's how we get a discrepancy between application metrics and operating-system resources.
-
-## 12.2 A robust client needs a lifetime contract
-
-A well-designed client library should establish clear responsibility for connections.
-
-Who creates the socket?
-
-Who owns it?
-
-When may it be reused?
-
-What happens when the caller abandons an operation?
-
-Does the timeout cancel only waiting, or the underlying I/O?
-
-Are errors and aborts handled consistently?
-
-When is the connection removed from tracking structures?
-
-What happens if a callback fires after cancellation?
-
-These aren't minor cleanup details.
-
-They determine whether a service remains stable under partial failure.
-
-## 12.3 Connection reuse is not automatically leakage
-
-One important qualification: production HTTP clients often keep connections open deliberately.
-
-Connection pooling and keep-alive behavior can improve performance.
-
-Therefore, a connection remaining open after one request is not automatically a bug.
-
-The distinction is ownership and boundedness.
-
-A healthy pool maintains a controlled population of reusable connections according to its configuration.
-
-A leak retains abandoned resources without an appropriate lifetime or reuse policy.
-
-To distinguish them, examine whether the number of open sockets stabilizes under a steady workload.
-
-A bounded pool may reach a plateau.
-
-An unbounded leak continues growing when similar requests complete or time out.
-
----
-
-# 13. The Reproduction That Settles the Argument
-
-At this point, we have several observations supporting the connection-cleanup hypothesis.
-
-But before declaring victory, we want a controlled reproduction.
+But a credible root-cause analysis needs more than a plausible story.
 
 We build a local supplier simulator.
 
-It accepts connections.
+It accepts connections and deliberately delays selected responses longer than the client's configured timeout.
 
-For selected requests, it deliberately delays its response longer than the client's timeout.
+We run the previous client implementation and the new one under comparable conditions.
 
-Then we run the suspect integration repeatedly.
+### What should healthy behavior look like?
 
-## 13.1 What should happen in a healthy client?
+Suppose we initiate twenty supplier requests against the slow simulator.
 
-Suppose we start with no active connections.
+The requests time out according to the application deadline.
 
-The client opens a connection.
+The client performs its configured cancellation or cleanup actions.
 
-The supplier delays.
+Any intentionally reusable connections remain within a bounded pool.
 
-The application timeout expires.
+Operation-specific registry entries disappear when their owners are finished.
 
-The client takes its configured cancellation or cleanup action.
+After the workload becomes idle, resource usage returns to an appropriate bounded baseline.
 
-Any operation-specific tracking entry is released.
+Not necessarily exactly zero connections, because pooling may be intentional.
 
-If a connection is retained, it must belong to a bounded, intentional reuse policy.
+But there should be no unbounded accumulation associated with completed or abandoned operations.
 
-Once the test becomes idle, resource usage should settle to an appropriate baseline.
+### What does the defective version do?
 
-## 13.2 What actually happens?
+The first request times out.
 
-With the newly deployed client, the request promise rejects.
+The caller receives an error.
 
-But the socket stays in the application's active-connection registry.
+The socket remains in the custom registry.
 
-The connection remains open.
+The second request behaves the same way.
 
-After fifty timed-out requests, approximately fifty additional socket entries may remain under the conditions of our controlled example.
+After twenty timeouts, the registry contains twenty abandoned entries.
 
-After another fifty, the population grows further.
+After fifty, it contains fifty.
 
-The pattern continues until another limit or external condition intervenes.
+The number of retained connections continues rising under repeated delayed responses.
 
-We now have direct evidence.
+Now we replace the faulty timeout behavior with cancellation and cleanup appropriate to the client's connection-lifecycle contract.
 
-The timeout path terminates the caller's wait without terminating or releasing the owned resource.
+The same delayed-response workload produces timeouts, but the operation-specific resources no longer accumulate.
 
-## 13.3 The corrected version
+This comparison strongly supports the diagnosis.
 
-The team modifies the client to give every operation a defined cleanup path.
+### An important experimental qualification
 
-Successful completion releases or returns the connection according to the client's pooling contract.
+We shouldn't blindly assume the entire incident has been reproduced merely because descriptor counts rose in a small test.
 
-Timeouts trigger an appropriate abort or destruction mechanism.
+The production environment may have additional factors: TLS, connection reuse, retries, varying supplier latency, and container constraints.
 
-Errors clean up listeners, timers, and registry entries.
+But reproducing the suspected resource-lifetime defect and showing that the corrected implementation removes it is powerful causal evidence.
 
-Cancellation is idempotent where necessary.
+We can then validate the fix under representative production-like load.
 
-Late events don't resurrect abandoned operations.
+## 14. The remediation has two parts
 
-After the fix, we repeat the same local test.
+The immediate defect is connection cleanup.
 
-The open-descriptor count returns toward the expected baseline.
+But the severity of the incident also depended on uncontrolled demand.
 
-The registry doesn't grow without bound.
+A robust remediation should therefore address both the defective resource lifecycle and the system's ability to contain future slow dependencies.
 
-The client remains stable during repeated delays.
+### First: correct resource ownership
 
-This controlled experiment is the strongest evidence yet.
+Every supplier operation needs a defined lifecycle.
 
-We've isolated a mechanism and shown that changing it alters the predicted outcome.
+What happens when it succeeds?
+
+What happens when the supplier rejects it?
+
+What happens when the local deadline expires?
+
+What happens when the client disconnects?
+
+What happens when the service shuts down?
+
+The implementation should release or transfer ownership of resources appropriately in every path.
+
+Where possible, use a mature HTTP client with documented pooling, timeout, and cancellation behavior rather than rebuilding transport lifecycle management.
+
+If using a custom socket, cleanup must account for the actual connection state and ownership.
+
+A `finally` block can be useful, but correct cleanup is more than mechanically calling `destroy()` on every socket.
+
+A deliberately pooled healthy connection may need to be returned to the pool rather than destroyed.
+
+The principle is explicit ownership and bounded lifetime.
+
+### Second: bound work and retries
+
+The application should limit concurrent supplier operations according to useful capacity.
+
+It should bound waiting queues and memory retained by queued work.
+
+Retries should have budgets, backoff, jitter where appropriate, and an overall deadline.
+
+Repeated failures should not cause unlimited additional work.
+
+And cancellation should propagate through task lifetimes, subject to each API's actual guarantees.
+
+These changes make the system more resilient even if another supplier becomes slow tomorrow.
+
+### Third: improve observability
+
+The incident wasn't visible early enough because dashboards emphasized request latency, CPU, and managed heap usage.
+
+We should also observe resource-lifetime indicators.
+
+Relevant metrics include active supplier operations, queued operations, open descriptors, connection-pool usage, timeout and cancellation counts, retry amplification, memory charges, and per-operation duration.
+
+The exact metric names aren't sacred.
+
+What matters is that we can detect when application-level requests finish while underlying resources continue accumulating.
+
+An effective alert should catch the system losing boundedness before it reaches a hard limit.
+
+## 15. Why simply raising limits may make things worse
+
+During the incident, three proposals sounded reasonable.
+
+Raise the file-descriptor limit.
+
+Raise the container memory limit.
+
+Increase supplier timeouts.
+
+Each might change the symptoms.
+
+None necessarily fixes the defect.
+
+### Raising the descriptor limit
+
+If the process can open more descriptors, it may take longer to hit `EMFILE`.
+
+That can buy operational time.
+
+But if abandoned connections continue accumulating, the leak remains.
+
+A larger limit may allow a larger accumulation before failure.
+
+### Raising the memory limit
+
+More memory may postpone the OOM condition.
+
+It can be appropriate if the application genuinely needs additional capacity.
+
+But if the problem is an unbounded set of abandoned operations, the higher limit merely allows more abandoned operations to survive.
+
+### Increasing timeouts
+
+Longer timeouts can reduce the fraction of responses classified as failures when suppliers are merely slow.
+
+But they also allow in-flight work to live longer.
+
+If the system lacks bounded concurrency, longer lifetimes may increase the number of active operations.
+
+Under the relevant stable-system assumptions, Little's Law tells us that average in-flight work relates to throughput multiplied by average time in the system.
+
+Longer request lifetimes can therefore increase resource demand even when arrival rates remain unchanged.
+
+A timeout is a workload and policy decision, not a universal cure.
+
+### The false comfort of restarting
+
+Restarting the service closes its connections and releases process-local resources.
+
+The incident appears resolved.
+
+But if the defective code remains deployed, the same slow-response pattern can recreate the accumulation.
+
+A restart can be a valid mitigation.
+
+It is not proof of remediation.
+
+## 16. Choosing measurements that distinguish causes
+
+Let's gather the investigation into one practical framework.
+
+Suppose we receive a new incident with rising latency and memory usage.
+
+We should begin by identifying the competing explanations.
+
+Then choose observations that best distinguish them.
+
+| Hypothesis | Discriminating evidence |
+|---|---|
+| Main event loop blocked | Event-loop delay, synchronous-operation timing, unrelated endpoints delayed |
+| CPU quota throttling | Effective quota, rising throttle counters, workload correlation |
+| Native worker-pool saturation | Pool-dependent operations delayed while unrelated callbacks remain responsive |
+| Memory pressure | Cgroup charges, reclaim events, PSI stalls, workload peaks |
+| Socket or descriptor leak | Open descriptors or connections grow after operations should have ended |
+| External dependency slow | Remote-operation timing corroborated independently, bounded local resource behavior |
+| Shared-memory deadlock | Threads stuck in circular synchronization dependencies |
+
+This table is for screen-based revision; during an actual investigation, we don't have to check every row.
+
+We select plausible hypotheses according to the affected operation and the observed timeline.
+
+### The information-gain principle
+
+If we suspect that requests are waiting for CPU versus waiting for a supplier, measuring more aggregate host CPU may tell us very little.
+
+A per-request trace and cgroup CPU statistics may be more informative.
+
+If we suspect abandoned sockets versus a legitimate connection pool, collecting one connection count isn't enough.
+
+We need to observe whether connection and registry counts return to a bounded baseline after work ends.
+
+The most useful test is often the smallest one that separates two competing mechanisms.
+
+## 17. The incident conclusion
+
+We can now write a defensible explanation.
+
+### Root cause
+
+The revised supplier client treated an application-level timeout as completion of the overall operation.
+
+It did not correctly release or otherwise manage the underlying transport resources and registry entries for abandoned requests.
+
+Controlled delayed-response tests reproduced the accumulation and demonstrated that corrected resource-lifecycle handling removed it.
+
+### Trigger
+
+Supplier responses occasionally exceeded the application's two-second deadline.
+
+That exposed the faulty timeout path.
+
+Slow supplier responses alone would not have required unbounded local resource retention.
+
+### Contributing factors
+
+The implementation permitted too many concurrent supplier operations.
+
+The retry policy could create additional attempts before earlier operations had actually stopped.
+
+Resource telemetry did not detect the accumulating descriptors and unfinished operations early enough.
+
+Hard process and container limits eventually converted the accumulation into connection failures and OOM-related restarts.
+
+### Immediate mitigation
+
+The team rolled back the defective supplier client or otherwise disabled the problematic behavior to reduce customer impact.
+
+Affected instances could be restarted or drained where necessary.
+
+Resource and error metrics were monitored while service recovered.
+
+### Permanent remediation
+
+The timeout implementation was replaced with correct cancellation and resource-lifecycle handling.
+
+Concurrency and retry budgets were bounded.
+
+Connection-pool behavior was made explicit.
+
+Regression tests verified that repeated timeouts did not cause unbounded descriptor, registry, or memory growth.
+
+Observability was expanded to detect accumulation before hard limits were reached.
+
+This explains not only why the service failed, but why the failure escalated so severely.
+
+## 18. The postmortem should teach the organization something
+
+A useful postmortem is not simply a description of the faulty line of code.
+
+It asks why the system allowed the defect to escape and amplify.
+
+Why didn't tests catch it?
+
+Because they verified that the timeout Promise rejected, not that the underlying operation released its resources.
+
+Why didn't the monitoring system detect it early?
+
+Because it measured request outcomes without adequately measuring resource lifetimes.
+
+Why did retries make things worse?
+
+Because the retry policy increased outstanding work during conditions that were already straining resource capacity.
+
+Why did memory grow?
+
+Because operations and related resources remained retained, while new attempts continued accumulating.
+
+Why did containers restart?
+
+Because their enforced memory boundaries could no longer satisfy the charged demand under the observed conditions.
+
+Why was the supplier blamed first?
+
+Because slow supplier responses were the visible trigger, even though the application's cleanup defect was the mechanism that turned routine slow responses into an escalating local failure.
+
+### Avoid false certainty
+
+Not every production incident provides perfectly complete evidence.
+
+Perhaps the original container was already destroyed.
+
+Perhaps some metrics were sampled too slowly.
+
+Perhaps the reproduction covers only one of several contributing mechanisms.
+
+A credible postmortem distinguishes established facts from strong inferences and unresolved uncertainties.
+
+It doesn't manufacture certainty for the sake of a neat story.
+
+The purpose is to improve future engineering decisions, not to produce a courtroom confession from the logs.
+
+## 19. From incident response to engineering judgment
+
+We've now used nearly every major mechanism from CS320.
+
+We reasoned about processes and their resource limits.
+
+We considered CPU scheduling and event-loop execution.
+
+We distinguished runtime memory from cgroup memory.
+
+We inspected file descriptors and socket states.
+
+We examined asynchronous I/O and the lifetime of native resources.
+
+We traced how cancellation and retries interact with unfinished work.
+
+And we considered whether synchronization or deadlocks could explain the observed delays.
+
+The important skill wasn't reciting those concepts.
+
+It was deciding which concept mattered at each stage of the investigation.
+
+A strong engineer can move between abstraction layers without confusing them.
+
+When the application says "timeout," ask whether the network operation stopped.
+
+When Linux says "EMFILE," ask which resource owners created and retained descriptors.
+
+When Kubernetes says "OOMKilled," ask what memory was charged and what workload caused the growth.
+
+When the dashboard says "low CPU," ask whether the relevant execution thread was actually receiving CPU service.
+
+The kernel, runtime, and application each tell part of the story.
+
+Our job is to reconstruct how those parts interact.
 
 ---
 
-# 14. The Fix Has Two Parts: Remove the Leak and Contain the Failure
+# The Oral Examination
 
-It would be tempting to finish the incident by adding one missing `socket.destroy()` call.
+Treat these as senior engineering interview questions. For each, explain what is known, what remains uncertain, and which evidence you'd collect next.
 
-That might fix the immediate defect.
+**Question 1 — The healthy CPU dashboard**
 
-But consider why the failure escalated so severely.
+A sixteen-logical-CPU host shows approximately six percent utilization. One API endpoint is CPU-bound. Does the host metric rule out a CPU bottleneck? How would you distinguish a saturated main thread from CPU-quota throttling?
 
-We had an unbounded resource-lifetime problem.
+**Question 2 — The invisible memory**
 
-We also had retry amplification and insufficient pressure controls.
+A Node.js process is OOM-killed. Its latest `heapUsed` value was 110 MiB, while the container limit was 512 MiB. Name plausible explanations and the metrics you'd inspect next.
 
-A robust fix should address both.
+**Question 3 — The descriptor explosion**
 
-## 14.1 Correct resource ownership
+A process reports `EMFILE`, and outbound TCP socket counts have been rising. Why isn't increasing `ulimit -n` a complete solution? What would you examine to distinguish legitimate concurrency from a leak?
 
-The connection's lifetime must be explicit.
+**Question 4 — The TCP-state trap**
 
-Every initiated operation should have a coherent success, failure, timeout, and cancellation path.
+You observe many `TIME_WAIT` connections and a smaller number of persistent `CLOSE_WAIT` sockets. What does each state suggest, and why shouldn't they be interpreted identically?
 
-Socket cleanup should be delegated to a trustworthy client abstraction when possible rather than recreated through fragile custom logic.
+**Question 5 — Two kinds of slow operations**
 
-Event listeners and timers should also be cleaned up appropriately.
+A synchronous report-reading endpoint delays every other endpoint. Later, after converting it to asynchronous filesystem I/O, only pool-dependent operations remain slow. Explain the two different execution bottlenecks.
 
-Use `finally`-style cleanup where it correctly models ownership, but remember that reusable pooled connections follow different lifecycle rules from disposable per-request sockets.
+**Question 6 — The timeout that didn't cancel**
 
-The objective isn't to destroy every connection after every request.
+A client uses `Promise.race` to reject after two seconds, but the underlying fetch or custom socket operation remains active. What guarantee was missing? What additional lifecycle actions might be required?
 
-It's to prevent abandoned operations from retaining resources accidentally.
+**Question 7 — The retry storm**
 
-## 14.2 Bound concurrency
+A dependency becomes slow, and your service increases retry attempts. Successful throughput falls while outbound requests and memory usage increase. Explain the feedback mechanism and propose containment.
 
-Suppose the external supplier becomes slow.
+**Question 8 — The suspicious deployment**
 
-We shouldn't initiate unlimited new operations.
+Latency begins increasing eight minutes after a deployment, and descriptor exhaustion appears later. Does this establish that the deployment caused the incident? What experiment would strengthen the causal conclusion?
 
-A concurrency limit protects the number of simultaneous supplier calls and their associated memory and socket resources.
+**Question 9 — The restart that fixed everything**
 
-This may be implemented through a bounded queue, semaphore, worker pool, or a client-library facility designed for the purpose.
+Restarting all pods returns latency and memory usage to normal. What did the restart establish? What did it fail to establish?
 
-When the limit is reached, the application needs a defined admission policy.
+**Question 10 — The incident report**
 
-Wait briefly.
-
-Reject excess work.
-
-Degrade gracefully.
-
-Use cached data if business rules allow.
-
-The precise policy depends on the product.
-
-But unbounded in-flight work is rarely a good production default.
-
-## 14.3 Bound retries
-
-Retries must have explicit limits.
-
-A maximum number of attempts.
-
-A deadline for the overall operation.
-
-Appropriate backoff.
-
-Jitter to reduce synchronized bursts.
-
-Classification of retryable errors.
-
-And a clear cancellation strategy when the caller no longer needs the result.
-
-For state-changing operations, idempotency and reconciliation are additional correctness requirements.
-
-The goal isn't to retry every failure until it eventually succeeds.
-
-It's to recover from transient conditions without overwhelming the system.
-
-## 14.4 Establish observability for the actual failure mode
-
-Finally, record metrics that reveal the problem before the process reaches a hard limit.
-
-Current active supplier operations.
-
-Configured concurrency limit.
-
-Pending queue depth.
-
-Connection-pool size.
-
-Open-descriptor utilization.
-
-Timeout rate.
-
-Retry rate.
-
-Application-level cancellation counts.
-
-Container RSS and cgroup memory usage.
-
-You don't need every metric at maximum detail forever.
-
-But these measurements should make cumulative resource growth visible before it becomes catastrophic.
+Give a concise incident conclusion distinguishing root cause, trigger, contributing factors, mitigation, and permanent remediation for the supplier-client failure.
 
 ---
 
-# 15. Why Increasing Limits Can Be the Wrong Fix
+# Solutions and Discussion
 
-Let's return to the team's proposed remedies.
+## Solution 1 — The denominator matters
 
-One engineer wants more file descriptors.
+No. One fully occupied logical CPU on a sixteen-logical-CPU host can appear as approximately 6.25 percent aggregate utilization under simple normalization.
 
-Another wants more memory.
+Inspect per-thread CPU usage and the application's critical path. For throttling, inspect the relevant cgroup quota and changes in CPU-throttling counters. A saturated single execution lane and a bandwidth-limited container are different mechanisms.
 
-A third wants longer timeouts.
+## Solution 2 — Heap and container memory are different
 
-Each suggestion might temporarily change the incident's behavior.
+The V8 heap is only part of process memory. Native allocations, Buffers, stacks, mapped pages, and other resident memory may contribute to RSS. Cgroup accounting can additionally include relevant file cache and kernel charges.
 
-But none directly fixes the cleanup defect.
+Inspect Node.js memory categories, process RSS, cgroup usage, `memory.stat`, and `memory.events`. Correlate changes with workload activity. Don't add overlapping metrics.
 
-## 15.1 Raising the descriptor limit
+## Solution 3 — Find the owner of the descriptors
 
-Suppose the process can currently open four thousand descriptors.
+Raising the limit may postpone failure without addressing unbounded accumulation.
 
-We increase the limit to sixty-four thousand.
+Inspect descriptor targets, socket counts, process limits, connection-pool policy, registry entries, and cleanup paths. Determine whether resource counts return to a bounded baseline once operations complete or time out.
 
-The service runs longer.
+## Solution 4 — Different TCP lifecycle states
 
-The leak continues.
+`TIME_WAIT` is a normal connection-termination state commonly associated with active close behavior. It doesn't automatically represent an open application descriptor leak.
 
-Eventually, it may consume far more memory and other resources before failing.
+`CLOSE_WAIT` indicates that the local TCP stack has received the peer's FIN while the local side hasn't completed its close. Persistent accumulation can suggest missing application cleanup, but requires investigation in context.
 
-We have increased the size of the failure.
+## Solution 5 — Main-thread versus native-pool waiting
 
-Now, legitimate production services may require high descriptor limits.
+A synchronous operation on the main event-loop thread prevents unrelated JavaScript callbacks from executing promptly.
 
-There's nothing inherently wrong with configuring suitable capacity.
+A saturated native worker pool can delay pool-dependent tasks while leaving the main event-loop thread available.
 
-The mistake is treating a higher limit as proof that an unbounded resource leak has been resolved.
+Distinguish the cases using endpoint scope, event-loop measurements, task timing, and resource evidence.
 
-## 15.2 Raising the memory limit
+## Solution 6 — Promise settlement isn't resource cancellation
 
-Suppose the container has a relatively small memory budget.
+`Promise.race` chooses the aggregate outcome but doesn't automatically cancel losing operations.
 
-We double it.
+The underlying API must support and receive appropriate cancellation or cleanup. Custom sockets may need explicit lifecycle handling. Pooled connections need a correct reuse or discard policy.
 
-The workload survives more abandoned sockets and pending requests.
+Timeouts don't guarantee that lower-level work stopped instantaneously.
 
-But if the leak continues, memory demand can eventually exceed the larger budget.
+## Solution 7 — Retry amplification
 
-Again, we may have postponed the incident rather than eliminated its cause.
+Slow operations remain active longer while retries create additional attempts.
 
-A memory increase can be appropriate as a temporary mitigation or legitimate capacity adjustment.
+This increases concurrency, descriptor demand, memory retention, and downstream load.
 
-It should be justified by measured working-set requirements.
+Bound active operations and queues, enforce retry budgets and deadlines, use appropriate backoff, and avoid overlapping retries where they cannot be safely supported.
 
-## 15.3 Increasing the timeout
+## Solution 8 — Correlation needs a discriminating test
 
-Now suppose we extend the supplier timeout from two seconds to ten.
+The deployment's timing supports suspicion but doesn't prove causation.
 
-Perhaps fewer operations are abandoned prematurely.
+Compare old and new client implementations under the same controlled delayed-response workload. Measure connection and registry lifetimes, timeouts, and resource usage.
 
-But every slow request may also retain resources for longer.
+If only the new implementation accumulates abandoned resources, the causal hypothesis becomes much stronger.
 
-If concurrency is uncontrolled, longer waits may increase the average number of active operations.
+## Solution 9 — Restart is mitigation evidence
 
-The relationship follows a familiar queueing idea: as the average time work remains in the system increases, more work can accumulate at a given arrival rate.
+The restart shows that resetting process-local state and resources improved service.
 
-Therefore, increasing timeouts without understanding demand and capacity can worsen resource pressure.
+It doesn't establish which resource was defective or whether the same problem will recur.
 
-Timeouts are not merely user-experience settings.
+The deployed code, workload, and resource-lifecycle policy must still be investigated.
 
-They influence resource lifetime and concurrency.
+## Solution 10 — A complete causal explanation
 
-## 15.4 Restarting everything
+The root cause was a timeout path that failed to release owned transport resources and registry entries.
 
-A restart releases process-owned descriptors and memory.
+Slow supplier responses triggered the faulty path.
 
-The service looks healthy again.
+Unbounded concurrency, retry amplification, and insufficient resource-lifetime monitoring contributed to escalation.
 
-Then traffic returns.
+Rollback or restarting affected instances mitigated impact.
 
-The defective code repeats the same behavior.
-
-The failure recurs.
-
-That doesn't mean restarting was useless.
-
-It may have restored service during an incident.
-
-But we must distinguish a successful mitigation from a successful root-cause fix.
+Correct cancellation, bounded work, regression testing, and better observability provided permanent remediation.
 
 ---
 
-# 16. The Investigator's Toolkit: What Each Observation Can Prove
+# The Mental Model Worth Keeping
 
-Now let's organize the operational tools we've used.
+A production incident is a sequence of events across systems that obey different contracts.
 
-The purpose is not to memorize fifty commands.
+The operating system provides execution time, memory, descriptors, sockets, and enforced resource limits.
 
-It's to know which tool can distinguish which kind of failure.
+The runtime coordinates callbacks, Promises, native operations, workers, and memory management.
 
-## 16.1 Process and thread state
+The application adds deadlines, retries, resource ownership, and business meaning.
 
-On Linux, tools such as `ps`, `top`, and process-specific `/proc` files help inspect process and thread information.
+When something fails, use five questions:
 
-They can show CPU use, thread counts, states, and other relevant details.
+**Observe:** What happened, precisely, and when?
 
-Use them when the hypothesis concerns active computation, runnable waiting, blocked tasks, or unusual process growth.
+**Hypothesize:** Which mechanisms could produce it?
 
-But a state code alone doesn't prove a root cause.
+**Discriminate:** What measurement or experiment separates those explanations?
 
-A sleeping thread may be healthy.
+**Verify:** Does the evidence support the proposed mechanism under controlled conditions?
 
-A runnable thread may be waiting for CPU.
+**Remediate:** Does the change remove the failure mode and prevent its amplification?
 
-Interpret the observation in the context of a specific request or workload.
+The investigator's most important skill is not knowing every diagnostic command.
 
-## 16.2 CPU profiles and event-loop metrics
+It is knowing which uncertainty to eliminate next.
 
-A CPU profile helps identify which operations consume processor execution time.
+# End of CS320 — From Mechanisms to Engineering Judgment
 
-For Node.js, event-loop delay and utilization metrics help investigate scheduling of JavaScript callbacks.
+We've worked from the operating system's execution environment through scheduling, virtual memory, memory pressure, I/O, application concurrency, and shared-memory synchronization.
 
-Use these when the service is slow but the delay's owner is unclear.
+You now have a model of the machinery beneath a modern backend service.
 
-A CPU profile showing a hot synchronous parsing loop supports a different explanation from a request trace showing most time spent awaiting a supplier response.
+But a model becomes useful only when you can apply it without following a prepared script.
 
-## 16.3 Scheduling and cgroup CPU accounting
+When an interviewer describes a slow API, don't immediately blame the database.
 
-Cgroup CPU limits and throttling counters can reveal whether a container is constrained by its CPU allocation.
+When someone reports low CPU utilization, don't assume execution capacity is abundant.
 
-Linux PSI and appropriate tracing tools can provide additional insight into pressure and waiting.
+When a Promise rejects, don't assume the underlying operation stopped.
 
-Use these when a task appears ready to run but cannot obtain timely CPU service.
+When a process is OOM-killed, don't assume the JavaScript heap leaked.
 
-Remember that host CPU percentage and container entitlement are different measurements.
+And when an incident produces five alarming symptoms, don't assume you have five independent problems.
 
-## 16.4 Memory accounting
+Find the boundary. Establish the evidence. Explain the mechanism.
 
-Node.js exposes runtime and process memory metrics.
+That's the difference between recognizing terminology and understanding the system.
 
-Linux exposes process RSS, mapping information, and cgroup memory statistics.
-
-Use these to distinguish JavaScript heap retention, native allocations, file-backed memory, and container-level pressure.
-
-Do not add overlapping categories blindly.
-
-And don't use a healthy post-restart memory reading to dismiss a pre-restart allocation spike.
-
-## 16.5 File descriptors and sockets
-
-Process descriptor tables show which resources are open.
-
-Socket tools such as `ss` reveal kernel TCP states and connection information.
-
-Use these when investigating connection failures, resource exhaustion, or mismatches between application timeouts and transport state.
-
-Correlate process-owned descriptors with socket state.
-
-Remember that a large `TIME_WAIT` population doesn't necessarily represent the same number of open descriptors in the process.
-
-## 16.6 System-call tracing
-
-Tools such as `strace` can reveal system calls and their results on Linux.
-
-They can help identify repeated file opens, failing socket operations, or relevant blocking behavior.
-
-But tracing has overhead.
-
-Attaching a tracer to a busy production process can affect timing.
-
-Use targeted filters and short observations when appropriate, and prefer safer historical telemetry when the risk is unacceptable.
-
-The tool is evidence-gathering machinery, not a universal default command to run on every incident.
+*The spoken lecture ends here. The remaining material is for practical investigation and screen-based revision.*
 
 ---
 
-# 17. Choosing the Next Test: Maximum Information, Minimum Risk
+# Optional Practical Lab — Build an Incident Room
 
-Now imagine you're interviewing a candidate.
+These experiments are intended for a disposable local environment. Do not intentionally exhaust file descriptors, memory, or network resources on production machines.
 
-You present the incident dashboard.
+## Lab A — Capture the process boundary
 
-CPU is low.
-
-Memory is rising.
-
-Requests are timing out.
-
-The supplier is slow.
-
-You ask:
-
-"What would you do first?"
-
-A weak answer lists every tool the candidate remembers.
-
-A stronger answer explains which uncertainty matters most.
-
-## 17.1 Start with competing predictions
-
-Suppose we have three leading hypotheses.
-
-A: the event loop is blocked.
-
-B: the external supplier is slow.
-
-C: timed-out operations are retaining sockets.
-
-Now consider possible observations.
-
-If unrelated trivial endpoints experience the same callback delay, A gains support.
-
-If requests from different clients and environments are all slow against the supplier, B gains support.
-
-If open socket counts continue rising after application timeouts, C gains support.
-
-The observations aren't equally informative.
-
-We want one that separates the explanations.
-
-## 17.2 Prefer reversible observations
-
-We should generally prefer observations that don't alter production behavior unnecessarily.
-
-Read a metric.
-
-Inspect a current resource count.
-
-Review a trace.
-
-Compare revisions.
-
-Capture a small diagnostic profile where safe.
-
-A production configuration change is a much larger intervention.
-
-It may eliminate useful evidence.
-
-It may introduce new failure modes.
-
-And if several changes occur simultaneously, it becomes difficult to attribute the result.
-
-A good investigation tries to minimize uncontrolled variables.
-
-## 17.3 The smallest experiment
-
-For our incident, the local supplier simulator is especially valuable.
-
-It creates the slow-response condition deliberately.
-
-It removes the production supplier as an uncontrolled variable.
-
-It lets us compare old and new clients.
-
-It exposes whether the timeout path releases resources.
-
-And it can be repeated safely.
-
-The experiment doesn't reproduce every aspect of the production infrastructure.
-
-It doesn't need to.
-
-It directly tests the mechanism most relevant to our hypothesis.
-
-**The best next test is often the one whose possible outcomes would most change your explanation.**
-
----
-
-# 18. Root Cause, Trigger, and Contributing Factors
-
-Now we have enough evidence to write a credible incident conclusion.
-
-But don't compress everything into the sentence:
-
-"The service had a memory leak."
-
-That would be incomplete.
-
-Let's separate the pieces.
-
-## 18.1 Root cause
-
-The newly deployed supplier client did not correctly release owned sockets and registry entries when an application-level timeout expired.
-
-This allowed abandoned transport operations to remain active and retained.
-
-The defect was reproducible with controlled delayed responses.
-
-## 18.2 Trigger
-
-Slow supplier responses caused some operations to exceed the application's deadline.
-
-The deadline exposed the faulty cleanup path.
-
-The supplier's behavior contributed to the occurrence of timeouts, but it did not require our service to leak resources.
-
-## 18.3 Contributing factors
-
-The service created new connections without an effective bound.
-
-Retries increased work during resource exhaustion.
-
-There was insufficient alerting on descriptor utilization and active supplier operations.
-
-A hard container memory limit eventually terminated workers after the in-flight and retained working set grew.
-
-These factors explain why a local cleanup defect escalated into a broader production incident.
-
-## 18.4 Immediate mitigation
-
-Traffic was shifted away from the affected revision, or the deployment was rolled back where operationally appropriate.
-
-Affected workers were restarted to release abandoned resources.
-
-The supplier request concurrency was temporarily limited.
-
-These actions restored service.
-
-They did not, by themselves, prove the bug was fixed.
-
-## 18.5 Permanent remediation
-
-The timeout and cancellation path now releases owned resources correctly.
-
-Registry entries and listeners are cleaned up on every terminal path.
-
-Request concurrency and retries are bounded.
-
-Tests cover delayed, failed, aborted, and successfully completed operations.
-
-Monitoring detects growth in active operations and descriptors before resource exhaustion.
-
-The corrected implementation has been tested against the same delayed-response scenario that reproduced the defect.
-
-This is a complete explanation.
-
-It connects a code-level mistake to operating-system resource behavior and then to user-visible consequences.
-
----
-
-# 19. The Postmortem Must Explain Why the System Failed So Hard
-
-A useful postmortem goes beyond identifying the defective line.
-
-Why didn't tests catch the issue?
-
-Because they mainly verified successful responses and ordinary errors. They didn't verify resource cleanup after a timeout while the underlying connection remained open.
-
-Why didn't monitoring detect the accumulation earlier?
-
-Because the dashboards emphasized latency, CPU, and managed heap usage. They didn't expose the growth of open descriptors and abandoned operations clearly enough.
-
-Why did retries worsen the incident?
-
-Because the retry policy increased demand while the underlying resource was already constrained.
-
-Why did memory rise?
-
-Because the service retained in-flight work and associated resources while retry demand grew.
-
-Why did a container restart?
-
-Because relevant memory charges reached the enforced container boundary and the kernel recorded an OOM termination.
-
-Why was the external supplier blamed first?
-
-Because the earliest customer-visible error was a supplier timeout, even though the application's cleanup behavior transformed a transient delay into accumulating local resource exhaustion.
-
-These answers matter because they identify prevention opportunities.
-
-Better cancellation semantics.
-
-Bounded concurrency.
-
-Resource-lifetime tests.
-
-Useful operational metrics.
-
-Safer retry policies.
-
-And a culture of investigating mechanisms rather than guessing from final symptoms.
-
-## 19.1 A good postmortem distinguishes confidence levels
-
-Not every detail will be known with equal certainty.
-
-We may have strong evidence that the cleanup path leaked sockets.
-
-We may have strong evidence that the process reached its FD limit.
-
-We may have moderate evidence about the exact contribution of retained buffers to peak cgroup memory.
-
-A good report states those differences.
-
-It doesn't pretend that every arrow in a causal diagram has been independently measured if some are supported only by plausible inference.
-
-## 19.2 Reproduction isn't always complete
-
-Sometimes the corrected code behaves well under the local reproducer, but production also involved unusual supplier behavior, network conditions, and Kubernetes resource constraints.
-
-The local test establishes an important mechanism.
-
-Production telemetry supports the wider causal chain.
-
-Together they may justify a confident remediation.
-
-But the report should still identify any unanswered questions.
-
-Uncertainty is part of rigorous incident analysis.
-
-The objective isn't to sound certain.
-
-It's to be accurate enough to make the next system safer.
-
----
-
-# 20. The Senior Engineer's Forensic Framework
-
-At this point, we can extract a general method from the case.
-
-It applies to CPU incidents, memory incidents, networking incidents, and concurrency failures.
-
-The method is simple enough to remember but demanding enough to distinguish experienced engineers.
-
-## 20.1 State the symptom precisely
-
-Not "the service is slow."
-
-Instead:
-
-"The p95 availability response time increased after the supplier-client deployment, with errors concentrated in requests that exceeded the local supplier deadline."
-
-Precision determines what evidence we need.
-
-## 20.2 Identify competing mechanisms
-
-Could the delay belong to the CPU?
-
-The scheduler?
-
-The event loop?
-
-A native worker pool?
-
-The network?
-
-A database?
-
-A lock?
-
-Resource exhaustion?
-
-List plausible candidates without making the list infinite.
-
-## 20.3 Identify the first broken boundary
-
-Follow the request and process timeline.
-
-Where does expected behavior first diverge?
-
-In this incident, application-level timeouts no longer corresponded to appropriate transport-resource cleanup.
-
-That boundary came before the descriptor failures and memory spike.
-
-## 20.4 Choose a discriminating measurement
-
-Look for evidence that distinguishes the leading hypotheses.
-
-A growing population of process-owned sockets after request-level timeouts is much more informative than another generic memory graph.
-
-## 20.5 Test the mechanism
-
-Use a controlled reproduction where possible.
-
-Alter one relevant condition.
-
-Observe the predicted effect.
-
-If the hypothesis doesn't survive, revise it.
-
-## 20.6 Mitigate, remediate, and verify
-
-Stop current user impact.
-
-Fix the mechanism.
-
-Add controls that contain similar failures.
-
-Repeat the reproduction.
-
-Monitor the system under representative load.
-
-And record what evidence supports the conclusion.
-
-That's the entire investigative loop.
-
----
-
-# 21. The Oral Examination
-
-Treat these questions as an incident-response interview.
-
-For each answer, distinguish what you know, what you suspect, and what evidence you'd collect next.
-
-### Challenge A — The Healthy CPU Dashboard
-
-A sixteen-logical-CPU host reports approximately six percent CPU utilization.
-
-One application endpoint is CPU-bound and cannot process requests faster.
-
-Does the host utilization figure rule out a CPU bottleneck?
-
-Which measurements would distinguish single-thread saturation from CPU-quota throttling?
-
-### Challenge B — The Invisible Memory
-
-A Node.js container is OOM-killed.
-
-The last recorded `heapUsed` value is 110 MiB, and the container has a memory limit of 512 MiB.
-
-Give at least three plausible explanations for the difference.
-
-Which observation would you prioritize next?
-
-### Challenge C — The Descriptor Explosion
-
-A service approaches its process descriptor limit and logs `EMFILE`.
-
-The number of outbound TCP sockets has increased steadily.
-
-What hypotheses would you investigate?
-
-Why isn't increasing the descriptor limit a complete fix?
-
-### Challenge D — The `TIME_WAIT` Trap
-
-A network dashboard shows thousands of TCP connections in `TIME_WAIT`.
-
-An engineer concludes that the Node.js process has thousands of leaked open sockets.
-
-Is that conclusion justified?
-
-Explain what additional evidence is required.
-
-### Challenge E — Two Slow Endpoints
-
-Endpoint A spends five seconds waiting for an external supplier.
-
-Endpoint B performs a synchronous five-second CPU operation on Node.js's main JavaScript thread.
-
-How might their effects on unrelated endpoints differ?
-
-Which runtime measurements would help distinguish the causes?
-
-### Challenge F — A Suspicious Deployment
-
-A memory spike begins after a new deployment.
-
-The application also experiences retries, timeouts, and rising open descriptors.
-
-Would you immediately classify the incident as a JavaScript memory leak?
-
-How would you reconstruct the likely causal order?
-
-### Challenge G — The Timeout That Didn't Stop Anything
-
-A custom client uses `Promise.race` between a network operation and a timeout promise.
-
-When the timeout wins, the caller gets an error.
-
-Does that automatically cancel the underlying network operation?
-
-What resource-lifetime responsibilities remain?
-
-### Challenge H — Retry Amplification
-
-A supplier is slow.
-
-The application responds by aggressively retrying unsuccessful calls.
-
-Successful throughput doesn't improve, but pending operations and memory usage rise.
-
-Explain the feedback loop.
-
-Name two safeguards that would reduce amplification.
-
-### Challenge I — The Restart That "Fixed" It
-
-Restarting the service immediately restores normal latency.
-
-The incident recurs fifteen minutes later.
-
-What does the successful restart prove?
-
-What does it not prove?
-
-### Challenge J — The Incident Report
-
-Write a concise incident conclusion distinguishing root cause, trigger, contributing factors, mitigation, permanent remediation, and verification.
-
-Avoid claiming certainty for evidence you don't actually possess.
-
----
-
-# 22. Solutions and Discussion
-
-*Read this section after answering out loud. The practical lab appears after the spoken lecture ends.*
-
-### Solution A — Single-thread and quota bottlenecks
-
-No. One saturated logical CPU out of sixteen can appear as roughly 6.25% aggregate usage under a simple normalization.
-
-Inspect per-thread and per-core CPU activity. Examine the application's execution model and critical path.
-
-For quota throttling, inspect the relevant cgroup CPU configuration and throttling counters.
-
-A CPU-bound single-threaded calculation and a quota-limited multithreaded workload are different mechanisms.
-
-### Solution B — Memory-accounting boundaries
-
-The Node.js heap is only part of the process's memory footprint.
-
-Native allocations, Buffers, stacks, mapped pages, allocator retention, and other resident memory may contribute.
-
-Cgroup memory accounting can also include relevant file cache and kernel memory.
-
-Inspect process RSS, Node external-memory metrics, cgroup memory usage, memory-category breakdowns, and OOM events.
-
-Do not simply add overlapping categories.
-
-### Solution C — Descriptor ownership
-
-Investigate unclosed sockets or files, unbounded connection creation, abandoned requests, incorrect pooling, and cleanup failures.
-
-Classify descriptor types and correlate them with request lifetimes.
-
-Increasing the limit provides more headroom but doesn't repair an unbounded leak.
-
-A controlled reproduction should demonstrate that resource usage stabilizes after operations complete or fail.
-
-### Solution D — TCP state versus open descriptors
-
-No. `TIME_WAIT` commonly persists in the kernel after an application's descriptor has closed.
-
-It can reflect connection churn rather than process FD leakage.
-
-Inspect process descriptor counts and ownership, relevant socket states, and whether active connections remain retained unexpectedly.
-
-### Solution E — External wait versus event-loop blocking
-
-Endpoint A may spend most of its time awaiting a supplier while the event loop continues handling other work.
-
-Endpoint B blocks ordinary JavaScript callbacks on that thread during its synchronous computation.
-
-Inspect event-loop delay, utilization, CPU profiles, request-stage traces, and dependency timing.
-
-These observations help locate the execution boundary responsible for the delay.
-
-### Solution F — Causal ordering
-
-No. Rising memory is an observation, not proof of retained JavaScript objects.
-
-Construct a timeline around the deployment, descriptor growth, failed connections, retry rate, pending work, RSS, cgroup charges, and termination events.
-
-If descriptor growth precedes retry and memory amplification, investigate whether the earlier resource problem explains the later symptoms.
-
-### Solution G — Promise timeout versus operation cancellation
-
-No. `Promise.race` decides which promise settles the result observed by the caller.
-
-It doesn't inherently cancel another promise or destroy its underlying socket.
-
-The client must use the relevant cancellation and resource-cleanup mechanisms.
-
-Timers, listeners, registry entries, and owned resources require deliberate lifetime management.
-
-### Solution H — Retry amplification
-
-Retries increase attempted work while the underlying bottleneck remains.
-
-That can consume additional connections, buffers, queues, and CPU time, potentially worsening the original failure.
-
-Safeguards include bounded retries, overall deadlines, backoff with jitter, limited in-flight concurrency, admission control, and suitable circuit-breaker behavior.
-
-### Solution I — Restart as mitigation
-
-The restart proves that replacing the process restored service under the observed conditions.
-
-It doesn't establish why the old process failed.
-
-Restarting releases many resources and resets state, so cumulative leaks and queueing problems may temporarily disappear.
-
-The recurrence suggests that the underlying failure mode remains active.
-
-### Solution J — Complete incident explanation
-
-A strong report identifies the timeout cleanup defect as the root cause if supported by code inspection and reproduction.
-
-It distinguishes supplier slowness as the trigger, insufficient resource bounds and retry amplification as contributing factors, rollback or restart as mitigation, cleanup and bounded-concurrency changes as remediation, and repeatable tests plus telemetry as verification.
-
-It also states any uncertain parts of the broader causal chain rather than presenting inference as directly observed fact.
-
----
-
-# 23. The Mental Model Worth Keeping
-
-An incident is not a collection of alarming dashboard panels.
-
-It is a sequence of events involving components that obey specific contracts.
-
-The operating system provides execution time, memory mappings, file descriptors, sockets, scheduling, and resource enforcement.
-
-The runtime coordinates application work through JavaScript, native libraries, worker pools, event loops, and memory management.
-
-The application adds deadlines, retries, state transitions, and business semantics.
-
-Failures occur when one or more of those contracts are misunderstood, violated, or overwhelmed.
-
-The investigator's job is to identify which contract broke first.
-
-Remember the five-part method.
-
-**Observe:** What happened, where, and when?
-
-**Hypothesize:** Which mechanisms could explain it?
-
-**Discriminate:** Which measurement would distinguish those mechanisms?
-
-**Verify:** Can the proposed mechanism be reproduced or otherwise supported?
-
-**Remediate:** Does the change fix the failure mode under representative conditions?
-
-And remember these distinctions.
-
-Low host CPU doesn't rule out a local CPU bottleneck.
-
-A flat JavaScript heap doesn't rule out memory pressure.
-
-A timeout doesn't prove the remote operation never occurred.
-
-A rejected promise doesn't automatically cancel an underlying resource.
-
-A `TIME_WAIT` socket doesn't necessarily represent an open process descriptor.
-
-A restart doesn't establish root cause.
-
-And an error disappearing after a configuration change doesn't prove that the underlying design is correct.
-
-The fundamental principle of CS320 is:
-
-**A running program is never just its source code. It is source code interacting with a runtime, an operating system, shared resources, and other concurrently executing systems.**
-
-To diagnose it, we must understand those interactions.
-
----
-
-# 24. End of CS320 — From Mechanisms to Engineering Judgment
-
-We've reached the end of **CS320 — Operating Systems, Concurrency, and Runtimes**.
-
-The course began with concurrency.
-
-We learned why independently correct operations can produce incorrect combined results, why asynchronous execution differs from parallelism, and why time becomes part of correctness.
-
-We then examined the operating system.
-
-Processes, threads, system calls, filesystems, containers, and the resources programs use without owning directly.
-
-We investigated JavaScript and TypeScript's runtime behavior, then moved deeper into CPU scheduling, virtual memory, and asynchronous I/O.
-
-We studied the relationship between threads, shared memory, atomic operations, and happens-before guarantees.
-
-And finally, we've used those mechanisms to reconstruct a realistic production incident.
-
-The journey has taken us from a simple line of code to the larger machine that actually executes it.
-
-That is the most valuable kind of systems knowledge.
-
-Not memorizing every kernel interface.
-
-Not developing a reflex to increase limits whenever performance degrades.
-
-But understanding enough of the underlying machinery to replace guesses with testable explanations.
-
-The natural next step in our programme is applying those foundations to larger application and infrastructure designs: frontend behavior, backend services, persistent data, distributed workflows, and production architecture.
-
-CS320's ideas will reappear throughout those subjects.
-
-Whenever a service becomes unexpectedly slow, asks for more memory, stops responding, or behaves differently under concurrency, you'll have a framework for deciding where to look.
-
-The final question worth carrying forward is:
-
-**What would the system have to be doing for these observations to make sense—and what evidence would prove that explanation wrong?**
-
-That is the question of an engineer who understands the machine.
-
----
-
-## Optional Practical Lab — Build an Incident Room
-
-*The spoken lecture ends here. The following experiments are intended for screen-based investigation. Use a disposable local environment or a development cluster. Do not deliberately exhaust production resources.*
-
-### Lab A — Capture the process boundary
-
-Start a local Node.js service and identify its process ID.
-
-Inspect basic process information:
+On Linux, inspect a process you control:
 
 ```bash
-PID=<node-process-id>
+PID=$$
 
-ps -p "$PID" -o pid,ppid,stat,%cpu,%mem,rss,etime,comm
-ps -L -p "$PID" -o pid,tid,stat,psr,pcpu,comm
+ps -o pid,ppid,stat,psr,pcpu,comm -p "$PID"
+grep -E 'Threads|VmRSS|VmSize|FDSize' /proc/"$PID"/status
+ls -l /proc/"$PID"/fd | head -30
 ```
 
-Explain the difference between process-level and thread-level activity.
+Observe process identity, thread count, memory statistics, and file descriptors.
 
-For a thread that appears inactive, determine whether it is sleeping, runnable, or waiting on an operation.
+**Question:** Which of these measurements describes the process's resource environment rather than its business logic?
 
-### Lab B — Inspect file-descriptor usage
+## Lab B — Inspect socket state
 
-On Linux, inspect the process's descriptor table:
+On a Linux system with `ss` available:
 
 ```bash
-PID=<node-process-id>
-
-ls /proc/"$PID"/fd | wc -l
-cat /proc/"$PID"/limits | grep -i "open files"
+ss -tan
+ss -tan state established
+ss -tan state close-wait
+ss -tan state time-wait
 ```
 
-Observe that descriptor counts are snapshots and can change while the process runs.
+Use `ss -tanp` where permitted to inspect process associations.
 
-If `lsof` is installed:
+Compare the TCP states.
 
-```bash
-lsof -p "$PID"
-```
+Remember that socket-table entries and process-owned file descriptors aren't interchangeable measurements.
 
-Classify the types of open resources.
+**Question:** Why might a server with many legitimate short-lived connections have substantial `TIME_WAIT` activity without leaking application file descriptors?
 
-Are they files, pipes, sockets, or other handles?
+## Lab C — Reproduce a timeout that leaves work alive
 
-Explain why counting descriptors is more informative than looking at TCP state alone when investigating `EMFILE`.
+This example uses the Node.js TCP module to create a small, local, intentionally faulty client. It doesn't contact external services or create an unbounded number of sockets.
 
-### Lab C — Inspect socket state
-
-Use a disposable service that opens local TCP connections.
-
-On Linux, inspect sockets:
-
-```bash
-ss -tanp
-```
-
-Filter the results by relevant local or remote addresses where appropriate.
-
-Compare `ESTABLISHED`, `CLOSE_WAIT`, and `TIME_WAIT`.
-
-Explain why the states describe different conditions.
-
-Do not assume every `TIME_WAIT` entry corresponds to a still-open application file descriptor.
-
-### Lab D — Reproduce an application timeout that does not cancel I/O
-
-Create a local TCP server that accepts connections and deliberately does not send a response.
-
-The following example listens only on the loopback interface:
+Create `timeout-leak.mjs`:
 
 ```javascript
-// slow-server.js
-const net = require("node:net");
-
-const server = net.createServer((socket) => {
-  socket.on("error", () => {});
-  // Deliberately retain this connection without responding.
-});
-
-server.listen(9090, "127.0.0.1", () => {
-  console.log("Local slow server on port 9090");
-});
-```
-
-Now implement a deliberately defective client:
-
-```javascript
-// leaky-client.js
-const net = require("node:net");
+import net from "node:net";
+import { setTimeout as delay } from "node:timers/promises";
 
 const active = new Map();
+let nextId = 0;
 
-function requestWithBadTimeout(id) {
-  const socket = net.connect(9090, "127.0.0.1");
+// A local server that accepts connections but doesn't reply.
+const server = net.createServer(() => {});
+
+await new Promise(resolve => {
+  server.listen(0, "127.0.0.1", resolve);
+});
+
+const port = server.address().port;
+
+async function badRequest() {
+  const id = ++nextId;
+  const socket = net.createConnection({
+    host: "127.0.0.1",
+    port
+  });
 
   active.set(id, socket);
 
-  const response = new Promise((resolve, reject) => {
-    socket.once("data", resolve);
-    socket.once("error", reject);
-  });
+  // Avoid an unhandled error crashing this teaching example.
+  socket.on("error", () => {});
 
-  const timeout = new Promise((_, reject) => {
-    setTimeout(() => {
-      reject(new Error("request deadline exceeded"));
-    }, 100);
-  });
+  // This simulates an application deadline.
+  const neverCompletes = new Promise(() => {});
 
-  // Deliberately wrong:
-  // timeout does not destroy the socket or clear the registry.
-  return Promise.race([response, timeout]);
-}
-
-async function main() {
-  for (let i = 0; i < 50; i++) {
-    requestWithBadTimeout(i).catch(() => {});
+  try {
+    await Promise.race([
+      neverCompletes,
+      delay(30).then(() => {
+        throw new Error("Application timeout");
+      })
+    ]);
+  } catch {
+    // BUG: the caller finishes, but the socket remains owned.
   }
-
-  setInterval(() => {
-    console.log({
-      retainedSocketObjects: active.size,
-      rssMiB: (
-        process.memoryUsage().rss / 1048576
-      ).toFixed(1),
-    });
-  }, 1000);
 }
 
-main();
+for (let i = 0; i < 12; i++) {
+  await badRequest();
+}
+
+console.log("Abandoned registry entries:", active.size);
+console.log("Open client sockets:", [...active.values()]
+  .filter(socket => !socket.destroyed).length);
+
+// Cleanup so the demonstration exits safely.
+for (const socket of active.values()) {
+  socket.destroy();
+}
+
+active.clear();
+server.close();
 ```
 
-Run the server and client in separate terminals.
+Run:
 
-Inspect the client's descriptor count before and after initiating the requests.
+```bash
+node timeout-leak.mjs
+```
 
-Observe that the application deadlines expire while the sockets remain retained.
+The script deliberately retains twelve client socket objects after the application-level timeouts. The exact connection state may vary with scheduling, but the unbounded-lifetime pattern is visible in the registry.
 
-This is a deliberately incorrect example. Terminate both local processes after observing the behavior.
+**Question:** Which event ended the caller's wait, and which event actually ended the socket's lifetime?
 
-Next, redesign the client so success, timeout, error, and cancellation paths clean up appropriately.
+## Lab D — Correct the resource lifecycle
 
-Verify that descriptor and registry counts return toward the expected baseline.
+Modify the previous example so each request owns its socket and performs cleanup when the deadline expires.
 
-### Lab E — Distinguish two timeout implementations
+One useful pattern is to attach the resource to an explicit operation object and ensure that timeout or cancellation closes the owned disposable socket.
 
-Implement two client versions.
+For a reusable HTTP client connection, use the client's documented cancellation and pooling semantics rather than always destroying every socket.
 
-**Version A:** Uses `Promise.race` to stop awaiting a result but doesn't cancel the underlying operation.
+After repeating the delayed-response experiment, verify that the number of abandoned operation-specific resources doesn't grow with the number of completed timeouts.
 
-**Version B:** Uses an appropriate supported abort or cleanup mechanism and correctly releases the owned resource.
+**Success criterion:** repeated timeouts do not cause the registry and open resources to grow indefinitely.
 
-Run both against the same controlled slow server.
+## Lab E — Distinguish the runtime and container memory views
 
-Record:
-
-- Number of attempted requests.
-- Number of timed-out application operations.
-- Open descriptor count.
-- Active registry entries.
-- RSS over time.
-- Resource usage after the test becomes idle.
-
-Explain which observations distinguish the two implementations.
-
-### Lab F — Inspect Node.js memory
-
-Add periodic memory reporting to your local service:
+For a Node.js process, log:
 
 ```javascript
-const { memoryUsage } = require("node:process");
-
-function printMemory() {
-  const m = memoryUsage();
-  const mib = (n) => (n / 1048576).toFixed(1);
-
-  console.log({
-    heapUsedMiB: mib(m.heapUsed),
-    heapTotalMiB: mib(m.heapTotal),
-    externalMiB: mib(m.external),
-    arrayBuffersMiB: mib(m.arrayBuffers),
-    rssMiB: mib(m.rss),
-  });
-}
-
-setInterval(printMemory, 1000);
+console.log(process.memoryUsage());
 ```
 
-Observe how the values respond to retained sockets and buffers.
-
-Explain why `heapUsed`, `external`, `arrayBuffers`, and RSS are not independent additive categories.
-
-### Lab G — Inspect cgroup memory and CPU restrictions
-
-In a cgroup v2 environment:
+On Linux, compare with:
 
 ```bash
-cat /proc/self/cgroup
+cat /proc/self/status
+```
 
-cat /sys/fs/cgroup/cpu.max
-cat /sys/fs/cgroup/cpu.stat
+In a suitable cgroup v2 environment, inspect:
 
+```bash
 cat /sys/fs/cgroup/memory.current
-cat /sys/fs/cgroup/memory.max
 cat /sys/fs/cgroup/memory.stat
 cat /sys/fs/cgroup/memory.events
+cat /sys/fs/cgroup/memory.max
 ```
 
-The actual relevant cgroup path depends on the environment, hierarchy, and namespace configuration.
+The files visible inside a container may reflect a cgroup namespace or mount arrangement. Use the correct host-side cgroup path when needed.
 
-Identify which counters represent CPU throttling and which represent memory-controller events.
+**Question:** Why might `heapUsed`, RSS, and `memory.current` all report substantially different values?
 
-Explain how a container can hit its memory limit while the host still has available RAM.
+## Lab F — Check CPU restrictions and pressure
 
-### Lab H — Inspect Kubernetes termination evidence
-
-In a development cluster with appropriate permissions:
+Where available:
 
 ```bash
-kubectl get pods -n <namespace>
+cat /sys/fs/cgroup/cpu.max
+cat /sys/fs/cgroup/cpu.stat
+cat /proc/pressure/cpu
+cat /proc/pressure/memory
+```
+
+These interfaces describe different things.
+
+CPU quota and throttling are not the same as host CPU utilization.
+
+Memory pressure describes stalled progress, not merely the percentage of RAM occupied.
+
+**Question:** What measurements would distinguish a process waiting for CPU service from one waiting for a supplier response?
+
+## Lab G — Preserve Kubernetes incident evidence
+
+In a disposable development cluster, inspect a workload:
+
+```bash
 kubectl describe pod <pod-name> -n <namespace>
-```
 
-Where a previous container instance remains available:
-
-```bash
 kubectl logs <pod-name> \
   -n <namespace> \
   --previous \
-  --tail=100 \
-  --timestamps
+  --container <container-name>
 ```
 
-Identify restart counts, termination reasons, and resource limits.
+Inspect resource limits, restart counts, previous termination reasons, and events.
 
-Remember that `--previous` isn't a permanent historical archive.
+Do not assume previous logs always remain available after multiple replacements or Pod deletion.
 
-Explain why exit code 137 alone isn't sufficient to establish OOM as the cause.
+**Question:** Why is an `OOMKilled` status important evidence but not a complete root-cause explanation?
 
-### Lab I — Investigate event-loop behavior
+## Lab H — Construct a causal timeline
 
-Use Node.js `perf_hooks` to measure event-loop delay:
+Consider this hypothetical evidence:
 
-```javascript
-const {
-  monitorEventLoopDelay,
-  performance,
-} = require("node:perf_hooks");
-
-const histogram = monitorEventLoopDelay({
-  resolution: 10,
-});
-
-histogram.enable();
-
-setInterval(() => {
-  console.log({
-    maxDelayMs: histogram.max / 1e6,
-    meanDelayMs: histogram.mean / 1e6,
-    utilization: performance.eventLoopUtilization(),
-  });
-
-  histogram.reset();
-}, 1000);
+```text
+09:00  Supplier-client deployment completed
+09:04  Supplier timeout rate begins rising
+09:07  Active connection registry begins growing
+09:08  Availability p95 latency increases
+09:11  Process RSS and cgroup memory increase
+09:13  Open descriptors approach process limit
+09:14  First worker restarted; OOMKilled recorded
+09:16  Other workers report EMFILE
+09:18  Rollback initiated
+09:23  Error rate falls
+09:30  New instances maintain stable descriptor counts
 ```
 
-Compare three controlled workloads:
+Prepare a timeline distinguishing:
 
-1. A slow asynchronous network request.
-2. A long synchronous CPU computation.
-3. A collection of many asynchronous operations using a finite native worker pool.
+- Observation versus proposed explanation.
+- Trigger versus root cause.
+- Direct consequence versus contributing amplifier.
+- Mitigation versus verified permanent remediation.
 
-Which workloads delay unrelated event-loop callbacks?
+Then identify which evidence would most strongly test the claim that timeout cleanup was the first broken application contract.
 
-Which mainly delay their own awaited results?
+## Lab I — Write the postmortem
 
-Explain why similar HTTP latency doesn't imply identical underlying mechanisms.
+Produce a short incident report with the following sections:
 
-### Lab J — Construct an incident timeline
+1. Customer impact and duration.
+2. Technical timeline.
+3. Root cause and supporting evidence.
+4. Trigger and contributing factors.
+5. Immediate mitigation.
+6. Permanent corrective actions.
+7. Verification and regression tests.
+8. Unresolved questions and confidence levels.
 
-Create a short fictional incident report using the following events:
+Avoid blaming individual developers.
 
-- 09:00 — New supplier integration deployed.
-- 09:04 — Outbound request count rises.
-- 09:07 — Open descriptor count rises.
-- 09:09 — Connection-opening errors begin.
-- 09:11 — Retries increase.
-- 09:13 — RSS and cgroup memory usage rise.
-- 09:14 — Container OOM kill recorded.
-
-For each event, write:
-
-- What was observed.
-- Which mechanism could explain it.
-- Which competing explanation remains possible.
-- What measurement would distinguish the explanations.
-
-Then draw a causal diagram.
-
-Mark which arrows are directly supported and which remain hypotheses.
-
-### Lab K — Write the postmortem
-
-Prepare a one-page incident report containing:
-
-**Impact:** Which users and operations were affected?
-
-**Timeline:** Which events occurred, in what order?
-
-**Root cause:** Which verified defect initiated the failure chain?
-
-**Trigger:** What condition exposed the defect?
-
-**Contributing factors:** What allowed the incident to escalate?
-
-**Mitigation:** What restored service temporarily?
-
-**Permanent remediation:** What prevents recurrence?
-
-**Verification:** What tests and measurements support the fix?
-
-**Open questions:** What remains uncertain?
-
-The most important grading criterion is whether the report makes a defensible causal argument, rather than merely listing metrics and symptoms.
+Focus on what the system allowed, what assumptions failed, and what changes will prevent recurrence.
 
 ---
 
-## Further Reading — Optional Technical References
+# Further Reading
 
-1. [Linux Kernel Documentation — Control Group v2](https://docs.kernel.org/admin-guide/cgroup-v2.html) — CPU and memory controller accounting.
-2. [Linux Kernel Documentation — PSI](https://docs.kernel.org/accounting/psi.html) — CPU, memory, and I/O pressure.
-3. [Linux man-pages — proc(5)](https://man7.org/linux/man-pages/man5/proc.5.html) — Process information interfaces.
-4. [Linux man-pages — proc_pid_fd(5)](https://man7.org/linux/man-pages/man5/proc_pid_fd.5.html) — Open descriptors.
-5. [Linux man-pages — proc_pid_status(5)](https://man7.org/linux/man-pages/man5/proc_pid_status.5.html) — Process state and memory information.
-6. [Linux man-pages — socket(7)](https://man7.org/linux/man-pages/man7/socket.7.html) — Socket semantics and errors.
-7. [Linux man-pages — tcp(7)](https://man7.org/linux/man-pages/man7/tcp.7.html) — TCP state and behavior.
-8. [Node.js — Process Memory Usage](https://nodejs.org/api/process.html#processmemoryusage) — Managed heap, external memory, and RSS.
-9. [Node.js — Performance Hooks](https://nodejs.org/api/perf_hooks.html) — Event-loop delay and utilization.
-10. [Node.js — Don't Block the Event Loop](https://nodejs.org/en/learn/asynchronous-work/dont-block-the-event-loop) — Runtime scheduling and worker-pool behavior.
-11. [Node.js — Net](https://nodejs.org/api/net.html) — Socket lifecycle, errors, and destruction.
-12. [Kubernetes — Resource Management](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/) — Container CPU and memory limits.
-13. [Kubernetes — Logging Architecture](https://kubernetes.io/docs/concepts/cluster-administration/logging/) — Capturing diagnostic evidence.
-14. Brendan Gregg, *Systems Performance* — Practical performance investigation across operating-system layers.
-15. John Allspaw, *The Art of Capacity Planning* — Understanding load and resource constraints.
-16. Michael Nygard, *Release It!* — Failure containment, retries, circuit breakers, and operational stability.
-17. Google, *Site Reliability Engineering* — Incident response and postmortem practices.
+Authoritative technical references:
+
+1. Node.js — Don't Block the Event Loop (or the Worker Pool)  
+   https://nodejs.org/en/learn/asynchronous-work/dont-block-the-event-loop
+
+2. Node.js — Process Memory Usage  
+   https://nodejs.org/api/process.html#processmemoryusage
+
+3. MDN — `Promise.race()`  
+   https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/race
+
+4. Linux Manual Pages — `proc_pid_fd(5)`  
+   https://man7.org/linux/man-pages/man5/proc_pid_fd.5.html
+
+5. Linux Manual Pages — `tcp(7)`  
+   https://man7.org/linux/man-pages/man7/tcp.7.html
+
+6. Linux Kernel Documentation — Control Group v2  
+   https://docs.kernel.org/admin-guide/cgroup-v2.html
+
+7. Linux Kernel Documentation — Pressure Stall Information  
+   https://docs.kernel.org/accounting/psi.html
+
+8. Kubernetes — Debug Running Pods  
+   https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/
+
+9. Google SRE Book — Postmortem Culture  
+   https://sre.google/sre-book/postmortem-culture/
+
+Related programme chapters:
+
+- CS320-L01 — The Kernel, Processes, and Containers
+- CS320-L02 — CPU Scheduling, Quotas, and Contention
+- CS320-L03 — Virtual Memory, Pages, and Address Translation
+- CS320-L04 — Memory Pressure, Cgroups, and OOM
+- CS320-L05 — System Calls, File Descriptors, and Asynchronous I/O
+- CS320-L06 — Concurrency, Event Loops, and Cancellation
+- CS320-L07 — Threads, Atomics, and Memory Ordering
+- SE440-L02 — Reliability Engineering and Incident Response
 
 ---
 
 ## Dense Cheatsheet — Interview Glance Card
 
-*Fenced for voice-reader skipping. Use this for rapid recall of diagnostic boundaries, evidence, and incident reasoning.*
-
 ```text
-CS320-L08 — OPERATING-SYSTEM & RUNTIME FORENSICS
+CS320-L08 — OPERATING-SYSTEM AND RUNTIME FORENSICS
 
-CORE PRINCIPLE
-  Symptom != mechanism != root cause.
-  Observation has a source, boundary, timestamp, and limitations.
-  Build a causal timeline; locate the first broken contract.
-  Choose tests that DISCRIMINATE between hypotheses.
+THE FIVE-STEP METHOD
+  OBSERVE       What happened, where, and when?
+  HYPOTHESIZE   Which mechanisms could explain it?
+  DISCRIMINATE  Which measurement separates hypotheses?
+  VERIFY        Reproduce or otherwise confirm mechanism
+  REMEDIATE     Fix failure mode; verify under representative load
 
-INVESTIGATION LOOP
-  OBSERVE -> HYPOTHESIZE -> DISCRIMINATE -> VERIFY -> REMEDIATE
-  Keep competing explanations alive until evidence rules them down.
-  Prefer small, reversible measurements.
-  Separate urgent mitigation from permanent root-cause fix.
+EVIDENCE LEVELS
+  Observation       measured event or state
+  Hypothesis        plausible explanation
+  Mechanism         how system produces the symptom
+  Causal evidence   supports mechanism under relevant conditions
+  Root cause        underlying defect or broken contract
+  Trigger           circumstance that exposes the defect
+  Contributor       factor increasing likelihood/severity
+  Mitigation        reduces current customer impact
+  Remediation       prevents or contains recurrence
 
-INCIDENT TIMELINE
-  Deploy -> outbound attempts grow -> descriptors grow ->
-  connection failures -> retries -> pending work/memory ->
-  cgroup OOM -> restart.
-  Sequence suggests mechanism, but timestamps alone != proof.
+INCIDENT PATTERN
+  Slow supplier response
+    -> application timeout
+    -> Promise rejects
+    -> underlying socket stays alive
+    -> registry retains connection
+    -> retry creates more work
+    -> descriptors and memory grow
+    -> EMFILE / pressure / OOM possible
 
-TIME
-  Wall time        Elapsed request duration.
-  CPU time         Active execution on CPUs.
-  Runnable wait    Ready but waiting for processor.
-  Blocked wait     Waiting for I/O, lock, condition, dependency.
-  Long request != CPU-bound request.
-
-CPU
-  Host aggregate CPU can hide one saturated core/thread.
-  Container may have restrictive CPU quota.
-  cpu.max         Cgroup v2 CPU bandwidth limit.
-  cpu.stat        Usage + throttling counters.
-  PSI             CPU pressure/stall evidence.
-  ps -L/top -H    Thread-level activity.
-  perf            Targeted CPU/scheduler investigation.
-  Event-loop delay may originate from JS blocking or OS constraints.
-
-MEMORY
-  heapUsed        V8 managed heap.
-  external        Relevant native/C++ allocations.
-  arrayBuffers    Included within external.
-  RSS             Resident process pages.
-  memory.current  Charged cgroup memory usage.
-  memory.stat     Memory-controller categories.
-  memory.events   high/max/oom/oom_kill and related events.
-  V8 heap != RSS != cgroup charge.
-  Don't add overlapping metrics.
-  OOMKilled is termination evidence, not leak classification.
-  Exit 137 alone != conclusive OOM proof.
+TIMEOUT TRAP
+  Promise.race timeout != cancellation of losing operation
+  Local deadline != remote failure
+  Abandoned result != abandoned socket
+  Correct lifetime requires ownership + cleanup
+  Reusable pooled connection != automatically a leak
 
 FILE DESCRIPTORS
-  FD             Process-local handle for open resource.
-  Socket/file/pipe/event facility may consume FD.
-  EMFILE         Process FD limit reached.
-  ENFILE         System-wide open-file-table limit.
-  /proc/PID/fd   Open descriptor entries.
-  /proc/PID/limits Process resource limits.
-  lsof -p PID    Open-resource inspection.
-  Leak evidence: count rises, persists, fails to reach steady state.
+  fd = process-local resource handle
+  EMFILE = process open-descriptor limit
+  ENFILE = system-wide open-file-table limit
+  Count and inspect descriptors; find ownership
+  Raising limit != fixing unbounded resource retention
 
-SOCKET STATE
-  ESTABLISHED    TCP connection established, not app success proof.
-  CLOSE_WAIT     Peer closed sending side; local cleanup pending.
-  TIME_WAIT      Normal TCP teardown state; often no process FD.
-  ss -tanp       Inspect TCP states and process association.
-  Many TIME_WAIT sockets != directly leaked open descriptors.
-  Intentional keep-alive pool != unbounded connection leak.
+TCP STATES
+  ESTABLISHED   connection established
+  CLOSE_WAIT    peer FIN received, local side not finished closing
+  TIME_WAIT     normal connection-termination protection state
+  CLOSE_WAIT accumulation may indicate missing cleanup
+  TIME_WAIT count != count of leaked process descriptors
+  Always compare state distribution with process fd ownership
 
-ASYNC LIFETIMES
-  Promise rejection != transport cancellation.
-  Promise.race(timeout) does NOT automatically abort loser.
-  Application deadline != remote rollback.
-  Socket needs owner, cleanup, error and abort paths.
-  Registry/listeners/timers must be released appropriately.
-  Bounded pool can retain connections intentionally.
+RUNTIME BOUNDARIES
+  Kernel socket state
+  Native I/O operation
+  Runtime callback / Promise state
+  Application request / business operation
+  One finishing does not force all others to finish
 
-RETRY AMPLIFICATION
-  Failure -> retry -> more in-flight work -> resource pressure ->
-  more failure -> more retry.
-  Safeguards:
-    - bounded concurrency
-    - limited attempts
-    - overall deadline
-    - exponential backoff + jitter
-    - error classification
-    - cancellation cleanup
-    - idempotency for state-changing operations
-    - backpressure/admission control
+CPU FORENSICS
+  Host utilization != per-thread CPU service
+  CPU time != wall time
+  Runnable waiting != blocked waiting
+  Cgroup quota can throttle on idle host
+  Event-loop delay may have several causes
+  Inspect per-thread CPU and cpu.stat
 
-TOOLS BY QUESTION
-  What is slow?           Request trace + stage timings.
-  CPU execution?          CPU profile; process/thread CPU metrics.
-  CPU throttled?          cgroup cpu.stat/cpu.max.
-  Runnable waiting?       scheduler tracing/PSI.
-  Event loop blocked?     perf_hooks delay + profile.
-  Process memory?         process.memoryUsage/RSS/smaps.
-  Container memory?       memory.current/stat/events.
-  Descriptors leaking?    /proc/PID/fd; lsof.
-  Socket states?          ss.
-  Kernel calls failing?   Targeted strace.
-  Container restarted?    describe pod / previous logs / events.
+MEMORY FORENSICS
+  heapUsed != process RSS != cgroup memory.current
+  arrayBuffers included in external (Node.js)
+  RSS includes native/stacks/mappings
+  Cgroup charges also include relevant file/kernel memory
+  memory.stat helps explain charge composition
+  memory.events distinguishes limit pressure/OOM kills
+  OOMKilled = termination evidence, not full root cause
 
-DIAGNOSTIC CAUTIONS
-  Tool snapshot != history.
-  Current container != prior terminated container.
-  Trace collection has overhead.
-  Kernel counters have scope and definitions.
-  Connections may be healthy and intentionally pooled.
-  A metric correlation alone doesn't establish causation.
-  Reproducer should test one mechanism under controlled conditions.
+I/O FORENSICS
+  Network readiness != callback execution
+  Socket data can arrive while main JS thread blocked
+  Async filesystem work may use finite native worker pool
+  Pool saturation != event-loop blockage
+  Look at actual operation timing and queues
 
-MITIGATION VS REMEDIATION
-  Restart / rollback / shift traffic = possible mitigation.
-  Raising limit = capacity change, not necessarily root-cause fix.
-  Permanent fix = correct ownership/lifetime + bounds + verification.
-  Don't change five variables at once and declare victory.
+CONCURRENCY FORENSICS
+  More retries may produce less successful throughput
+  Bound active operations AND waiting queues
+  Scope limits across all replicas
+  Cancellation needs propagation and cleanup
+  A timed-out operation may still be active
+  A retry may overlap with its predecessor
+
+THREADS / LOCKS
+  Sleeping thread != necessarily unhealthy
+  Runnable thread != currently executing
+  Lock wait != CPU-queue wait
+  Deadlock requires dependency analysis
+  No evidence of shared-memory deadlock? Don't invent one
+
+CAUSAL INVESTIGATION
+  Trace one representative slow request
+  Preserve previous container evidence before reset
+  Compare before/after deployment
+  Test old/new client under identical slow-supplier trigger
+  Inspect whether resource counts return to bounded baseline
+  Use minimal reversible experiments
+
+BAD FIRST FIXES
+  Raise FD limit without finding resource lifetime
+  Raise memory limit without identifying working set
+  Add retries while dependency is overloaded
+  Increase timeout without bounding in-flight work
+  Add replicas without assessing global dependency demand
+  Restart repeatedly and call it root-cause resolution
 
 POSTMORTEM
-  Impact -> timeline -> verified root cause -> trigger ->
-  contributing factors -> mitigation -> permanent fix ->
-  verification -> remaining uncertainty.
-  Separate observation from inference.
-  Report confidence honestly.
+  State impact and timeline
+  Show evidence supporting root cause
+  Separate trigger/contributors
+  Explain why defenses didn't contain failure
+  Name immediate mitigation
+  Define permanent corrective actions
+  Include regression tests and verification
+  Acknowledge remaining uncertainty
 
-INTERVIEW RECOVERY
-  "Heap flat, pod OOM"      Inspect RSS, native buffers, cgroup.
-  "Host CPU low, slow"      Check hot thread, throttling, waits.
-  "EMFILE"                  Inspect descriptor types and lifetimes.
-  "TIME_WAIT explosion"     Not necessarily open FD leak.
-  "Timeout returned"        Underlying operation may continue.
-  "Restart fixed it"        Released resources; cause may persist.
-  "Supplier slow"           Trigger possible; local cleanup still matters.
-  "Retries making worse"    Bound work; protect downstream capacity.
+SENIOR INTERVIEW ANSWER
+  "I'd reconstruct the request and resource timeline, identify
+   plausible execution boundaries, select measurements that
+   distinguish them, and validate the first broken contract
+   before making capacity or architectural changes. I'd also
+   separate mitigation from remediation and verify that the
+   underlying resource-lifetime and overload behavior is fixed."
 
-SENIOR LINE
-  "I'd reconstruct the request and process timeline, separate
-   observations from explanations, rank competing mechanisms,
-   select the measurement that most distinguishes them, reproduce
-   the failure where possible, and verify that remediation fixes
-   the resource-lifetime or correctness contract—not merely the
-   final symptom."
+DURABLE MENTAL MODEL
+  Follow the resource.
+  Find the first broken contract.
+  Prove the causal chain.
+  Fix the mechanism, not only the symptom.
 ```

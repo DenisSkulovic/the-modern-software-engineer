@@ -14,6 +14,7 @@ next: null
 
 
 
+
 # CS110 — Foundations of Computation and Algorithms
 ## Lecture 05: Searching, Sorting, and Finding Shortcuts
 

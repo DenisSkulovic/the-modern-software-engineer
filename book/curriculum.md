@@ -42,7 +42,7 @@ Library/content state — not whether you have studied the lecture. See [`STATUS
 
 Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `type: elective` or still-`planned`, not a separate numbering universe).
 
-## Core courses (17 · 89 lectures)
+## Core courses (17 · 90 lectures)
 
 ### CS — Computer Science
 
@@ -105,17 +105,18 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `
 
 #### CS320 — Operating Systems, Concurrency, and Runtimes
 
-300-level · 7 lectures · course status `complete` · `CS/CS320-operating-systems-and-concurrency/`
+300-level · 8 lectures · course status `complete` · `CS/CS320-operating-systems-and-concurrency/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
-| `CS320-L01` | Concurrency, Parallelism, and Asynchrony | `manuscript` | `2.0.0` | `CS101-S09` |
-| `CS320-L02` | Operating Systems: The Manager Behind the Curtain | `manuscript` | `2.0.0` | `CS101-S10` |
-| `CS320-L04` | Scheduling, CPU Time, and Contention | `manuscript` | `2.0.0` | `` |
-| `CS320-L05` | Virtual Memory, Paging, and Memory Pressure | `manuscript` | `2.0.0` | `` |
-| `CS320-L06` | From System Calls to Asynchronous I/O | `manuscript` | `2.0.0` | `` |
-| `CS320-L07` | Threads, Atomics, and Memory Ordering | `manuscript` | `2.0.0` | `` |
-| `CS320-L08` | Operating-System and Runtime Forensics | `manuscript` | `2.0.0` | `` |
+| `CS320-L01` | The Kernel, Processes, and Containers | `revised` | `2.1.0` | `CS101-S10` |
+| `CS320-L02` | CPU Scheduling, Quotas, and Contention | `revised` | `2.1.0` | `` |
+| `CS320-L03` | Virtual Memory, Pages, and Address Translation | `revised` | `2.1.0` | `` |
+| `CS320-L04` | Memory Pressure, Cgroups, and OOM | `revised` | `2.1.0` | `` |
+| `CS320-L05` | System Calls, File Descriptors, and Asynchronous I/O | `revised` | `2.1.0` | `` |
+| `CS320-L06` | Concurrency, Event Loops, and Cancellation | `revised` | `2.1.0` | `CS101-S09` |
+| `CS320-L07` | Threads, Atomics, and Memory Ordering | `revised` | `2.1.0` | `` |
+| `CS320-L08` | Operating-System and Runtime Forensics | `revised` | `2.1.0` | `` |
 
 #### CS330 — Relational Databases and Transactions
 

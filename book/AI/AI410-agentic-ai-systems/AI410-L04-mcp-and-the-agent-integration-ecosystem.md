@@ -17,6 +17,7 @@ next: AI410-L05
 
 
 
+
 # AI410 — Agentic AI Systems and Production Engineering
 ## Lecture 04: MCP and the Agent Integration Ecosystem
 

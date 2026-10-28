@@ -17,6 +17,7 @@ next: SE490-L05
 
 
 
+
 # SE490 — Architecture and Systems Design Studio
 
 ## Lecture 04: Senior Engineer Workshop: Architecture Review
