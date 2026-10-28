@@ -395,24 +395,24 @@ courses:
     legacy_ids:
     - BACK301-S02
     source: CS/CS330-relational-databases/CS330-L01-relational-database-design.md
-    manuscript: manuscript
-    edition: 2.0.0
+    manuscript: revised
+    edition: 2.1.0
   - id: CS330-L02
     title: SQL and Query Performance
     slug: sql-and-query-performance
     legacy_ids:
     - BACK301-S03
     source: CS/CS330-relational-databases/CS330-L02-sql-and-query-performance.md
-    manuscript: manuscript
-    edition: 2.0.0
+    manuscript: revised
+    edition: 2.1.0
   - id: CS330-L03
     title: 'Transactions: When Correct Operations Produce Incorrect Results'
     slug: transactions-and-isolation
     legacy_ids:
     - BACK301-S04
     source: CS/CS330-relational-databases/CS330-L03-transactions-and-isolation.md
-    manuscript: manuscript
-    edition: 2.0.0
+    manuscript: revised
+    edition: 2.1.0
 - code: CS340
   title: Data Systems Beyond Relational Databases
   discipline: CS

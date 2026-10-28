@@ -3,162 +3,242 @@ id: CS330-L03
 course: CS330
 title: "Transactions: When Correct Operations Produce Incorrect Results"
 type: core
-manuscript: manuscript
-edition: "2.0.0"
+manuscript: revised
+edition: "2.1.0"
 legacy_ids: [BACK301-S04]
 prev: CS330-L02
 next: null
 ---
 
-
-
-
-
-
-
-
-
 # CS330 — Relational Databases and Transactions
 
-## Lecture 03: Transactions: When Correct Operations Produce Incorrect Results
+## Lecture 03: Transactions — When Correct Operations Produce Incorrect Results
 
-*Two customers. One remaining hotel room. Two successful transactions. An outcome that should have been impossible.*
-
-**Estimated study time:** 90–110 minutes, including the oral challenges and the optional PostgreSQL lab.
-
----
-
-### How to listen to this lecture
-
-Written for continuous listening first, then for on-screen re-reading. The theme today is simple: **a transaction is not a magical bubble around business logic.** Isolation levels, MVCC snapshots, locks, conditional updates, and constraints each protect different shapes of invariant — and the wrong shape is how two correct operations double-book a room. Bold takeaways mark ideas worth pausing on. Near the end, answer the challenges **out loud** before reading the solutions. The two-terminal PostgreSQL experiments live after the spoken lecture ends — keep them for a screen session.
-
-By the end, you should be able to explain what ACID does and does not promise, why Read Committed and Repeatable Read can still permit write skew, when Serializable, `FOR UPDATE`, optimistic versions, and atomic conditional updates each fit, how to bound retries without replaying irreversible side effects, and which questions to ask before trusting a concurrent workflow.
-
----
+*Two customers. One remaining hotel room. Two database transactions. Every SQL statement succeeds. Both transactions commit. Yet the hotel has confirmed two reservations for one room. How can a database execute everything correctly and still allow an impossible business outcome?*
 
 # Part I — Intuition
 
-*Two customers want the same last room. Each follows the correct booking procedure. Both receive confirmation. How can the database do everything it was asked to do and still produce an impossible result?*
+## The picture to carry in your head
 
-### The picture to carry in your head
+It's Friday evening.
 
-It's Friday evening. A hotel has one Deluxe room left for Saturday. Alice clicks **Book** from Berlin. At almost the same moment, Bob clicks **Book** from Stockholm. Our service handles both requests.
+A hotel has exactly one Deluxe room remaining for Saturday night.
 
-The developer has written a careful procedure: check availability, confirm that one room remains, create the reservation, and save it. There's even a database transaction around each request. All steps succeed.
+Alice opens the booking website from Berlin. At almost the same moment, Bob opens it from Stockholm.
 
-The problem is the word *each*. Alice's request is correct when viewed alone. Bob's request is correct when viewed alone. But together they sell two reservations for one room. The program has a problem with **how two correct-looking operations can overlap in time**.
+Both select the same room category. Both click Book.
 
-This is the fundamental purpose of transaction isolation: not to make one operation look pretty in code, but to control which combinations of concurrent operations may produce a committed result.
+Our backend receives the requests and processes them independently.
 
-## 1. Two stories can be individually true and jointly impossible
+Alice's request asks the database how many rooms remain.
 
-Imagine a small reception desk with a chalkboard displaying the number of available rooms. It says **one**.
+The answer is one.
 
-Alice's clerk reads the board. One room remains. Good. Before Alice's clerk changes anything, Bob's clerk reads the same board. One room remains. Good.
+Bob's request asks the same question.
 
-Alice's clerk writes a confirmed reservation. Bob's clerk writes a confirmed reservation. Both report success. The two clerks weren't lying about what they saw. But neither saw the other one's in-progress work before making the decision.
+The answer is also one.
 
-The first picture shows the overlap. Neither request has to crash, read corrupt data, or violate a simple field type to create a bad business outcome.
+Alice creates a reservation.
 
-```mermaid
-sequenceDiagram
-  participant A as Alice's transaction
-  participant DB as Reservation database
-  participant B as Bob's transaction
-  A->>DB: Check availability
-  DB-->>A: 1 room available
-  B->>DB: Check availability
-  DB-->>B: 1 room available
-  A->>DB: Insert Alice's booking
-  B->>DB: Insert Bob's booking
-  Note over A,B: Both can appear individually valid<br/>but the combined outcome oversells
-```
+Bob creates a reservation.
 
-**Checkpoint:** Did either clerk necessarily make an arithmetic mistake? No. The mistake was relying on observations that became unsafe when the requests overlapped.
+Both database transactions commit successfully.
 
-## 2. A transaction isn't a magic pause button
+The hotel now has two confirmed reservations for one remaining room.
 
-We often learn transactions through a simple example: transfer money between two accounts. Subtract from one, add to the other. If the operation fails halfway through, roll back so we don't leave money missing.
+What's disturbing is that the database hasn't necessarily done anything contrary to its rules.
 
-That's important. A transaction can make a group of database changes succeed or fail as an appropriate unit. This is the **atomicity** idea: don't leave half of this transaction's committed changes behind.
+Each transaction inserted a valid reservation record.
 
-But atomicity doesn't automatically mean **nobody else can act between the time I read a value and the time I make a decision based on it**.
+Each foreign key was valid.
 
-Multiple transactions may operate concurrently. Databases deliberately allow substantial overlap because forcing every request on a large system to wait for every other request would be expensive.
+Each date range was valid.
 
-The challenge is choosing which overlapping actions may be observed and when conflicting work must wait, fail, or retry. That is the domain of **isolation**.
+And each availability query returned a result that was true when observed.
 
-The database can have a perfectly functioning transaction mechanism and still permit a business anomaly if the application chooses insufficient coordination for the invariant it needs.
+The problem wasn't inside any single statement.
 
-## 3. Give the last-room decision one authoritative moment
+It was the relationship between the statements executed by two concurrent transactions.
 
-How might we fix the receptionist problem?
+**Two operations can be individually correct and jointly violate a business invariant.**
 
-One approach is to make room allocation a single conditional operation. Instead of separately checking the chalkboard and later writing a reservation, ask the database to reduce the available count **only if a room is still available**.
+That is the problem transaction isolation exists to address.
 
-Think of a machine that dispenses the final numbered ticket. Alice and Bob can press the button together, but the machine must decide who receives the last ticket. It can't issue ticket number one twice.
+## 1. A transaction isn't a magic pause button
 
-If the database has one inventory counter for the relevant date and category, an atomic conditional decrement can establish that decision, provided the full reservation operation uses a suitable transaction and the inventory model correctly represents what is being sold.
+When developers first learn transactions, they often imagine them as protective bubbles.
 
-Another approach is to lock an appropriate inventory row before inspecting and changing it. Then a competing transaction must wait or otherwise resolve the conflict before it can make its own decision. Other designs use a stricter isolation mode and retry transactions that the database rejects as incompatible with a serial history.
+Begin a transaction.
 
-These techniques differ, and the right one depends on how inventory is represented. A physical room assigned across date ranges isn't identical to a simple stock counter. But the core requirement is the same: **the business decision must have an authoritative point where competing claims cannot both succeed incorrectly**.
+Execute several statements.
 
-The second picture replaces the two separate check-and-insert decisions with one guarded allocation step. One claimant gets the ticket; the other gets an explicit rejection or must retry the appropriate transaction.
+Commit.
 
-```mermaid
-flowchart TB
-  A["Alice requests last room"] --> I["Atomic guarded inventory allocation"]
-  B["Bob requests last room"] --> I
-  I --> W["One claimant succeeds<br/>available: 1 → 0"]
-  I --> L["Other claimant observes no room<br/>no confirmed allocation"]
-```
+Everything inside the bubble is now safe.
 
-**Checkpoint:** Is putting the word `transaction` around a check followed by an insert always enough? No. We need an isolation or atomic enforcement strategy that actually protects the booking invariant.
+But safe from what?
 
-## 4. Seeing the world at different moments
+A transaction can ensure that its own database changes succeed or fail together.
 
-Suppose Alice starts reading reservation data just before Bob commits an update. Should Alice see Bob's change during the rest of her transaction? The answer depends on how the database provides views of data to concurrent operations.
+That is atomicity.
 
-Many relational databases support versions of records so readers and writers can make progress without always blocking one another. This idea is called **multi-version concurrency control**, or MVCC.
+It doesn't automatically mean other transactions were prevented from observing relevant data or making competing decisions.
 
-Think of a photographer taking pictures of the hotel's booking board. Alice may consult a view representing one moment; Bob may change the live board afterward. A stable picture helps Alice reason consistently about what she saw, but it doesn't necessarily make her decision safe against every competing transaction.
+The behavior depends on the database's isolation rules and the synchronization performed by the operations themselves.
 
-Some isolation modes provide newer views for successive statements. Others hold a transaction-level snapshot. Stronger modes may reject executions that cannot be understood as a valid sequential ordering of committed transactions.
+In PostgreSQL, the default isolation level is Read Committed.
 
-You don't need the names of every isolation level yet. First understand the reason they exist: **a transaction's view of other concurrent work affects which decisions are safe**.
+Under Read Committed, one transaction can read an availability count while another transaction is preparing to change the underlying state.
 
-## 5. What about the payment provider?
+Both may make decisions based on observations that do not remain valid until their respective commits.
 
-Now assume Alice wins the last room. Our booking service also needs to charge her card through an external payment provider.
+The mere presence of `BEGIN` and `COMMIT` doesn't solve that problem.
 
-You might think we should hold one database transaction open while making the payment request, waiting for the provider, and sending a confirmation email. That sounds like keeping the whole business process together.
+We must define which concurrent histories are acceptable.
 
-But a PostgreSQL transaction cannot roll back an arbitrary payment provider's completed operation. Nor can a database lock guarantee that a network request returns promptly. Holding locks across remote waits can cause contention and failures.
+## 2. Imagine several versions of reality
 
-So database atomicity and the wider business workflow have different boundaries. We need a durable plan for payment attempts, uncertain responses, retries, cancellation, and recovery. Idempotency matters because a repeated network request must not accidentally perform the same charge twice.
+Suppose Alice reads a reservation whose status is pending.
 
-The transaction protects the relevant database state. A reliable workflow protects the cross-system process. They cooperate; neither substitutes for the other.
+Meanwhile, another transaction changes that status to confirmed and commits.
 
-## 6. A retry isn't the same as pretending the first attempt never happened
+Should Alice continue seeing pending?
 
-Suppose two concurrent booking transactions conflict under a strict isolation mode. The database may abort one transaction. That is not a broken database; it may be the database preserving a stronger guarantee.
+Or should she see confirmed the next time she reads?
 
-The application can retry the complete database decision when appropriate, using fresh information and bounded attempts. But if the failed transaction already called an external payment API, blindly re-running the entire callback could charge the customer twice.
+Both behaviors can be useful in different circumstances.
 
-This is why retry boundaries matter. The database may undo its own changes; it cannot rewind the world outside it. We need explicit handling of side effects and uncertain outcomes.
+PostgreSQL uses **Multi-Version Concurrency Control**, or MVCC, to support multiple versions of database rows and determine which versions are visible to different transactions.
 
-### The minute-long mental replay
+It's like giving readers snapshots of a changing document.
 
-Alice and Bob see the same last room. Each checks availability and tries to book. A transaction makes its internal changes atomic, but that alone may not coordinate the two observations. We need an authoritative allocation mechanism—perhaps a guarded update, an appropriate lock, or serializable isolation with retries—so both claims cannot commit incorrectly. Meanwhile, payment and notification happen through a wider workflow that a database transaction cannot magically undo.
+One reader may continue seeing an earlier version while another sees a newer committed version.
 
-When the Deep Dive introduces ACID, MVCC, isolation levels, row locks, write skew, serializability, and retries, keep the reception desk in mind: **who is allowed to claim the final ticket, and what makes that decision real?**
+This allows ordinary readers and writers to coexist efficiently.
 
-### Three questions before the Deep Dive
+But it also means that a transaction's view of the database may not represent the latest globally committed state.
 
-1. **Can two transactions both commit successfully while the resulting business state is wrong?** Yes, when their isolation and enforcement strategy doesn't protect the relevant invariant.
-2. **What does an atomic guarded inventory update achieve?** It makes the shared allocation condition and decrement one authoritative operation, rather than a vulnerable check followed by an unrelated later change.
-3. **Can rolling back PostgreSQL automatically undo a payment already processed by an external provider?** No. External effects need their own protocols and recovery design.
+The isolation level determines when that view is established and how it changes.
+
+## 3. A stable snapshot can still produce an impossible result
+
+You might propose fixing the booking problem by giving every transaction a stable view of the database.
+
+If Alice sees one remaining room, she continues seeing that original state throughout her transaction.
+
+Bob does the same.
+
+That sounds predictable.
+
+But predictability isn't necessarily correctness.
+
+Alice and Bob can each hold an internally consistent snapshot that predates the other's reservation.
+
+Each believes the room is available.
+
+Each inserts a different reservation row.
+
+Because they modify different rows, neither necessarily encounters a direct conflicting update.
+
+Both can commit under PostgreSQL's Repeatable Read isolation, depending on the operation.
+
+This is a form of **serialization anomaly**, closely related to write skew.
+
+A stable snapshot guarantees consistency of what the transaction sees.
+
+It doesn't guarantee that all concurrent transactions produce an outcome equivalent to some valid one-at-a-time execution.
+
+That's the essential difference between Repeatable Read and Serializable.
+
+## 4. Give the decision an authoritative moment
+
+How can we prevent overselling?
+
+One approach is to make the availability claim itself an indivisible database operation.
+
+Imagine one row representing available Deluxe inventory for Saturday night.
+
+It currently contains one remaining unit.
+
+Alice attempts to decrement the count, but only if the count is still positive.
+
+Bob attempts the same operation.
+
+The database coordinates their conflicting updates to that row.
+
+If Alice successfully changes the count from one to zero and commits, Bob's conditional update cannot also claim a room.
+
+The condition is re-evaluated against the relevant current row under PostgreSQL Read Committed rules.
+
+Bob updates zero rows.
+
+He cannot honestly confirm a reservation.
+
+We've created a common authoritative point where competing operations must coordinate.
+
+Notice that we didn't need to lock the whole database or automatically choose the strongest isolation level.
+
+We modeled the contested resource explicitly and used an operation appropriate to that model.
+
+**The right concurrency mechanism depends on the shape of the invariant.**
+
+## 5. The transaction ends at the database boundary
+
+Now suppose Alice successfully claims the room.
+
+Our backend calls a payment provider to charge her card.
+
+Should we make that external call while keeping the PostgreSQL transaction open?
+
+That creates a new problem.
+
+The payment provider doesn't participate in the PostgreSQL transaction.
+
+If the charge succeeds but the database transaction later rolls back, PostgreSQL cannot undo the card charge.
+
+And if the provider takes eight seconds to respond, our transaction may retain locks and a database connection for eight seconds.
+
+The database transaction is a boundary around database state.
+
+It isn't an automatic transaction across every external service involved in the business workflow.
+
+For payments, messaging, and other remote side effects, we need durable workflow state, idempotency, and recovery mechanisms.
+
+We'll study those more deeply in distributed systems.
+
+For now, distinguish the things PostgreSQL can atomically commit from the things it cannot control.
+
+## 6. A retry must make a new decision
+
+One more complication.
+
+Under stronger isolation or competing locks, PostgreSQL may abort a transaction to preserve correctness.
+
+The application receives an error.
+
+What should it do?
+
+Sometimes it should retry.
+
+But it must retry the **complete decision**, using a fresh transaction and appropriate current data.
+
+If Alice's first transaction failed, she cannot blindly reuse the assertion that one room remained available.
+
+That fact may no longer be true.
+
+A retry is not simply re-executing the final SQL statement.
+
+It is giving the business operation another opportunity to make a valid decision.
+
+And if the attempted operation includes an irreversible external charge, we must never blindly repeat that side effect.
+
+## Three questions before the Deep Dive
+
+1. Why can two transactions each use `BEGIN` and `COMMIT`, yet still oversell the final available room?
+2. Why isn't a stable transaction snapshot the same as guaranteeing a valid serial execution?
+3. Why is a conditional inventory decrement often a simpler solution than applying Serializable isolation to every booking operation?
+
+Keep one mental picture: two customers competing for the same scarce resource. The database must establish a point at which one claim succeeds and the other cannot.
 
 *The intuition pass ends here.*
 
@@ -166,1351 +246,1111 @@ When the Deep Dive introduces ACID, MVCC, isolation levels, row locks, write ske
 
 # Part II — Deep Dive
 
-# 1. The Hotel That Sold Its Last Room Twice
+## 1. The booking that should have been impossible
 
-It's Friday evening. A hotel in Copenhagen has one Deluxe room remaining for Saturday night. Two customers are looking at the hotel's booking page.
+Our booking platform has a table of reservations.
 
-Alice is in Germany. Bob is in Sweden.
+A hotel offers one remaining Deluxe room for November 14.
 
-At 19:42:07, Alice clicks **Confirm Reservation**. Almost simultaneously, Bob clicks the same button.
+The backend checks how many confirmed reservations already exist for that room category and date.
 
-The booking system receives two requests. Both execute essentially the same backend code — a TypeORM-style transaction that checks availability, throws if nothing remains, then saves a confirmed reservation:
+If the count is below capacity, it inserts a reservation.
 
-```typescript
-async function createReservation(input: ReservationInput) {
-  return dataSource.transaction(async manager => {
-    const available = await checkAvailability(
-      manager,
-      input.roomTypeId,
-      input.dates
-    );
+Each operation is wrapped in a transaction.
 
-    if (!available) {
-      throw new Error("No rooms available");
-    }
+Alice begins first and counts the existing bookings.
 
-    return manager.save(Reservation, {
-      ...input,
-      status: "confirmed",
-    });
-  });
-}
-```
+The count is zero.
 
-Looks reasonable. We're using a transaction.
+Bob begins before Alice commits and counts the same bookings.
 
-We check availability before making the reservation. If availability is insufficient, we throw an error.
+His count is also zero.
 
-And if anything fails during persistence, the transaction rolls back. What could possibly go wrong?
+Alice inserts one reservation.
 
-Here's what actually happens — both sessions begin, both see one available room, both insert, both commit:
+Bob inserts another.
 
-<escape>
+Because the two transactions insert different rows, there may be no direct row-update conflict.
 
-```text
-TIME       ALICE'S TRANSACTION       BOB'S TRANSACTION
-────────────────────────────────────────────────────────
+Both commit.
 
-19:42:07   BEGIN
-19:42:07                              BEGIN
+The invariant—at most one confirmed booking for the remaining unit—has been violated.
 
-19:42:07   Check available rooms
-           Result: 1
+We need to understand what a transaction actually guarantees, and which guarantee this workflow failed to obtain.
 
-19:42:07                              Check available rooms
-                                      Result: 1
+## 2. ACID is four different promises
 
-19:42:07   Insert reservation
+The acronym ACID describes four important properties of database transactions.
 
-19:42:07                              Insert reservation
+But these properties protect different things.
 
-19:42:07   COMMIT
+### Atomicity
 
-19:42:07                              COMMIT
+A transaction's database changes succeed or fail as one unit.
 
-────────────────────────────────────────────────────────
+Suppose we decrement inventory and insert a reservation inside one transaction.
 
-FINAL RESULT:
+If the reservation insert fails and the transaction rolls back, the inventory decrement is rolled back too.
 
-Available rooms originally: 1
-New confirmed reservations: 2
-```
+That's the guarantee we need to avoid permanently consuming inventory for a reservation that wasn't created.
 
-</escape>
+Atomicity doesn't imply that the transaction's decision was sensible.
 
-Both transactions succeed. Both customers receive confirmation.
+An atomic transaction can still record a booking that violates a business rule the database never enforced.
 
-Both database inserts are valid. No database constraint is necessarily violated.
+### Consistency
 
-And the hotel has a problem. A rather physical problem, in fact. There are now two paying customers expecting to sleep in one bed.
+A transaction moves the database between states satisfying the applicable integrity rules.
 
-The most disturbing part is that **PostgreSQL may have executed both transactions exactly according to its documented guarantees**. There was no database malfunction.
+But the database cannot preserve a rule it doesn't know about.
 
-The problem was our understanding of what a transaction guarantees.
+If the schema permits unlimited reservation inserts and no transactional mechanism enforces capacity, PostgreSQL has no basis for rejecting our second booking merely because the hotel actually has one room left.
 
-We assumed that placing several operations inside a transaction made the entire business operation safe against concurrency. It doesn't necessarily.
+Database consistency is not the same as complete business correctness.
 
-A transaction protects certain properties of database operations. Which properties it protects depends on the isolation level, the operations involved, and the constraints we've defined.
+The relevant invariants must be expressed through constraints, transactional logic, and the application's design.
 
-Today we're going to dismantle this mystery.
+### Isolation
 
-We'll examine the guarantees of transactions, the mechanics of MVCC, the anomalies created by concurrent execution, and the tools PostgreSQL provides to prevent them.
+Isolation determines how concurrent transactions may observe and affect one another.
 
-By the end, the objective is to understand something more valuable than how to write `BEGIN` and `COMMIT`.
+Different isolation levels permit or prevent different anomalies.
 
-We want to recognize **when two individually correct operations can interact to violate a shared invariant—and how to make the database prevent it**.
+At weaker levels, transactions may observe changes at different times or make competing decisions based on incomplete views of the concurrent workload.
+
+At Serializable isolation, successfully committed transactions must have effects consistent with some serial ordering.
+
+This is the part of ACID most relevant to our double-booking incident.
+
+### Durability
+
+Once a transaction commits, its effects are intended to survive failures according to the database's durability guarantees and configuration.
+
+But durability doesn't mean the client necessarily knows whether a commit succeeded.
+
+Imagine PostgreSQL commits a booking and the network connection breaks before the client receives the confirmation.
+
+The application may not know whether the transaction committed.
+
+That uncertainty matters for retries.
+
+It is possible for the database to be correct while the caller lacks knowledge of the outcome.
+
+These four promises are valuable, but they are not interchangeable.
+
+**Atomicity protects a transaction's database changes. Isolation governs their interaction with concurrent transactions. Neither automatically makes an entire multi-service business process atomic.**
+
+## 3. MVCC: why readers and writers can coexist
+
+PostgreSQL uses Multi-Version Concurrency Control.
+
+Rather than simply overwriting every row in place and forcing all readers to wait, PostgreSQL maintains row versions and visibility information.
+
+Suppose a reservation initially has status pending.
+
+Transaction A begins reading.
+
+Transaction B changes the status to confirmed and commits.
+
+Depending on A's isolation level and snapshot, A may continue seeing the earlier version while a newer transaction sees confirmed.
+
+Each reads a version appropriate to its visibility rules.
+
+This is why ordinary PostgreSQL reads generally don't block ordinary writes, and ordinary writes generally don't block ordinary reads.
+
+That is a major concurrency advantage.
+
+### Visibility depends on snapshots
+
+A snapshot determines which row versions are visible to a statement or transaction.
+
+It considers the relevant transaction state and visibility rules.
+
+The reader does not simply see "whatever is physically latest in memory."
+
+This allows a query to observe a consistent database state while other transactions continue committing changes.
+
+But the exact duration of that view depends on isolation.
+
+### MVCC has a physical cost
+
+Old row versions cannot always be discarded immediately.
+
+A long-running transaction may still need to see them.
+
+PostgreSQL uses vacuuming and related mechanisms to make obsolete row-version storage reusable and maintain visibility information.
+
+Long-running transactions can delay cleanup and contribute to table bloat.
+
+So leaving a transaction open for fifteen minutes isn't merely an application-level inconvenience.
+
+It can affect storage maintenance and resource usage.
+
+The principle is straightforward:
+
+**Isolation is implemented by real machinery, with real operational costs.**
+
+## 4. Read Committed: the world may change between statements
+
+PostgreSQL's default isolation level is Read Committed.
+
+For an ordinary `SELECT`, the statement sees data committed before that statement begins, together with the transaction's own relevant changes.
+
+The next statement can obtain a newer snapshot.
+
+Consider an account balance.
+
+Transaction A begins and reads a balance of one hundred.
+
+Transaction B updates the balance to one hundred fifty and commits.
+
+Transaction A reads the balance again.
+
+Under Read Committed, it can now see one hundred fifty.
+
+The same transaction observed two different committed values in two statements.
+
+That's a **non-repeatable read**.
+
+Nothing is malfunctioning.
+
+Read Committed allows this behavior.
+
+### Dirty reads are different
+
+A dirty read means observing changes another transaction hasn't committed.
+
+PostgreSQL does not allow dirty reads, even if you request the SQL-standard Read Uncommitted isolation level.
+
+In PostgreSQL, Read Uncommitted behaves like Read Committed.
+
+This is a PostgreSQL-specific detail worth remembering.
+
+### Phantoms: rows can appear between queries
+
+Now suppose Transaction A counts all confirmed bookings for one hotel and date.
+
+It finds one hundred.
+
+Transaction B inserts another matching reservation and commits.
+
+Transaction A repeats the count.
+
+Under Read Committed, it may now find one hundred and one.
+
+The result set has changed because another qualifying row appeared.
+
+That's a **phantom read**.
+
+It is closely related to our booking problem.
+
+The first count was correct when observed.
+
+It was not a promise that the count would remain unchanged until A committed.
+
+### Read Committed isn't automatically unsafe
+
+Many applications work perfectly well under Read Committed.
+
+The key is to use operations that coordinate correctly for the invariant involved.
+
+For example, two transactions updating the same inventory row can be coordinated safely using an appropriate conditional update.
+
+We should not confuse a relatively weak default isolation level with a database that cannot enforce correctness.
+
+Correctness depends on the combination of isolation, operations, constraints, and shared state.
+
+## 5. The lost update: two writers reuse one old value
+
+Let's examine a simpler anomaly.
+
+An inventory row says five rooms remain.
+
+Alice reads five into application memory.
+
+Bob also reads five.
+
+Both calculate the new value as four.
+
+Alice executes an update setting the count to four.
+
+Bob executes an update setting the count to four.
+
+Under Read Committed, both updates can complete, coordinating through the row's write lock as necessary.
+
+But the second update still assigns the stale absolute value four.
+
+Two reservations were made.
+
+Only one unit was deducted.
+
+That's a lost update.
+
+### Database-side arithmetic changes the situation
+
+Now compare a different operation.
+
+Instead of calculating four in application memory, both transactions ask PostgreSQL to decrement the current stored value by one.
+
+The expression uses the row's current value in the database.
+
+Under Read Committed, when a concurrent updater has committed a change to the row, the waiting updater can proceed against the updated row version.
+
+Starting at five, two successful decrements yield three.
+
+That is fundamentally different from two stale absolute assignments.
+
+### But what happens at zero?
+
+If the count is zero, an unconditional decrement would produce a negative value.
+
+So we need one more part of the operation.
+
+Decrement only when the current count is positive.
+
+Then inspect whether an update actually occurred.
+
+This is an atomic conditional update.
+
+It turns the inventory claim into an operation the database can coordinate directly.
+
+We'll build the complete pattern shortly.
+
+## 6. Repeatable Read: a stable view isn't enough
+
+Suppose we increase the isolation level to Repeatable Read.
+
+In PostgreSQL, a transaction uses a stable snapshot beginning with its first relevant statement.
+
+Its later ordinary reads continue seeing the corresponding committed state, together with its own changes.
+
+Non-repeatable reads disappear.
+
+PostgreSQL's Repeatable Read also prevents phantom reads, exceeding the SQL standard's minimum requirement for that isolation level.
+
+That sounds powerful.
+
+But it can still permit serialization anomalies.
+
+### The two doctors
+
+Consider a hospital that must always have at least one doctor on duty.
+
+Alice and Bob are both currently on duty.
+
+Alice wants to go home.
+
+Her transaction checks whether another doctor remains on duty.
+
+Bob is available.
+
+So Alice updates her own row to off duty.
+
+At the same time, Bob wants to go home.
+
+His transaction checks whether another doctor remains on duty.
+
+Alice appears available in Bob's snapshot.
+
+So Bob updates his own row to off duty.
+
+The two transactions update different rows.
+
+Neither necessarily encounters a conflicting write to the same row.
+
+Both can commit under PostgreSQL Repeatable Read.
+
+The final state has zero doctors on duty.
+
+Every transaction worked from a stable snapshot.
+
+The combined outcome violates the invariant.
+
+This is **write skew**.
+
+### Why this isn't a normal lost update
+
+In a lost update, two operations compete to modify the same logical state and one overwrites or fails to incorporate another's change.
+
+In the doctors example, Alice updates Alice's row and Bob updates Bob's row.
+
+The dangerous relationship is between what each transaction read and what the other transaction wrote.
+
+Alice's decision depended on Bob remaining on duty.
+
+Bob's decision depended on Alice remaining on duty.
+
+Their writes changed the truth of each other's earlier assumptions.
+
+Neither transaction tried to update the same row.
+
+That is why row-update conflict detection alone doesn't solve the problem.
+
+### The booking equivalent
+
+Our original booking example has the same shape.
+
+Alice counts the reservations.
+
+Bob counts the reservations.
+
+Each inserts a different new reservation.
+
+The inserted rows don't directly conflict.
+
+But each insertion invalidates the other transaction's earlier capacity assessment.
+
+A stable snapshot does not make those two transactions equivalent to a valid one-at-a-time execution.
+
+**Repeatable Read preserves the transaction's view. Serializable protects the validity of the committed concurrent history.**
+
+## 7. Serializable: when the database must reject a history
+
+Now imagine executing the doctors' transactions one at a time.
+
+Alice checks that Bob is still on duty and leaves.
+
+Bob then checks the remaining doctors.
+
+He discovers that Alice has left.
+
+Bob cannot also leave without violating the rule.
+
+Alternatively, Bob could leave first, forcing Alice to remain.
+
+Either serial order preserves at least one doctor.
+
+But the concurrent Repeatable Read execution allowed both to leave.
+
+The outcome wasn't equivalent to either valid serial order.
+
+Serializable isolation prevents such a committed history.
+
+### PostgreSQL's Serializable Snapshot Isolation
+
+PostgreSQL implements Serializable using **Serializable Snapshot Isolation**, commonly abbreviated SSI.
+
+It doesn't simply force every transaction to execute one after another.
+
+Instead, it allows substantial concurrency while tracking dependencies that can reveal dangerous interactions among reads and writes.
+
+When an execution would create an unsafe serialization outcome, PostgreSQL can abort a transaction.
+
+The application may receive SQLSTATE `40001`, meaning `serialization_failure`.
+
+One transaction succeeds.
+
+Another may need to retry from the beginning.
+
+On retry, the operation observes a new transaction state and reevaluates its business condition.
+
+### Serializable isn't one enormous lock
+
+PostgreSQL uses predicate-locking information and conflict tracking to detect relevant serialization hazards.
+
+These are not merely ordinary blocking row locks applied to the entire database.
+
+SSI is designed to preserve serializable behavior without serializing every operation through one giant mutex.
+
+But it still introduces costs.
+
+Tracking dependencies consumes resources.
+
+Conflicting transactions can be aborted.
+
+Retries consume additional work.
+
+Under heavy contention, throughput and latency may be affected.
+
+Serializable is powerful, but not free.
+
+### A qualification that matters
+
+Serializable guarantees apply to the participating database transactions and their applicable correctness contract.
+
+They don't automatically make external HTTP calls or payment-provider actions part of PostgreSQL's transaction.
+
+Nor can a correctness strategy ignore independent write paths that bypass the rules on which the invariant depends.
+
+If some code inserts confirmed reservations without participating in the required inventory or consistency protocol, the broader application may remain incorrect.
+
+The mechanism must cover every operation capable of violating the invariant.
+
+## 8. The isolation levels, without memorizing a useless chart
+
+We can now summarize the practical differences.
+
+**Read Uncommitted:** In PostgreSQL, this behaves like Read Committed. Dirty reads are not permitted.
+
+**Read Committed:** The default. Ordinary statements receive current committed snapshots. Non-repeatable reads, phantoms, and serialization anomalies are possible.
+
+**Repeatable Read:** A stable transaction snapshot. PostgreSQL prevents non-repeatable reads and phantoms, but write skew and other serialization anomalies remain possible.
+
+**Serializable:** Successful committed transactions have effects consistent with a serial execution, subject to the database's documented guarantees. Applications must handle serialization failures.
+
+The purpose of knowing these levels is not to select the strongest one automatically.
+
+It's to recognize what your operation requires.
+
+Are you modifying one known row?
+
+Are you comparing a version before saving an edit?
+
+Are you checking a condition across several records?
+
+Can another transaction insert a row that invalidates your earlier count?
+
+Different shapes of invariants require different coordination strategies.
+
+## 9. Pessimistic locking: coordinate on an existing resource
+
+Let's return to our hotel.
+
+Instead of counting existing reservations, suppose we store an inventory row for each room type and date.
+
+The row for Deluxe rooms on November 14 has one remaining unit.
+
+A transaction can lock that row using `SELECT ... FOR UPDATE`.
+
+The lock prevents another conflicting transaction from modifying or acquiring an incompatible lock on the row until the first transaction ends.
+
+Alice locks the inventory row.
+
+Bob tries to lock it and waits.
+
+Alice checks availability, decrements the count, inserts the reservation, and commits.
+
+Bob can then proceed.
+
+Under Read Committed, the locking read can return the updated row version after waiting.
+
+Bob sees that no rooms remain.
+
+He cannot complete the booking.
+
+This is **pessimistic concurrency control**.
+
+We coordinate competing operations before allowing them to proceed through their critical state transition.
+
+### The important limitation: absent rows
+
+Suppose instead of locking an inventory row, Alice runs a query selecting all existing reservations for a particular room and date with `FOR UPDATE`.
+
+What if no reservation rows exist yet?
+
+There may be no rows to lock.
+
+Bob can perform the same query and also find nothing.
+
+Both can then attempt to insert a reservation.
+
+PostgreSQL does not turn every row-locking predicate into a general blocking lock on all rows that might match in the future.
+
+A row lock protects an existing row.
+
+It doesn't automatically protect the absence of matching rows.
+
+That's why a dedicated inventory row can be a useful coordination point.
+
+Everyone competing for the same room type and night attempts to update or lock the same authoritative record.
+
+But that works only if all relevant booking paths obey the protocol.
+
+## 10. Atomic conditional updates: often the simplest correct solution
+
+Now let's improve our inventory model.
+
+Instead of selecting the row, calculating a new count, and updating it separately, issue one conditional update.
+
+The statement means:
+
+"Subtract one from remaining capacity, but only if the current row still has positive remaining capacity."
+
+PostgreSQL can enforce this operation under Read Committed.
+
+If Alice updates the row first, Bob may wait for the conflicting update.
+
+After Alice commits, PostgreSQL rechecks Bob's update condition against the updated row.
+
+If the remaining count is zero, the predicate is false.
+
+Bob updates zero rows.
+
+The application must interpret that as unavailable inventory.
+
+### Connect the claim to the reservation
+
+Now suppose Alice successfully decrements inventory.
+
+What if inserting her reservation fails?
+
+We must not permanently lose one room of availability.
+
+Therefore, the inventory decrement and reservation creation belong in the same database transaction.
+
+If the insert fails, the transaction rolls back both changes.
+
+If the conditional update returns zero rows, no reservation should be created.
+
+This produces a straightforward correctness contract.
+
+Inventory is claimed only by a successful conditional update.
+
+The reservation is committed atomically with that claim.
+
+### What about multi-night stays?
+
+A guest books three nights.
+
+The transaction must claim capacity for every required night.
+
+Suppose the first two nightly claims succeed but the third fails.
+
+The transaction must roll back the earlier claims.
+
+Otherwise, the customer receives no booking while two nights remain artificially unavailable.
+
+This is precisely why transaction atomicity matters.
+
+For multi-row allocation, we should also use a consistent ordering when acquiring or updating inventory rows.
+
+That helps reduce deadlock risk.
+
+The essential lesson is:
+
+**A simple atomic conditional update can protect a counter-shaped invariant more directly than a separate availability query plus a sophisticated isolation setting.**
+
+It isn't universally applicable.
+
+If capacity is computed dynamically from many different records, or several operations can affect inventory through independent paths, stronger coordination may still be required.
+
+The mechanism follows the data model.
+
+## 11. Optimistic concurrency: detect stale decisions
+
+Not every operation should lock its data while a user thinks about an edit.
+
+Imagine two hotel employees editing the same reservation.
+
+Alice opens reservation 10842.
+
+Bob opens the same reservation.
+
+Both see version seven.
+
+Alice changes the check-in time and saves.
+
+Bob changes the guest count and saves a minute later.
+
+Without coordination, Bob's stale representation might overwrite Alice's changes.
+
+A common solution is **optimistic concurrency control**.
+
+Store a version number with the reservation.
+
+When updating, require the version to equal the one originally read.
+
+Increment it during the update.
+
+Alice's version-seven update succeeds and advances the version to eight.
+
+Bob's version-seven update matches no row.
+
+The application detects that the reservation changed since Bob loaded it.
+
+Bob can refresh, reconsider, and apply an appropriate merged update.
+
+### When optimistic control is attractive
+
+This approach works well when conflicting edits are relatively rare.
+
+It avoids holding a transaction and lock open while a user spends minutes on an editing form.
+
+The database performs the authoritative version check at write time.
+
+### What it doesn't protect
+
+A version on one reservation doesn't automatically protect a capacity rule involving several different reservations.
+
+Alice inserting reservation A and Bob inserting reservation B don't necessarily conflict on one shared versioned row.
+
+If the invariant spans many records, the optimistic-control scheme must coordinate through suitable shared state or another mechanism.
+
+Once again, choose the scope of protection to match the scope of the business rule.
+
+## 12. Deadlocks: when two valid locking decisions form a cycle
+
+Locks solve one problem and introduce another.
+
+Suppose Alice books Friday and Saturday.
+
+Bob also books Friday and Saturday.
+
+Alice's transaction locks Friday first.
+
+Bob's transaction locks Saturday first.
+
+Alice now tries to lock Saturday.
+
+She waits for Bob.
+
+Bob tries to lock Friday.
+
+He waits for Alice.
+
+Neither can continue while holding the lock the other needs.
+
+That's a deadlock.
+
+PostgreSQL can detect the cycle and abort one of the transactions.
+
+The application may receive SQLSTATE `40P01`, meaning `deadlock_detected`.
+
+The other transaction can proceed.
+
+### Preventing common deadlocks
+
+A practical technique is to acquire shared resources in a consistent order.
+
+For nightly inventory, always process dates from earliest to latest.
+
+Now Alice and Bob both attempt to lock Friday before Saturday.
+
+One waits for the first lock while the other proceeds.
+
+The particular reversed-order cycle is prevented.
+
+Short transactions, deliberate lock acquisition, and minimizing unnecessary locked work also help.
+
+But deadlocks can still occur in complex systems.
+
+Applications need appropriate error handling.
+
+### Waiting isn't automatically deadlock
+
+A transaction waiting behind another row lock may simply be experiencing ordinary contention.
+
+Eventually the first transaction commits or rolls back, and the waiter proceeds.
+
+Deadlock requires a dependency cycle that prevents progress.
+
+Both situations can increase latency, but the diagnosis differs.
+
+PostgreSQL exposes tools such as `pg_stat_activity` and `pg_locks` to investigate blocking and lock ownership.
+
+## 13. The dangerous transaction around a payment
+
+We can now design the boundary of a booking transaction.
+
+The core database operation may involve:
+
+Claim inventory.
+
+Insert the reservation.
+
+Record the new booking state.
+
+Perhaps insert an outbox event for later delivery.
+
+Those changes need a coherent atomic database boundary.
+
+But a payment-provider call is different.
+
+Suppose we charge the customer's card while holding the inventory transaction open.
+
+The provider takes eight seconds.
+
+During those eight seconds, our database transaction may retain a connection and row locks.
+
+Other booking attempts wait unnecessarily.
+
+Worse, the payment can succeed while the database transaction later aborts.
+
+PostgreSQL cannot roll back an external card charge.
+
+### A safer conceptual architecture
+
+The service commits coherent local database state.
+
+It records the need for external work durably.
+
+A separate workflow performs the payment or other remote action under an appropriate idempotency contract.
+
+The workflow records the outcome and reconciles ambiguous failures.
+
+One implementation technique is a transactional outbox: write business state and an outgoing event record in the same database transaction, then publish the event separately with reliable retry and deduplication behavior.
+
+An outbox doesn't make delivery exactly once, and it doesn't automatically solve the payment workflow.
+
+But it addresses one important problem: avoiding a gap where business state commits but the intention to notify another system is lost.
+
+Distributed systems require additional coordination beyond one database transaction.
+
+We'll study that architecture later.
+
+For now, retain this boundary:
+
+**Keep the database transaction around the database state that must change atomically. Don't stretch it across slow, unreliable external calls merely because they belong to the same user request.**
+
+## 14. Retrying a transaction means retrying its reasoning
+
+Suppose PostgreSQL aborts a Serializable transaction with `40001`.
+
+Or detects a deadlock and aborts a transaction with `40P01`.
+
+A retry may be appropriate.
+
+But what exactly should be retried?
+
+Imagine the failed transaction originally did the following:
+
+It read inventory.
+
+It selected a room.
+
+It calculated a price.
+
+It inserted a reservation.
+
+If the concurrent world changed, simply repeating the insert is not enough.
+
+The selected room may no longer be available.
+
+The price may depend on current inventory or other business rules.
+
+The transaction must begin again and reevaluate the relevant decisions.
+
+PostgreSQL's guidance is to retry the **complete transaction**, including the logic determining the values and statements used.
+
+### Bound the retries
+
+A production retry policy should limit attempts.
+
+It should respect the overall request deadline.
+
+It may use backoff and jitter to avoid synchronized retry storms.
+
+It must classify errors.
+
+A serialization failure often suggests a fresh attempt.
+
+A unique-key violation might represent a genuine duplicate booking request, not a transient scheduling conflict.
+
+Blindly retrying every database error can make the situation worse.
+
+### Don't replay irreversible side effects
+
+Suppose the transaction callback charges a credit card before committing.
+
+The database aborts.
+
+An automatic retry reruns the callback.
+
+The customer may be charged twice.
+
+This is a serious failure of transaction-boundary design.
+
+Retried database work must not blindly repeat external effects without an appropriate idempotency and workflow strategy.
+
+### What if the client loses the commit response?
+
+Another subtle case arises when PostgreSQL commits successfully but the network connection fails before the application receives confirmation.
+
+The client cannot automatically assume the transaction rolled back.
+
+Retrying as an entirely new booking may create a duplicate.
+
+A durable request or business-operation identifier can help the application recognize that the logical booking may already have been completed.
+
+This is one reason idempotency matters even when the database itself is fully transactional.
+
+## 15. Choosing the right mechanism for the invariant
+
+We now have several tools.
+
+How should we choose?
+
+### Unique constraints
+
+Use them when the rule is that a value or key combination must not be duplicated.
+
+For example, one booking operation may have a unique external idempotency key.
+
+### Exclusion constraints
+
+Use them for suitable overlap restrictions, such as preventing two confirmed stays from occupying the same physical room during intersecting date ranges.
+
+### Atomic conditional updates
+
+Use them when the scarce resource can be represented as a shared row with a condition checked and modified in one database statement.
+
+This is often excellent for explicit inventory counters.
+
+### Explicit row locking
+
+Use it when competing operations must coordinate through existing rows before performing a multi-step state transition.
+
+Be mindful that locking existing rows doesn't automatically protect the absence of rows.
+
+### Optimistic versions
+
+Use them to detect conflicting updates to an existing entity when contention is usually low.
+
+They're particularly useful for human-driven edits.
+
+### Serializable transactions
+
+Use them when correctness depends on complex relationships across reads and writes that would be difficult to protect reliably through simpler shared-row or constraint mechanisms.
+
+Plan for serialization failures and retries.
+
+### What about Redis locks?
+
+You might propose a distributed Redis lock around every booking.
+
+That adds another system with lease expiry, ownership rules, network failures, and recovery behavior.
+
+A process may pause long enough for its lease to expire, while remaining capable of writing when it resumes.
+
+Without appropriate fencing or authoritative database enforcement, the lock may not provide the expected guarantee.
+
+For invariants whose authoritative state lives in PostgreSQL, begin by asking whether PostgreSQL can enforce them directly.
+
+External distributed locks can be useful in some architectures.
+
+But they shouldn't be introduced merely because the application runs across several replicas.
+
+The correct question is always:
+
+**What exact state must competing operations coordinate through, and which mechanism makes violating the invariant impossible or detectable?**
+
+## 16. The senior interview answer
+
+Imagine an interviewer asks:
+
+"We have two customers booking the last room concurrently. Both requests run inside database transactions. How would you prevent overselling?"
+
+A weak answer is:
+
+"Use transactions."
+
+A slightly better but incomplete answer is:
+
+"Use Serializable."
+
+A stronger answer starts by clarifying the inventory model.
+
+Are we assigning one identified physical room?
+
+Or selling pooled category capacity across several nights?
+
+If it's a physical room, an exclusion constraint may be appropriate.
+
+If it's a category with explicit nightly inventory rows, an atomic conditional update or explicit locking protocol can coordinate competing claims.
+
+The reservation insert and inventory allocation must be part of one atomic transaction.
+
+For multiple nights, the entire allocation must succeed or roll back.
+
+If the invariant depends on complex predicates across several tables, Serializable may be appropriate, with correct retry handling.
+
+And if payment occurs through an external provider, it must be coordinated separately with durable state and idempotency rather than assuming PostgreSQL can roll it back.
+
+That is a much stronger answer.
+
+Not because it mentions more technologies.
+
+Because it identifies the invariant and chooses the mechanism that actually protects it.
 
 ---
 
-# 2. What Is a Transaction Actually Supposed to Do?
+# The Oral Examination
 
-Let's begin with the familiar acronym: ACID. You've probably encountered it countless times.
+Answer each question aloud before reading the solution.
 
-Atomicity. Consistency. Isolation. Durability. Most developers can recite these four properties.
+**Question 1 — The misleading transaction**
 
-Fewer can explain exactly what they promise. And that distinction matters enormously.
+Two requests each count existing reservations, observe one room available, insert separate reservation rows, and commit. Both operations use `BEGIN` and `COMMIT`. Why can the database allow overselling under Read Committed?
 
-## Atomicity: all or nothing
+**Question 2 — Lost update versus safe decrement**
 
-Imagine transferring €100 from Account A to Account B. The operation requires two changes — debit A, then credit B:
+Two applications read `remaining = 5`, calculate four, and both execute an absolute assignment. Compare this with two transactions executing `remaining = remaining - 1` in PostgreSQL.
 
-```sql
-UPDATE accounts
-SET balance = balance - 100
-WHERE id = 'A';
+**Question 3 — The stable snapshot**
 
-UPDATE accounts
-SET balance = balance + 100
-WHERE id = 'B';
-```
+Why can PostgreSQL Repeatable Read prevent non-repeatable reads and phantoms while still allowing the two-doctors write-skew anomaly?
 
-If the first operation succeeds but the second fails, €100 disappears from the represented account balances. Atomicity allows us to group the operations inside `BEGIN` / `COMMIT`:
+**Question 4 — Serializable and retries**
 
-```sql
-BEGIN;
+How does PostgreSQL Serializable prevent an impossible committed history? What must the application do if it receives SQLSTATE `40001`?
 
-UPDATE accounts
-SET balance = balance - 100
-WHERE id = 'A';
+**Question 5 — The empty-row trap**
 
-UPDATE accounts
-SET balance = balance + 100
-WHERE id = 'B';
+Why doesn't `SELECT ... FOR UPDATE` on currently matching reservation rows automatically prevent another transaction from inserting a new matching reservation?
 
-COMMIT;
-```
+**Question 6 — The conditional inventory claim**
 
-If the transaction aborts, neither change is committed. If the transaction commits successfully, both changes are committed.
+Two transactions attempt to decrement the same remaining-inventory row from one to zero under Read Committed, using `WHERE remaining > 0`. What happens to the losing claim, and why?
 
-That's atomicity. But notice what atomicity *doesn't* promise.
+**Question 7 — The outside payment**
 
-It doesn't promise that Account A originally contained €100. It doesn't promise that the two account IDs represent legitimate accounts.
+A payment provider successfully charges the customer, but the local database transaction rolls back. Why doesn't transaction atomicity repair the situation?
 
-And it doesn't promise that another transaction cannot interfere with our business assumptions.
+**Question 8 — The stale editing form**
 
-Atomicity concerns the indivisibility of the transaction's database effects, not whether the underlying business operation was sensible.
+Two hotel employees edit the same reservation after both loading version seven. How can optimistic concurrency prevent one employee's save from silently overwriting the other's changes?
 
-## Consistency: the database must remain valid
+**Question 9 — The production strategy**
 
-Consistency is probably the most misunderstood ACID property. It doesn't mean that every query always returns the latest data.
-
-It doesn't mean replicas are synchronized. And it doesn't mean the database understands every business rule automatically.
-
-Instead, consistency concerns preserving the database's defined integrity requirements. Consider an accounts table with a non-negative balance check:
-
-```sql
-CREATE TABLE accounts (
-  id TEXT PRIMARY KEY,
-  balance NUMERIC(12, 2) NOT NULL,
-  CHECK (balance >= 0)
-);
-```
-
-PostgreSQL enforces the declared balance constraint. A transaction cannot successfully commit a row with `balance = -50`.
-
-But what if our application requires total money across a collection of accounts to be conserved? PostgreSQL does not automatically know that rule.
-
-We must design the operations and constraints that enforce it.
-
-**A transaction cannot preserve a business invariant that neither the application nor the database properly enforces.**
-
-This explains part of our hotel-booking mystery. We believed reservations must never exceed available inventory.
-
-But had we actually encoded that invariant anywhere capable of enforcing it under concurrency? Not yet.
-
-## Isolation: concurrent transactions should not interfere in prohibited ways
-
-This is where our investigation becomes interesting.
-
-Isolation defines which effects of concurrent transactions may become visible to one another and which combined outcomes are permitted.
-
-Different isolation levels make different promises. At weaker levels, transactions may observe changing snapshots of data.
-
-At stronger levels, the database prevents additional anomalies, sometimes by forcing a transaction to abort.
-
-But the important detail is that **isolation is not necessarily equivalent to running every transaction one at a time**. That stronger guarantee belongs to serializability.
-
-We'll get there.
-
-## Durability: committed work survives failures
-
-Once a transaction has committed successfully, PostgreSQL normally ensures that the committed changes survive a database process or system crash, using mechanisms such as write-ahead logging and recovery.
-
-The precise guarantee depends on configuration and storage behavior. For example, deliberately disabling synchronous commit changes the crash-loss window.
-
-Also, durability does not mean that data survives every conceivable catastrophe. Backups, replication, and disaster recovery remain separate concerns.
-
-And there's an especially subtle distinction. Suppose the database commits successfully, but the network connection fails before the application receives the confirmation.
-
-The application doesn't know whether the transaction committed. The transaction may be perfectly durable.
-
-The caller's knowledge of its outcome is not. We'll encounter this uncertainty again in the distributed-systems sessions.
-
-For now, the critical observation is:
-
-**ACID is a collection of distinct guarantees. Atomicity does not imply serializability, and durability does not imply that the client knows what happened.**
-
-> **Sticky note #1**
->
-> Reciting ACID is cheap. Naming what each letter *doesn't* promise is the interview skill.
+You need to reserve a category of interchangeable rooms across five nights. What must the transaction protect, and what additional design choices reduce deadlock and retry risks?
 
 ---
 
-# 3. Concurrency Creates a Second Dimension of Correctness
+# Solutions and Discussion
 
-Imagine two transactions executing on a database. If we ran them strictly one after another, we'd have two possible orders — Alice then Bob, or Bob then Alice:
+## Solution 1 — Atomicity isn't sufficient isolation
 
-```text
-Option A:
+Each transaction inserts a valid row based on a count observed earlier.
 
-Transaction Alice
-      |
-      v
-Transaction Bob
-```
+The inserts affect different rows, and no enforced invariant prevents the combined capacity excess.
 
-Or:
+Read Committed doesn't guarantee a serial execution of the count-and-insert workflow.
 
-```text
-Option B:
+The business rule needs an appropriate constraint, shared resource, locking protocol, or stronger isolation strategy.
 
-Transaction Bob
-      |
-      v
-Transaction Alice
-```
+## Solution 2 — Stale assignment versus current-row arithmetic
 
-In either order, Bob or Alice would discover that the last room was already taken. One reservation succeeds.
+Both absolute assignments can write four, losing one decrement.
 
-The other fails. The invariant is preserved.
+Database-side arithmetic uses the relevant current row value under PostgreSQL's update and locking rules.
 
-But production databases don't ordinarily serialize every transaction. That would waste substantial opportunities for concurrent work.
+The second successful decrement can apply after the first, producing three.
 
-Instead, operations from different transactions may overlap and interleave — both read availability, then both insert, then both commit:
+For scarce capacity, add a positive-remaining predicate and verify whether the update returned a row.
 
-```text
-Alice:  READ availability -------- INSERT -------- COMMIT
-Bob:          READ availability -------- INSERT -------- COMMIT
-```
+## Solution 3 — Snapshot isolation isn't serializability
 
-Now the result depends on what each transaction can observe and which operations conflict.
+Each doctor reads a stable snapshot showing the other on duty.
 
-Computer science has a useful term for the order in which concurrent operations occur:
+Each updates a different row.
 
-**An execution schedule**, sometimes called a history. Different schedules can produce different outcomes, even when each transaction runs the same code.
+The transactions can both commit without a direct same-row write conflict, even though their combined effect violates the cross-row invariant.
 
-### The idea of serializability
+Stable snapshots don't guarantee equivalence to a valid serial order.
 
-Suppose multiple transactions execute concurrently.
+## Solution 4 — Detect unsafe dependencies and retry
 
-Their execution is *serializable* if the resulting behavior is equivalent to some valid serial execution of those transactions.
+PostgreSQL Serializable uses SSI to detect dangerous concurrent read/write dependencies and can abort a transaction rather than allow a nonserializable committed result.
 
-Not necessarily the order in which they started. Not necessarily the order in which their first queries completed.
+The application should start a fresh transaction and retry the complete decision, not merely repeat the last SQL statement.
 
-Just some serial ordering consistent with the database's serializability rules.
+Retries must be bounded and must not blindly replay external side effects.
 
-In our hotel example, no serial ordering permits two successful reservations for the one remaining room, assuming each transaction correctly checks and consumes availability.
+## Solution 5 — A row lock doesn't lock nonexistent rows
 
-Therefore, the observed result is not serializable. That's the essential distinction.
+`FOR UPDATE` locks rows that exist and are selected under its semantics.
 
-A transaction can be atomic, durable, and internally reasonable while participating in a nonserializable execution. So how does PostgreSQL decide what each transaction sees?
+It doesn't automatically create a blocking lock over every possible future row satisfying the predicate.
 
-To understand that, we need to revisit a mechanism introduced briefly in our previous sessions. MVCC.
+Another transaction may still insert a new qualifying row.
 
----
+A dedicated inventory row, suitable constraint, or Serializable strategy may be needed.
 
-# 4. MVCC: The Database That Remembers Several Versions of Reality
+## Solution 6 — One claim succeeds
 
-Imagine a database where every update immediately overwrites the existing value. A reader is examining a customer record.
+The first transaction updates the row to zero.
 
-Meanwhile, another transaction wants to modify it. How can the database prevent the reader from encountering an inconsistent intermediate state?
+The second waits for the conflicting update to finish.
 
-One traditional approach relies heavily on locking. Readers and writers coordinate access to shared records, potentially blocking one another.
+After the first commits, PostgreSQL rechecks the condition against the updated row under Read Committed.
 
-PostgreSQL uses a different central mechanism:
+Since remaining capacity is zero, the second update affects no rows.
 
-**Multi-Version Concurrency Control**, or MVCC. The idea is that updating a row doesn't simply destroy the old version and replace it in place.
+No reservation should be created for that unsuccessful claim.
 
-PostgreSQL maintains row versions whose visibility depends on transaction state and snapshots. Conceptually, Reservation 10842 might have Version 1 with `status = pending` and Version 2 with `status = confirmed`.
+## Solution 7 — Different transaction boundaries
 
-Suppose Transaction A started reading before Transaction B committed the status change.
+PostgreSQL can roll back its own uncommitted database changes.
 
-Depending on the isolation level, Transaction A may continue seeing the earlier version while another transaction sees the newer one. Conceptually — A keeps seeing pending after its snapshot; B commits confirmed; C's later snapshot sees confirmed:
+It cannot reverse an external payment-provider action that already succeeded.
 
-```text
-                  TIME ─────────────────────>
+The application needs durable workflow state, idempotency, and reconciliation for the external side effect.
 
-Transaction A:
-    Snapshot created
-          |
-          v
-    Sees: pending ──────────────────────────
+Holding the database transaction open during the provider call doesn't make that remote operation atomic.
 
-Transaction B:
-                 UPDATE status = confirmed
-                            |
-                          COMMIT
+## Solution 8 — Version-conditional update
 
-Transaction C:
-                                   Snapshot
-                                      |
-                                      v
-                                Sees: confirmed
-```
+Each employee saves with a condition requiring version seven.
 
-These versions are not magical copies of the entire database.
+The first successful update increments the version to eight.
 
-PostgreSQL maintains tuple versions and metadata that allow it to determine which versions are visible to a particular snapshot.
+The second update matches no row and reports a conflict.
 
-Transaction identifiers and transaction status help determine whether a row version should be visible. This design has a remarkable consequence.
+The application can refresh and decide how to reapply the intended change rather than silently overwriting another edit.
 
-**Ordinary readers generally do not block writers, and writers generally do not block ordinary readers.**
+## Solution 9 — Claim all nights atomically
 
-A long-running analytical query can read a consistent snapshot while updates continue elsewhere. That's enormously useful.
+The booking must claim capacity for all five nights and insert the reservation within one coherent transaction.
 
-But it introduces the concept at the center of this lecture:
+If any night cannot be allocated, the transaction should roll back all claims.
 
-A transaction's view of the database is not necessarily identical to the latest globally committed state. It's determined by visibility rules.
+Use a consistent row acquisition order, such as ascending date, to reduce deadlock risk.
 
-And those rules change with the isolation level.
-
-### The cost of keeping old versions
-
-MVCC also has operational consequences. Old row versions cannot necessarily be discarded immediately.
-
-A transaction may still need them. PostgreSQL therefore relies on vacuuming and related maintenance to reclaim reusable space and manage visibility information.
-
-Long-running transactions can prevent old row versions from being cleaned up. This can contribute to table bloat and storage pressure.
-
-So an application that begins a transaction and leaves it open for fifteen minutes isn't merely holding a connection. It may also interfere with database maintenance.
-
-We won't explore vacuum internals today, but the connection is worth remembering:
-
-**Concurrency guarantees have physical storage and operational costs.**
-
-Now let's examine the isolation levels.
+Handle serialization or deadlock errors through bounded complete-transaction retries, and keep external payment actions outside the retried database transaction.
 
 ---
 
-# 5. Read Committed: A New Snapshot for Every Statement
+# The Mental Model Worth Keeping
 
-PostgreSQL's default transaction isolation level is **Read Committed**. It's appropriate for many ordinary application operations.
+A database transaction is not a magic bubble around business logic.
 
-But understanding its limitations is essential.
+Its guarantees are specific.
 
-In Read Committed, each ordinary `SELECT` statement sees a snapshot reflecting data committed before that statement began, along with the transaction's own changes.
+**Atomicity:** Do the database changes succeed or fail together?
 
-Two successive statements within the same transaction can therefore see different committed database states. Let's reproduce the idea.
+**Visibility:** Which committed state does each operation see?
 
-Transaction A begins and reads account A's balance:
+**Coordination:** What prevents concurrent operations from violating the invariant?
 
-```sql
-BEGIN;
+**Scope:** Does the transaction cover all relevant database changes without incorrectly including external side effects?
 
-SELECT balance
-FROM accounts
-WHERE id = 'A';
-```
+**Recovery:** What happens if the database aborts, or the client cannot determine whether the commit succeeded?
 
-Result: `balance = 100`.
+The durable principle is:
 
-Meanwhile, Transaction B updates that balance to 150 and commits:
+**Correct transaction design begins with the business invariant and the set of operations that can violate it—not with an isolation-level setting.**
 
-```sql
-BEGIN;
+# Next Course — Data Systems Beyond Relational Databases
 
-UPDATE accounts
-SET balance = 150
-WHERE id = 'A';
+We've now explored relational modeling, query performance, and transactional correctness.
 
-COMMIT;
-```
+But modern systems rarely store all information in one relational database.
 
-Transaction A executes the same query again:
+A search engine organizes information for relevance and full-text discovery.
 
-```sql
-SELECT balance
-FROM accounts
-WHERE id = 'A';
-```
+A document database groups data into document-oriented aggregates.
 
-Now the result is `balance = 150`.
+A key-value system favors direct access through keys.
 
-Transaction A has not committed or rolled back. Yet it has observed two different values for the same row.
+A queue stores work waiting to be processed.
 
-This is called a **non-repeatable read**. Nothing is broken.
+Analytical databases optimize large-scale aggregation rather than ordinary transactional updates.
 
-It's permitted by Read Committed.
+In CS340, we'll explore why these systems make different trade-offs, how their storage and consistency models work, and how to choose the right data system without turning an application into an unnecessary collection of databases.
 
-### What about dirty reads?
-
-A dirty read occurs when one transaction reads another transaction's uncommitted changes.
-
-PostgreSQL does not permit dirty reads, even when you request the SQL-standard `READ UNCOMMITTED` isolation level.
-
-In PostgreSQL, Read Uncommitted effectively behaves like Read Committed. That's an important PostgreSQL-specific detail.
-
-### The phantom read
-
-Now consider a query involving several rows — counting confirmed reservations for a hotel:
-
-```sql
-SELECT COUNT(*)
-FROM reservations
-WHERE hotel_id = 482
-  AND status = 'confirmed';
-```
-
-Transaction A receives 125 reservations.
-
-Transaction B inserts a new matching reservation and commits. Transaction A repeats its query.
-
-Now it sees 126 reservations.
-
-The result set has changed because a new matching row appeared. This is a *phantom read*.
-
-It illustrates why reasoning about concurrency requires more than tracking updates to existing rows. New rows can change the truth of a business condition.
-
-And that is precisely what happened in our double-booking example. Both transactions asked:
-
-> How many confirmed reservations already exist?
-
-Both received an answer that was correct at the time of their respective queries. Neither answer guaranteed that the result would remain valid until the transaction committed.
+*The spoken lecture ends here. The remaining material is for practical investigation and screen-based revision.*
 
 ---
 
-# 6. Lost Updates: When Two Writers Disagree About the Past
+# Optional Practical Lab — Make PostgreSQL Double-Book a Room
 
-Let's examine another classic anomaly. Suppose a hotel inventory record contains `remaining_rooms = 5`.
+**Environment:** PostgreSQL, a disposable database, and two independent SQL sessions. Open two `psql` terminals connected to the same database. We'll call them Terminal A and Terminal B.
 
-Two processes want to reserve one room. Both read the value.
+The goal is to observe transaction anomalies rather than merely read about them.
 
-Both receive 5. Both calculate `const newValue = remainingRooms - 1` in application memory.
+## Experiment A — A business invariant that the database doesn't know
 
-Both issue the same absolute assignment: `UPDATE inventory SET remaining_rooms = 4 WHERE id = 1`.
-
-What happens? Both updates can eventually succeed under Read Committed.
-
-The second writer may wait for the first writer's row lock to be released. But it's still assigning the stale value `4`.
-
-The database ends up with four remaining rooms. Two reservations were made.
-
-Only one unit was deducted. This is a form of **lost update**.
-
-The problem is that the application calculated a new state using information that was no longer current.
-
-### Not all updates have this problem
-
-Now compare a database-side decrement: `UPDATE inventory SET remaining_rooms = remaining_rooms - 1 WHERE id = 1`.
-
-This is different. The arithmetic happens inside the database statement.
-
-Under PostgreSQL Read Committed, concurrent updates to the same row coordinate through row locking.
-
-If another transaction updates the row first, the waiting updater can proceed against the updated row version once the first transaction commits.
-
-The second decrement therefore applies to the new value. Starting with five rooms, two successful decrements produce three.
-
-That's what we wanted. This distinction is remarkably useful.
-
-**Reading a value into application memory, modifying it, and writing it back is not equivalent to asking the database to atomically modify the current value.**
-
-The second approach can avoid a whole category of stale-state problems. But we're not finished.
-
-What if the inventory contains zero rooms? We don't want the value to become negative.
-
-And we don't want to insert a reservation unless the inventory update succeeds. We need a stronger operation.
-
-We'll design one shortly. First, let's examine what happens when we increase the isolation level.
-
----
-
-# 7. Repeatable Read: A Stable Snapshot Can Still Lie About the Whole System
-
-You might now propose a seemingly elegant solution. Why not change the isolation level to Repeatable Read with `BEGIN ISOLATION LEVEL REPEATABLE READ`?
-
-In PostgreSQL, Repeatable Read provides a stable snapshot for the transaction.
-
-The snapshot is established at the first relevant statement, rather than automatically at `BEGIN`.
-
-Subsequent ordinary reads continue observing the same committed database state, together with the transaction's own changes. Non-repeatable reads disappear.
-
-Phantom reads are also prevented in PostgreSQL's implementation, which is stronger in this respect than the SQL standard's minimum requirement for Repeatable Read. Excellent.
-
-So our booking problem is solved? Not necessarily.
-
-In fact, a stable snapshot can make the underlying danger easier to demonstrate.
-
-### The two doctors problem
-
-Imagine a hospital where at least one doctor must remain on duty. Two doctors are currently available — Doctor Alice `on_duty = true`, Doctor Bob `on_duty = true`.
-
-Alice wants to leave. Her transaction checks whether another doctor is on duty.
-
-Yes—Bob is available. So Alice marks herself off duty.
-
-Simultaneously, Bob wants to leave. His transaction checks whether another doctor is on duty.
-
-Yes—Alice is available. So Bob marks himself off duty.
-
-Under Repeatable Read, both transactions may operate using snapshots in which both doctors are on duty. Alice updates her own row.
-
-Bob updates his own row. They aren't modifying the same database row.
-
-Both transactions can commit. Final state: both doctors `on_duty = false`.
-
-No doctors remain on duty. Each transaction made a locally reasonable decision.
-
-Together they violated a global invariant. This anomaly is called **write skew**.
-
-### Why row-level conflict detection doesn't save us
-
-PostgreSQL's Repeatable Read prevents certain conflicting updates to the same row.
-
-For example, if two transactions try to update the same existing row based on incompatible snapshots, one can receive a serialization failure.
-
-But our doctors update different rows. The conflict lies in what each transaction *read* when deciding what to write.
-
-Alice's decision depends on Bob's status. Bob's decision depends on Alice's status.
-
-Their writes affect the truth of each other's earlier reads. That's the dangerous relationship.
-
-And the same pattern can arise in hotel bookings. One transaction counts existing reservations.
-
-Another does the same. Each inserts a different reservation row.
-
-Neither updates an existing reservation row that the other is trying to modify. Both can commit under Repeatable Read.
-
-**A stable snapshot is not the same thing as a serializable execution.**
-
-This is one of the most important distinctions in practical database concurrency.
-
-> **Sticky note #2**
->
-> Repeatable Read freezes *your* view. Write skew is when two frozen views each approve a change the other would have blocked.
-
----
-
-# 8. The Isolation Levels Compared
-
-We now have enough context to compare PostgreSQL's isolation levels meaningfully. Spoken as a stack rather than a table:
-
-- **Read Uncommitted** — dirty reads prevented in PostgreSQL (behaves as Read Committed); non-repeatable reads, phantoms, and serialization anomalies still possible.
-- **Read Committed** — dirty reads prevented; non-repeatable reads, phantoms, and serialization anomalies possible. This is PostgreSQL's default.
-- **Repeatable Read** — dirty, non-repeatable, and phantom reads prevented in PostgreSQL's snapshot implementation; serialization anomalies such as write skew still possible.
-- **Serializable** — dirty, non-repeatable, phantom, and serialization anomalies prevented; the application must handle transaction failures and retries.
-
-A few details deserve emphasis. Read Uncommitted is not a distinct weaker implementation in PostgreSQL; it behaves as Read Committed.
-
-PostgreSQL's Repeatable Read is based on snapshot isolation and prevents phantoms, but can permit write skew.
-
-Serializable provides the strongest isolation semantics, but the application must handle transaction failures and retries.
-
-The comparison is useful, but don't memorize it as the entire subject. The real skill is recognizing the shape of an operation.
-
-Are we updating one row? Are we deriving a write from an earlier read?
-
-Are we checking a condition across multiple rows? Could another transaction insert a row that invalidates our decision?
-
-These questions determine whether our chosen isolation and locking strategy is sufficient.
-
----
-
-# 9. Serializable: The Database Refuses an Impossible History
-
-Let's return to the two doctors. Alice's transaction reads Bob's availability and marks Alice off duty.
-
-Bob's transaction reads Alice's availability and marks Bob off duty. If they executed sequentially, one would discover that the other had already left.
-
-Both cannot successfully leave in a correct serial execution. PostgreSQL's Serializable isolation level detects conflicts that could produce such nonserializable outcomes.
-
-It uses a mechanism called **Serializable Snapshot Isolation**, or SSI. The key idea is rather clever.
-
-PostgreSQL doesn't simply force every transaction to execute one after another.
-
-Instead, it allows considerable concurrency while tracking read/write dependencies that could make the committed history inconsistent with serial execution.
-
-When it detects an unsafe situation, it aborts a transaction. The application may receive an error such as: could not serialize access due to read/write dependencies among transactions — SQLSTATE `40001`, which is `serialization_failure`.
-
-That's the signal. One transaction succeeds.
-
-The other must retry. When retried, the operation obtains a new snapshot and reevaluates the business condition.
-
-It can now discover that the invariant would be violated.
-
-### Serializable is not a giant database lock
-
-It's tempting to imagine Serializable as a mode that locks the entire database. That is not how PostgreSQL implements it.
-
-Its SSI mechanism tracks dangerous dependencies using predicate-locking information and related concurrency machinery.
-
-These predicate locks are not ordinary blocking row locks. Their purpose is to detect conflicts, not to stop every writer immediately.
-
-This allows substantial concurrency. However, Serializable has costs.
-
-Conflict tracking consumes resources. Some transactions must be retried.
-
-Under contention, retries can increase latency and wasted work. The database may occasionally abort a transaction conservatively to prevent a possible anomaly.
-
-And applications must be designed to recover from those failures.
-
-### An essential qualification
-
-Serializable reasoning applies to transactions participating appropriately in the relevant isolation and correctness strategy.
-
-You cannot make one operation safe merely by changing its isolation level while unrelated write paths continue modifying the same business state without respecting the intended invariant.
-
-A correctness strategy must cover **every operation capable of violating the rule**.
-
-That might involve serializable transactions, database constraints, carefully coordinated locks, or atomic conditional updates.
-
-The important goal is not to enable a prestigious-sounding isolation level. It's to enforce a particular invariant.
-
----
-
-# 10. Pessimistic Locking: Take the Resource Before Somebody Else Does
-
-Let's consider another approach. Suppose our hotel keeps a row describing available inventory for a particular room type and date — `room_type_id = 42`, night `2026-11-14`, `remaining = 1`.
-
-Instead of merely reading the row, we can lock it with `SELECT ... FOR UPDATE`:
-
-```sql
-BEGIN;
-
-SELECT remaining
-FROM room_inventory
-WHERE room_type_id = 42
-  AND night = DATE '2026-11-14'
-FOR UPDATE;
-```
-
-`FOR UPDATE` acquires a row-level lock that conflicts with other transactions attempting certain operations on the same row.
-
-If Alice has locked the inventory row, Bob's conflicting lock request waits. Alice checks the inventory, creates the reservation, decrements availability, and commits.
-
-Only then can Bob proceed. Under Read Committed, Bob's locking read can return the updated version of the row after waiting.
-
-He discovers that no rooms remain. His booking fails.
-
-That's **pessimistic concurrency control**. We're assuming contention is possible and coordinating access before performing the dependent operation.
-
-### The power and limitations of row locks
-
-Row-level locks are excellent when all competing operations share a clearly identified row. But suppose the business rule is:
-
-> No more than ten reservations may exist for this category and date.
-
-You query matching reservations with `FOR UPDATE`:
-
-```sql
-SELECT *
-FROM reservations
-WHERE room_type_id = 42
-  AND night = DATE '2026-11-14'
-FOR UPDATE;
-```
-
-What if there are currently no matching rows? There's nothing to lock.
-
-Locking existing reservation rows does not automatically prevent another transaction from inserting a new matching row.
-
-PostgreSQL does not turn every `SELECT FOR UPDATE` predicate into a general-purpose blocking range lock. This is a common mistake.
-
-**A row lock protects a row. It does not automatically protect the absence of rows or every possible future row matching a condition.**
-
-That's why a dedicated inventory row can be useful. Every transaction competing for the same room type and night can coordinate through the same record.
-
-But all booking paths must respect that protocol.
-
-If one integration bypasses inventory allocation and directly inserts confirmed reservations, the locking design no longer protects the business invariant.
-
----
-
-# 11. The Atomic Conditional Update: Often the Simplest Good Solution
-
-Let's improve our inventory design.
-
-Instead of reading availability, locking manually, calculating a new value, and writing it back, we can ask PostgreSQL to perform the entire condition and modification atomically — decrement only while `remaining > 0`, and return the new value:
-
-```sql
-UPDATE room_inventory
-SET remaining = remaining - 1
-WHERE room_type_id = 42
-  AND night = DATE '2026-11-14'
-  AND remaining > 0
-RETURNING remaining;
-```
-
-This is a powerful pattern. The statement means:
-
-> Decrease availability by one, but only if the currently eligible row still has positive availability.
-
-Suppose two transactions attempt this simultaneously. Initially `remaining = 1`.
-
-Alice obtains the row lock and updates it to zero. Bob attempts the same update.
-
-He waits for Alice's transaction. If Alice commits, PostgreSQL rechecks the update condition against the updated row under Read Committed.
-
-Now `remaining > 0` is false. Bob updates zero rows.
-
-The application can interpret that as unavailable inventory. No separate stale availability calculation is required.
-
-### The transaction must still connect inventory and reservation
-
-Of course, we don't want to decrement inventory without creating the reservation. So wrap both in one transaction — claim inventory, then insert only if the update returned a row:
-
-```sql
-BEGIN;
-
-UPDATE room_inventory
-SET remaining = remaining - 1
-WHERE room_type_id = 42
-  AND night = DATE '2026-11-14'
-  AND remaining > 0
-RETURNING remaining;
-
--- Only continue if exactly one row was updated.
-
-INSERT INTO reservations (
-  room_type_id,
-  check_in,
-  check_out,
-  status
-)
-VALUES (
-  42,
-  DATE '2026-11-14',
-  DATE '2026-11-15',
-  'confirmed'
-);
-
-COMMIT;
-```
-
-The application must verify that the update returned exactly one row before inserting.
-
-If no row was updated, it should roll back or terminate the transaction without creating a reservation. If the insert fails, the inventory decrement rolls back.
-
-For a multi-night booking, every night's inventory allocation must succeed within the transaction. If any night cannot be allocated, the entire allocation must be undone.
-
-And concurrent multi-night bookings should lock inventory rows in a consistent order to reduce deadlocks.
-
-### Why I like this approach
-
-For inventory rows that represent authoritative remaining capacity, atomic conditional updates are often a better default than a separate availability read plus hope that isolation will save you. They coordinate through the shared resource itself and don't require Serializable merely to keep a counter non-negative—but they still depend on a sound inventory model. If capacity is computed dynamically from several tables, or inventory can be modified through many independent operations, the design may need additional coordination.
-
-The correct concurrency mechanism follows the shape of the business invariant.
-
----
-
-# 12. Optimistic Concurrency: Don't Lock Until You Know There's a Conflict
-
-Pessimistic locking coordinates access before a contested modification. Optimistic concurrency control takes a different approach.
-
-It allows operations to proceed based on an observed version, then rejects the write if that version is no longer current. Suppose a reservation has `id = 10842`, `status = pending`, `version = 7`.
-
-The application reads it and prepares a change. Instead of updating by id alone — `UPDATE reservations SET status = 'confirmed' WHERE id = 10842` — we require both the id and the read version (seven here) in the where clause, increment version in the same statement, and return the new row so the app can tell success from zero rows updated:
-
-```sql
-UPDATE reservations
-SET
-  status = 'confirmed',
-  version = version + 1
-WHERE id = 10842
-  AND version = 7
-RETURNING id, version;
-```
-
-If no other transaction changed the row, the update succeeds. The version becomes eight.
-
-If another operation has already modified the reservation and incremented the version, the condition no longer matches. Zero rows are updated.
-
-The application detects a conflict. This is commonly called **optimistic locking**, although it doesn't necessarily involve a database lock acquired during the initial read.
-
-It's also a form of compare-and-swap behavior.
-
-### When is it useful?
-
-Imagine two hotel employees editing a reservation. Alice changes the check-in time.
-
-Bob changes the guest count. Both opened the reservation when its version was seven.
-
-Alice saves first. The version becomes eight.
-
-Bob attempts to save his stale version-seven representation. The update fails.
-
-Now Bob can refresh the record and decide how to merge or reapply his changes. Without version checking, Bob's stale update might overwrite Alice's work.
-
-Optimistic concurrency is attractive when conflicting modifications are relatively rare. It avoids holding a database transaction open while a user thinks about an edit.
-
-### Its limitation
-
-A version column on an individual reservation protects that reservation against conflicting updates.
-
-It doesn't automatically protect an invariant involving many different reservations.
-
-If Alice inserts Reservation A and Bob inserts Reservation B, neither necessarily conflicts on a shared versioned row.
-
-For aggregate rules, optimistic control must coordinate through a shared version, predicate-aware mechanism, constraint, or other enforcement strategy.
-
-This is why the right question is not:
-
-> Should I use optimistic or pessimistic locking?
-
-It's:
-
-> What exact shared state or invariant can competing operations invalidate?
-
-Only then can you identify the correct coordination point.
-
----
-
-# 13. Deadlocks: When Everyone Politely Waits Forever
-
-Locks prevent many concurrency anomalies. But they introduce another kind of problem.
-
-Imagine a reservation workflow that updates two inventory rows. Alice books nights Friday and Saturday.
-
-Bob books the same nights. Alice locks Friday first.
-
-Bob locks Saturday first. Then Alice attempts to lock Saturday.
-
-She must wait for Bob. Bob attempts to lock Friday.
-
-He must wait for Alice. Neither can proceed — a classic circular wait:
-
-```text
-Transaction Alice              Transaction Bob
-
-Locks Friday                   Locks Saturday
-     |                              |
-     v                              v
-Requests Saturday             Requests Friday
-     |                              |
-     +---------- WAIT --------------+
-     |                              |
-     +---------- WAIT --------------+
-```
-
-This is a **deadlock**. Fortunately, PostgreSQL doesn't allow such a cycle to remain unresolved indefinitely.
-
-Its deadlock-detection machinery can identify the problem and abort one of the transactions. The application receives an error such as SQLSTATE `40P01` — `deadlock_detected`.
-
-The surviving transaction can proceed.
-
-### Avoiding deadlocks
-
-One highly practical technique is acquiring locks in a consistent order. For example, always process inventory rows in ascending date order.
-
-Then both Alice and Bob attempt Friday before Saturday. One waits for Friday.
-
-The other proceeds through the dates and commits. No circular wait is created by that particular sequence.
-
-Other useful practices include keeping transactions short, avoiding unnecessary locks, and acquiring the intended lock strength deliberately.
-
-But deadlocks cannot always be eliminated. Complex systems have multiple transaction paths and competing resources.
-
-A robust application should be prepared to retry appropriate deadlock failures.
-
-### Don't confuse waiting with deadlocking
-
-A transaction waiting for another transaction's row lock is not automatically deadlocked. Ordinary lock waiting is part of concurrency control.
-
-A deadlock requires a circular dependency that prevents progress. Lock waiting can still cause serious latency, however.
-
-PostgreSQL provides tools such as `pg_stat_activity` and `pg_locks` to investigate blocking and lock contention.
-
-And this is where poor transaction boundaries become expensive.
-
-A transaction that holds inventory locks while calling an external payment provider may block other bookings for several seconds.
-
-The database isn't slow because its arithmetic is difficult. It's slow because one operation owns a resource that others need.
-
-This brings us to transaction design at the application level.
-
----
-
-# 14. Where Should a Transaction Begin and End?
-
-Recall the architecture we developed in SE320-L01 — HTTP controller over an application service that owns domain logic, repositories, and external services:
-
-```text
-HTTP Controller
-      |
-      v
-Application Service
-      |
-      +-- Domain Logic
-      |
-      +-- Repositories
-      |
-      +-- External Services
-```
-
-Where does the transaction belong? Typically, around a coherent unit of database work required to preserve a business operation's invariants.
-
-For example — allocate inventory, create the reservation, and record an outbox event inside one Read Committed transaction:
-
-```typescript
-await dataSource.transaction(
-  "READ COMMITTED",
-  async manager => {
-    const inventory = await allocateInventory(
-      manager,
-      booking
-    );
-
-    if (!inventory.success) {
-      throw new InventoryUnavailableError();
-    }
-
-    await createReservation(manager, booking);
-
-    await recordOutboxEvent(manager, booking);
-  }
-);
-```
-
-The precise implementation depends on the domain, but the transaction encompasses the database changes that must succeed or fail together.
-
-An important TypeORM detail: operations belonging to the transaction must use the transaction-provided entity manager or repositories derived from it.
-
-If a nested service silently uses the global `dataSource.manager`, it may execute operations outside the intended transaction.
-
-That's an excellent way to introduce bugs that only appear during failures.
-
-### The dangerous external call
-
-Now imagine charging the customer *inside* the same database transaction:
-
-```typescript
-await dataSource.transaction(async manager => {
-  await allocateInventory(manager, booking);
-
-  await paymentProvider.chargeCustomer(payment);
-
-  await createReservation(manager, booking);
-});
-```
-
-This looks attractive. Everything appears to belong to one use case.
-
-But the payment provider does not participate in your PostgreSQL transaction.
-
-If the database rolls back after payment succeeds, PostgreSQL cannot reverse the charge automatically.
-
-If the payment provider takes eight seconds to respond, your database transaction may hold locks and a connection for eight seconds.
-
-And if the provider times out, you may not know whether the charge occurred.
-
-The correct design often separates local atomic persistence from external side effects, using durable workflow state, idempotency, and reconciliation.
-
-We'll investigate those patterns more deeply when the curriculum moves into distributed systems. For now, a useful principle is:
-
-**A database transaction should protect the smallest coherent unit of database state that must change atomically—not the entire duration of a complicated business process involving unreliable external systems.**
-
-Small does not mean artificially splitting an operation that requires atomicity. It means avoiding unnecessary work while scarce database resources and locks are held.
-
----
-
-# 15. Retrying Transactions Without Making Things Worse
-
-Serializable transactions can fail with SQLSTATE `40001`. Deadlocks can fail with `40P01`.
-
-These errors often justify retrying the transaction. But retrying correctly is more subtle than repeating the final SQL statement.
-
-Suppose the original transaction:
-
-1. Reads available inventory.
-2. Determines a price.
-3. Selects a particular room.
-4. Inserts the reservation.
-
-If the transaction fails because the concurrent world changed, retrying only the insert is not sufficient. The business decision must be reevaluated against fresh data.
-
-PostgreSQL's guidance is to retry the **complete transaction**, including the logic that determines which statements and values to use. A simplified Node.js retry wrapper — retry only serialization and deadlock codes, with bounded attempts and jittered backoff:
-
-```typescript
-const RETRYABLE_CODES = new Set([
-  "40001", // serialization_failure
-  "40P01", // deadlock_detected
-]);
-
-async function runWithRetry<T>(
-  operation: () => Promise<T>,
-  maxAttempts = 3
-): Promise<T> {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await operation();
-    } catch (error: any) {
-      const code = error?.driverError?.code ?? error?.code;
-
-      if (
-        !RETRYABLE_CODES.has(code) ||
-        attempt === maxAttempts
-      ) {
-        throw error;
-      }
-
-      const delay =
-        Math.min(100 * 2 ** (attempt - 1), 1000) *
-        (0.5 + Math.random());
-
-      await new Promise(resolve =>
-        setTimeout(resolve, delay)
-      );
-    }
-  }
-
-  throw new Error("Unreachable");
-}
-```
-
-This is a teaching-level wrapper: production code should also account for deadlines, cancellation, error classification, and the application's response contract.
-
-Usage might look like wrapping a fresh Serializable transaction on each attempt:
-
-```typescript
-const reservation = await runWithRetry(() =>
-  dataSource.transaction(
-    "SERIALIZABLE",
-    async manager => {
-      return createReservationTransaction(
-        manager,
-        command
-      );
-    }
-  )
-);
-```
-
-Each attempt begins a fresh transaction. The complete decision process runs again.
-
-The retry is bounded. And a little randomized delay reduces synchronized retry storms.
-
-### The crucial warning
-
-Never blindly retry a transaction callback that performs irreversible external side effects.
-
-If the callback charges a payment card and then the database aborts, automatically retrying the entire callback might charge the customer again.
-
-Retries must operate within clearly defined side-effect boundaries. A reliable workflow requires idempotency and durable coordination around external effects.
-
-Also, not every database constraint error is transient.
-
-A unique-key violation may represent a legitimate duplicate business request rather than a concurrency anomaly that should be retried.
-
-Error classification is part of correctness.
-
----
-
-# 16. Choosing the Right Strategy in Real Systems
-
-Let's consolidate the available techniques as a spoken toolkit rather than a comparison grid:
-
-- **Unique constraint** — strong for preventing duplicate keys or identities; doesn't express arbitrary business rules.
-- **Exclusion constraint** — strong for preventing overlapping physical-room reservations; not a general pooled-capacity solution.
-- **Atomic conditional update** — strong for claiming limited inventory represented by shared rows; requires a suitable shared-state model.
-- **`SELECT FOR UPDATE`** — strong for coordinating modifications to existing rows; doesn't lock absent rows.
-- **Optimistic version check** — strong for preventing stale updates to existing entities; doesn't automatically protect cross-row invariants.
-- **Repeatable Read** — strong for stable transaction snapshots; can permit write skew.
-- **Serializable** — strong for preventing nonserializable committed histories; requires retry handling and has overhead.
-
-There's no universally superior option. But we can make practical recommendations.
-
-### For simple counters and inventory allocations
-
-Prefer an atomic conditional update when the business rule can be cleanly represented that way. It's often efficient, explicit, and easy to reason about.
-
-### For entity editing
-
-Optimistic concurrency using a version column is frequently an excellent choice. Especially when users may hold an editing screen open for minutes.
-
-### For contested multi-row resources
-
-Explicit row locking can work well if competing operations have a well-defined shared resource to coordinate through. Acquire locks consistently and keep transactions short.
-
-### For complex predicate-based invariants
-
-Serializable transactions are worth serious consideration. They can reduce the need to invent intricate manual locking protocols.
-
-But the entire relevant workflow must participate appropriately, and retries must be handled correctly.
-
-### For rules naturally expressible as database constraints
-
-Use constraints.
-
-An overlapping-room prohibition implemented through a PostgreSQL exclusion constraint can be stronger and simpler than relying entirely on application-level checks.
-
-### What about distributed locks?
-
-You might be tempted to introduce Redis locks for booking coordination.
-
-For a business invariant that lives in PostgreSQL, I would generally avoid making an external distributed lock the primary correctness mechanism unless there's a compelling architectural reason.
-
-Redis locking introduces another system whose availability, failure behavior, lease expiration, and ownership semantics must be understood. A process can pause.
-
-A lock lease can expire. Another process can acquire the lock while the original process is still capable of writing.
-
-Without appropriate fencing or database-side enforcement, the lock may not provide the guarantee you expected.
-
-If PostgreSQL can directly enforce the invariant, that's usually a better place to begin. We'll revisit distributed coordination later.
-
----
-
-# 17. The Oral Examination
-
-We now have enough of transaction semantics to talk about double-booking, lost updates, and retries like an engineer rather than hoping `BEGIN` / `COMMIT` would have saved us.
-
-Before reading the solutions, try answering these questions out loud. Imagine that a senior engineer is interviewing you and will challenge any hand-waving. Speak complete explanations, not fragments.
-
-### Challenge A — The Misleading Transaction
-
-*Suggested time: 8 minutes.*
-
-Two customers attempt to purchase the final concert ticket. Each transaction performs:
-
-1. `SELECT COUNT(*)` of existing ticket allocations.
-2. Checks that the count is below capacity.
-3. Inserts a new allocation.
-4. Commits.
-
-The database uses Read Committed. Why is wrapping the operation in a transaction insufficient?
-
-What are two plausible fixes?
-
-### Challenge B — Lost Update or Safe Update?
-
-*Suggested time: 6 minutes.*
-
-Two transactions execute `UPDATE accounts SET balance = balance - 100 WHERE id = 1`.
-
-The original balance is €500. Will PostgreSQL necessarily lose one deduction under Read Committed?
-
-How does this differ from reading €500 into application memory and later executing `SET balance = 400`?
-
-### Challenge C — The Empty Result Problem
-
-*Suggested time: 6 minutes.*
-
-You execute `SELECT * FROM reservations WHERE room_id = 204 AND check_in = DATE '2026-11-14' FOR UPDATE`.
-
-No rows are returned. Does this prevent another transaction from inserting a matching reservation?
-
-Why or why not?
-
-### Challenge D — The Dangerous Retry
-
-*Suggested time: 8 minutes.*
-
-Your transaction:
-
-1. Creates an inventory hold.
-2. Charges a credit card through an external provider.
-3. Writes a confirmed reservation.
-
-The database reports a serialization failure. Your retry wrapper executes all three steps again.
-
-What's wrong with this design?
-
-### Challenge E — Optimistic Locking
-
-*Suggested time: 6 minutes.*
-
-Two administrators load Reservation 10842 at version 7. One changes its status to confirmed.
-
-The other changes its guest count. Both attempt to update using `WHERE version = 7`.
-
-What happens? How should the application respond to the second update?
-
-### Challenge F — Serializable Everywhere?
-
-*Suggested time: 8 minutes.*
-
-A colleague proposes switching the entire PostgreSQL application to Serializable isolation to eliminate all concurrency bugs. Would you support this?
-
-What guarantees would improve, and what problems would remain?
-
----
-
-# 18. Solutions and Discussion
-
-*Read this section after answering out loud. The optional PostgreSQL lab appears after the spoken lecture ends.*
-
-### Solution A — The count-and-insert operation has a concurrency gap
-
-The transactions read a condition that can be invalidated by concurrent inserts. Their separate inserted rows need not conflict under Read Committed.
-
-One solution is to represent the remaining ticket capacity in a shared inventory row and claim it through an atomic conditional update.
-
-Another is to use Serializable transactions and retry failures, ensuring the relevant competing operations respect the same concurrency strategy.
-
-For individually numbered seats, a unique constraint on event and seat identity may be even simpler.
-
-The right design follows whether we're selling interchangeable capacity or identified resources.
-
-### Solution B — The database-side decrement is different
-
-PostgreSQL coordinates concurrent row updates. Under Read Committed, a waiting update can operate against the row version committed by the earlier updater.
-
-Two successful `balance = balance - 100` operations can therefore reduce €500 to €300.
-
-If both application processes previously read €500 and separately assign the calculated value €400, the second stale assignment can overwrite the effect of the first.
-
-The difference is between modifying the current database value and assigning a previously calculated value.
-
-For financial systems, additional conditions and ledger integrity rules would normally be necessary.
-
-### Solution C — You cannot row-lock a nonexistent row
-
-`SELECT FOR UPDATE` locks returned rows. If no matching rows exist, there is no matching row lock protecting that absence.
-
-Another transaction may insert a row satisfying the condition.
-
-You need a constraint, an appropriate shared coordination row, Serializable isolation, or another strategy that protects the intended invariant.
-
-### Solution D — PostgreSQL cannot roll back the card charge
-
-The external payment provider is not part of the PostgreSQL transaction.
-
-A serialization failure can roll back the database work, but it cannot automatically undo an external charge. Retrying the entire callback may charge the customer again.
-
-The workflow needs separate durable states, idempotency controls, and recovery logic for the payment operation. We will explore payment workflow correctness in CS430-L05.
-
-### Solution E — The second update fails its version check
-
-The first successful update changes the version from seven to eight. The second operation still requires version seven.
-
-Its update affects zero rows.
-
-The application should recognize a stale-state conflict and decide whether to refresh, merge, retry after reevaluating the change, or ask the user to resolve the conflict.
-
-Silently overwriting the newer state defeats the purpose of optimistic concurrency.
-
-### Solution F — Serializable is not a universal cure
-
-Serializable prevents committed histories that are inconsistent with serial execution of appropriately participating transactions. That's a strong guarantee.
-
-But it introduces serialization failures that applications must retry. It can increase overhead and latency under contention.
-
-It doesn't automatically express business rules. It doesn't protect operations outside the relevant transactional protocol.
-
-And it doesn't make external APIs participate atomically in PostgreSQL transactions. For straightforward single-row resource claims, a conditional update may be simpler.
-
-For complex multi-row invariants, Serializable may be an excellent choice.
-
-The correct decision depends on the workload and invariant, not a blanket preference for maximum isolation.
-
----
-
-# 19. The Mental Model Worth Keeping
-
-Transactions are not magical protective bubbles around business logic. They provide particular guarantees about database operations.
-
-And the most important insight from this session is that **correctness must be evaluated across concurrent operations, not merely within individual transactions**.
-
-Remember these durable distinctions:
-
-**Atomicity** — a group of database changes succeeds or fails together; it does not invent business rules.
-
-**MVCC** — PostgreSQL keeps row versions and serves transaction-dependent snapshots; readers and writers need not block each other the way a pure lock model would.
-
-**Read Committed** — statement-level snapshots; no dirty reads; changing observations and serialization anomalies remain possible.
-
-**Repeatable Read** — a stable snapshot; not the same as a serializable execution; write skew can still land.
-
-**Serializable** — refuses nonserializable committed histories; expect aborts and retries.
-
-**Pessimistic locking** — coordinate contested resources before modification; a row lock does not lock absence.
-
-**Optimistic concurrency** — detect when the state you relied on has changed; protects the versioned entity, not every aggregate rule.
-
-**Atomic conditional updates** — check and modify shared state in one coordinated statement when the invariant fits that shape.
-
-**Constraints** — enforce selected invariants regardless of which application path writes.
-
-**Transaction boundaries** — decide which database effects are atomic, and which external effects remain outside that protection.
-
-When evaluating a concurrent workflow, the most useful questions are:
-
-> What business invariant must always hold?
-
-> Which concurrent operations can violate it?
-
-> What shared data do those operations read or modify?
-
-> Where is the authoritative enforcement mechanism?
-
-> What happens when two operations reach that mechanism simultaneously?
-
-> How does the application respond when one operation must wait, fail, or retry?
-
-If you can answer those questions, you can reason about a remarkable range of production problems. Hotel inventory. Concert tickets. Bank balances. Coupon redemptions. Warehouse stock. Subscription limits. Financial ledgers. Appointment scheduling. Even distributed agent workflows coordinating access to limited resources.
-
-The technologies differ, but the underlying problem often has the same shape. Several operations are trying to make decisions about shared mutable state.
-
-And those decisions must remain valid when the operations overlap. That's the real subject of transaction engineering.
-
-> **The master sticky note**
->
-> Ask what invariant must hold, which operations can break it, and where enforcement lives — not whether you "use transactions."
-
-That also closes CS330. You now have relational design, SQL performance judgment, and the concurrency model that makes correct statements produce incorrect systems when schedules collide.
-
----
-
-# 20. Next Course — Data Systems Beyond Relational Databases
-
-CS330 ends here: schema design, query performance, and the transaction semantics that decide whether concurrent bookings, payments, and inventory updates stay honest.
-
-The Application and data engineering track continues with **CS340 — Data Systems Beyond Relational Databases**. PostgreSQL is not the whole storage world. Document models, storage engines, replication and sharding, Redis, DynamoDB, search indexes, and analytical stores each optimize different trade-offs — and misuse any of them and you recreate today's problems with worse tooling.
-
-In **CS340-L01**, that course begins — The Database That Didn't Fit Into Tables. Why a feature's shape sometimes refuses the relational rectangle, and how to choose a model without collecting databases like souvenirs.
-
-When you are ready for multi-node failure and workflows that span more than one database, **CS430-L01** opens Advanced systems and production — Distributed Systems and Partial Failure. Today's durability uncertainty — the commit that succeeded while the client never heard — is the opening pressure for that course.
-
-If your next focus is backend caching and asynchronous workflows rather than storage models, **SE320** remains a natural alternative. If you want Linux, containers, and cloud delivery next, **SE340** is the other production-path option. See the recommended study order in `README.md`.
-
----
-
-## Optional Practical Lab — Make PostgreSQL Double-Book a Room
-
-*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet.*
-
-This is one of the most valuable experiments in the course. You need PostgreSQL and **two independent SQL sessions**.
-
-For example, open two `psql` terminals connected to the same disposable database. We'll call them Terminal A and Terminal B.
-
-The experiment uses one available room and an intentionally unsafe reservation strategy.
-
-**Suggested time: 25–35 minutes.**
-
-> **Gym rules:** predict before you commit. The oral challenges were in the spoken lecture; these labs are for your own eyes and two terminals.
-
-### Part A — Reproduce the double booking
-
-First, run this setup once — a bookings table with no capacity enforcement beyond what your application checks:
+Create a simple booking table. We deliberately do not encode the one-room capacity invariant.
 
 ```sql
 DROP TABLE IF EXISTS demo_bookings;
@@ -1523,7 +1363,9 @@ CREATE TABLE demo_bookings (
 );
 ```
 
-Assume the hotel has capacity for exactly one booking on November 14. In Terminal A, begin Read Committed and count matching bookings:
+Assume Hotel 1 has capacity for exactly one booking on November 14.
+
+In Terminal A:
 
 ```sql
 BEGIN ISOLATION LEVEL READ COMMITTED;
@@ -1534,76 +1376,103 @@ WHERE hotel_id = 1
   AND night = DATE '2026-11-14';
 ```
 
-Result: `0`.
+The result should be zero.
 
-Don't commit yet. In Terminal B, run the same begin-and-count. Result: also `0`.
+Keep the transaction open.
 
-Now both transactions believe the room is available. In Terminal A, insert Alice:
+In Terminal B, execute the same `BEGIN` and `SELECT`.
+
+The result is also zero.
+
+Now insert Alice in Terminal A:
 
 ```sql
 INSERT INTO demo_bookings (hotel_id, night, customer)
 VALUES (1, DATE '2026-11-14', 'Alice');
 ```
 
-In Terminal B, insert Bob:
+Insert Bob in Terminal B:
 
 ```sql
 INSERT INTO demo_bookings (hotel_id, night, customer)
 VALUES (1, DATE '2026-11-14', 'Bob');
 ```
 
-Now commit both transactions with `COMMIT`.
+Commit both transactions.
 
-Finally select all rows from `demo_bookings`. You should see two bookings. Both transactions committed.
+Now query the table.
 
-The business invariant failed.
+Both bookings can exist.
 
-### Part B — Try Repeatable Read
+The database didn't violate a declared constraint. The application failed to enforce the actual capacity rule.
 
-Reset the data after both earlier transactions have finished with `TRUNCATE demo_bookings RESTART IDENTITY`.
+**Question:** Which business invariant was missing from the transactional design?
 
-Now repeat the experiment, but start both transactions with `BEGIN ISOLATION LEVEL REPEATABLE READ`.
+## Experiment B — Repeatable Read doesn't automatically fix it
 
-Have both sessions perform their `COUNT(*)` query before either commits. Then insert a booking in each transaction and commit both.
+Reset the table after finishing all prior transactions:
 
-What happens? Both can still commit.
+```sql
+TRUNCATE demo_bookings RESTART IDENTITY;
+```
 
-Why? Because the transactions insert different rows, and their stable snapshots don't establish the necessary serializability guarantee.
+Repeat Experiment A, except both transactions begin with:
 
-This is the anomaly we've been investigating.
+```sql
+BEGIN ISOLATION LEVEL REPEATABLE READ;
+```
 
-### Part C — Try Serializable
+Make sure both sessions execute their count queries before either inserts or commits.
 
-Reset again with `TRUNCATE demo_bookings RESTART IDENTITY`.
+Each transaction observes zero existing reservations in its stable snapshot.
 
-Start both sessions with `BEGIN ISOLATION LEVEL SERIALIZABLE`.
+Because they insert different rows and do not necessarily have conflicting writes, both transactions can commit.
 
-Again, both sessions query the booking count before either inserts. Both initially see zero.
+This demonstrates why stable snapshots don't imply Serializable behavior.
 
-Have each insert a booking. Then commit Terminal A.
+**Question:** Which information did each transaction read that the other transaction's write later made invalid?
 
-Attempt to commit Terminal B. This time, PostgreSQL should reject one of the conflicting transactions with a serialization failure.
+## Experiment C — Serializable prevents the impossible history
 
-The exact point at which the failure becomes visible can depend on the execution, but PostgreSQL must prevent both conflicting transactions from committing as a nonserializable history.
+Reset the table again:
 
-The application would need to retry the aborted transaction. On retry, it would observe the existing booking and reject the attempt to reserve capacity beyond one.
+```sql
+TRUNCATE demo_bookings RESTART IDENTITY;
+```
 
-Notice the critical difference:
+Now both sessions begin with:
 
-Read Committed allowed both transactions to succeed. Repeatable Read could also allow both to succeed.
+```sql
+BEGIN ISOLATION LEVEL SERIALIZABLE;
+```
 
-Serializable prevented the incompatible committed history.
+Have both sessions perform the count query before either inserts.
 
-### Part D — A simpler solution for explicit inventory
+Then insert Alice and Bob in their respective sessions.
 
-Let's try a different model — an inventory row with a non-negative remaining check:
+Commit one transaction, then the other.
+
+PostgreSQL should prevent both transactions from committing this nonserializable history. One may fail with SQLSTATE `40001`.
+
+The exact point of failure can vary.
+
+The important property is that the database refuses the invalid combined committed outcome.
+
+After the failure, retry the aborted booking in a new transaction.
+
+It can now observe that capacity has been consumed.
+
+**Question:** Why must the second attempt repeat the availability decision rather than merely repeat the insertion?
+
+## Experiment D — A simpler model: explicit nightly inventory
+
+Create an inventory table:
 
 ```sql
 CREATE TABLE demo_inventory (
   hotel_id INTEGER NOT NULL,
   night DATE NOT NULL,
-  remaining INTEGER NOT NULL
-    CHECK (remaining >= 0),
+  remaining INTEGER NOT NULL CHECK (remaining >= 0),
 
   PRIMARY KEY (hotel_id, night)
 );
@@ -1612,7 +1481,7 @@ INSERT INTO demo_inventory
 VALUES (1, DATE '2026-11-14', 1);
 ```
 
-In Terminal A, begin and claim with a conditional decrement:
+In Terminal A:
 
 ```sql
 BEGIN;
@@ -1625,53 +1494,138 @@ WHERE hotel_id = 1
 RETURNING remaining;
 ```
 
-Result: `remaining = 0`.
+The update should return a row with remaining equal to zero.
 
-Don't commit yet. In Terminal B, run the same transaction and update.
+Do not commit yet.
 
-Terminal B should wait on the conflicting row update. Now commit Terminal A.
+In Terminal B, begin a transaction and execute the same update.
 
-Terminal B can proceed. Its update returns no rows because the condition `remaining > 0` is no longer true.
+Terminal B should wait for the conflicting update to complete.
 
-It cannot claim the room. Rollback or finish Terminal B without inserting a reservation.
+Commit Terminal A.
 
-We've enforced the inventory invariant without requiring Serializable isolation.
+Terminal B can then proceed under Read Committed.
 
-The difference is that both transactions now compete through a common, authoritative inventory row. That's a powerful design pattern.
+Its condition no longer matches, so the update returns no rows.
 
-### What this lab proves
+Rollback or finish Terminal B without creating a reservation.
 
-It isn't enough to say:
+**Question:** What shared row forces these two competing claims to coordinate?
 
-> We use transactions.
+## Experiment E — Complete the atomic booking
 
-You need to answer:
+Extend the conditional inventory claim so that a successful claim and the corresponding reservation insert occur within the same transaction.
 
-> Which state do competing transactions coordinate through, and what exact guarantee prevents an invalid combined outcome?
+Use a returned-row check to ensure that an unsuccessful claim cannot produce a confirmed reservation.
 
-Sometimes the answer is a unique constraint. Sometimes an exclusion constraint.
+Then deliberately introduce an error after the successful inventory decrement but before the reservation insert commits.
 
-Sometimes an atomic conditional update. Sometimes explicit locking.
+Rollback the transaction.
 
-Sometimes Serializable isolation. And sometimes a combination.
+Verify that the inventory count returns to its earlier value.
 
-The appropriate mechanism depends on the invariant.
+**Question:** Which ACID property makes the rollback behavior possible, and which concurrency property prevents two successful claims of the last unit?
 
-### Lab solutions
+## Experiment F — Optimistic version checking
 
-*Read after attempting the experiments.*
+Create a simple versioned reservation:
 
-**Part A — Double booking.** Under Read Committed, both sessions can observe count zero, both insert distinct rows, and both commit. No row conflict forces a failure; the capacity invariant was never encoded where concurrency can enforce it.
+```sql
+CREATE TABLE demo_reservations (
+  id BIGINT PRIMARY KEY,
+  status TEXT NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1
+);
 
-**Part B — Repeatable Read.** Stable snapshots still allow both inserts when each transaction writes a different row. Write-skew / serialization-anomaly shape: each decision was locally consistent with its snapshot.
+INSERT INTO demo_reservations (id, status, version)
+VALUES (10842, 'pending', 7);
+```
 
-**Part C — Serializable.** SSI should abort at least one conflicting commit so the history remains equivalent to a serial execution. Retry against a fresh snapshot and the second booking can see capacity already taken.
+Suppose two editors both load version seven.
 
-**Part D — Conditional inventory.** Competing claims serialize on the shared inventory row; after the first successful decrement to zero, the waiting update rechecks `remaining > 0`, updates zero rows, and cannot honestly take the room — without requiring Serializable for this counter-shaped invariant.
+The first attempts:
+
+```sql
+UPDATE demo_reservations
+SET status = 'confirmed',
+    version = version + 1
+WHERE id = 10842
+  AND version = 7
+RETURNING id, status, version;
+```
+
+It succeeds and advances the version to eight.
+
+The second attempts another update requiring version seven.
+
+It matches zero rows.
+
+The application should report a conflict instead of silently overwriting current state.
+
+**Question:** Why doesn't this technique automatically prevent two independent new reservations from consuming the same remaining room?
+
+## Experiment G — Inspect lock contention
+
+In a test environment, start one transaction that locks an inventory row:
+
+```sql
+BEGIN;
+
+SELECT *
+FROM demo_inventory
+WHERE hotel_id = 1
+  AND night = DATE '2026-11-14'
+FOR UPDATE;
+```
+
+Leave the transaction open.
+
+In another session, try locking the same row.
+
+Observe the waiting behavior.
+
+From a third session, inspect relevant activity:
+
+```sql
+SELECT
+  pid,
+  state,
+  wait_event_type,
+  wait_event,
+  pg_blocking_pids(pid) AS blocking_pids
+FROM pg_stat_activity
+WHERE datname = current_database();
+```
+
+Then commit the first transaction and watch the second continue.
+
+**Question:** Why is ordinary lock waiting not automatically a deadlock?
+
+## Experiment H — The transaction-design interview
+
+A hotel has ten interchangeable Deluxe rooms for each night.
+
+Reservations can span multiple nights.
+
+Payments are handled by an external provider.
+
+Your task is to propose a booking workflow that prevents overselling while tolerating retries, timeouts, and process crashes.
+
+Your answer should address the following:
+
+- How authoritative nightly capacity is represented.
+- How all nights are claimed atomically.
+- What happens if the final night has no capacity.
+- How conflicting transactions are coordinated.
+- How the system handles database deadlocks or serialization failures.
+- Why the external payment isn't placed inside a long-running database transaction.
+- How a retry avoids accidentally creating a second booking or charge.
+
+The objective is a correct and recoverable design, not merely an impressive list of database features.
 
 ---
 
-## Further Reading
+# Further Reading
 
 Official PostgreSQL documentation:
 
@@ -1682,93 +1636,144 @@ Official PostgreSQL documentation:
 - **Concurrency Control:** https://www.postgresql.org/docs/current/mvcc.html
 - **Constraints:** https://www.postgresql.org/docs/current/ddl-constraints.html
 
-For an additional technical explanation of PostgreSQL's Serializable implementation:
+Additional technical reading:
 
 - **PostgreSQL Wiki — Serializable Snapshot Isolation:** https://wiki.postgresql.org/wiki/SSI
+
+Related programme chapters:
+
+- CS330-L01 — Relational Database Design
+- CS330-L02 — SQL and Query Performance
+- CS340-L05 — Replication, Consistency, and Sharding in Practice
+- CS430-L02 — Consistency, Replication, and Availability
+- CS430-L05 — Designing Reliable Business Workflows
 
 ---
 
 ## Dense Cheatsheet — Interview Glance Card
 
-*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
-
 ```text
-CS330-L03  TRANSACTIONS & ISOLATION — INTERVIEW GLANCE CARD
+CS330-L03 — TRANSACTIONS AND ISOLATION
 
-CORE FAILURE
-  Two correct txs can double-book: both read "1 left", both insert, both commit
-  BEGIN/COMMIT ≠ automatic serializability of business invariants
-  Ask: what invariant? which ops can break it? where is enforcement?
+CENTRAL PROBLEM
+  Two transactions read "one room left"
+  Both insert separate reservations and commit
+  Individual statements valid; combined outcome invalid
+  BEGIN/COMMIT != automatic business-level serializability
 
-ACID — WHAT EACH LETTER DOES *NOT* PROMISE
-  Atomicity   all-or-nothing DB effects — not "business was sensible"
-  Consistency preserves defined integrity — DB doesn't invent all rules
-  Isolation   visibility/anomaly contract by level — not always serial
-  Durability  committed work survives crash (config/storage dependent)
-              client may not know outcome if response lost
-  Atomicity ≠ serializability; durability ≠ client knowledge
+ACID
+  Atomicity   DB changes commit or roll back together
+  Consistency DB preserves defined integrity constraints
+  Isolation   controls concurrent visibility/anomalies
+  Durability  committed state survives per DB guarantees
+  Atomicity != Serializable
+  Database consistency != all business invariants magically known
+  Client losing commit response != proof of rollback
 
 MVCC
-  Updates create row versions; readers/writers often don't block each other
-  Snapshot visibility ≠ latest globally committed state
-  Old versions → vacuum / bloat; long txs hinder cleanup
+  PostgreSQL retains row versions
+  Snapshot determines visible versions
+  Ordinary readers/writers generally don't block each other
+  Long transactions can hinder vacuum and create bloat
 
-ISOLATION LEVELS (PostgreSQL)
-  Read Uncommitted   behaves as Read Committed (no dirty reads)
-  Read Committed     DEFAULT; statement snapshots; non-repeatable + phantoms OK
-  Repeatable Read    stable snapshot; PG also prevents phantoms;
-                     write skew / serialization anomalies STILL possible
-  Serializable       SSI; refuses nonserializable histories; expect 40001 retries
-  Stable snapshot ≠ serializable execution (two-doctors write skew)
+ISOLATION LEVELS — POSTGRESQL
+  Read Uncommitted = behaves as Read Committed
+  Read Committed = default, new snapshot per ordinary statement
+  Repeatable Read = stable snapshot, also prevents phantoms in PG
+  Serializable = committed history equivalent to serial execution
 
 ANOMALIES
-  Dirty read          uncommitted data — PG prevents
-  Non-repeatable read same row changes between statements (RC)
-  Phantom             new matching rows appear (RC)
-  Lost update         read → compute in app → write stale absolute value
-  Write skew          each tx decides from snapshot; different rows; both commit
+  Dirty read = observing uncommitted changes; PG prevents
+  Non-repeatable read = row changes between statements; RC permits
+  Phantom = new matching row appears between queries; RC permits
+  Lost update = stale absolute value overwrites newer state
+  Write skew = two transactions update different rows based on
+               mutually invalidated snapshot assumptions
 
-LOST UPDATE FIX SHAPE
-  BAD:  SET remaining = 4   (stale absolute from app memory)
-  GOOD: SET remaining = remaining - 1   (DB-side current value)
-  BETTER for capacity claim:
-    UPDATE … SET remaining = remaining - 1
-    WHERE … AND remaining > 0 RETURNING remaining;
-    Only insert reservation if exactly one row updated; same txn
+CRITICAL DISTINCTION
+  Stable snapshot != Serializable execution
+  PostgreSQL Repeatable Read can allow write skew
+  Serializable uses SSI to detect dangerous dependencies
+  Serialization failure SQLSTATE = 40001
 
-LOCKING
-  SELECT … FOR UPDATE  pessimistic; locks returned rows
-  Cannot lock ABSENCE — empty result locks nothing; inserts may still appear
-  Shared inventory row = coordination point all booking paths must use
-  Optimistic version: UPDATE … WHERE id AND version = N; zero rows = conflict
-  Version protects that entity — not aggregate/cross-row invariants
+READ COMMITTED UPDATE
+  Concurrent updates coordinate on affected row
+  Waiting update can re-evaluate WHERE against updated version
+  Bad:  SET remaining = 4   (stale value from app)
+  Good: SET remaining = remaining - 1
+  Best for claim: decrement WHERE remaining > 0 RETURNING row
+  Zero rows returned = claim failed
 
-DEADLOCKS
-  Circular lock wait → 40P01 deadlock_detected; one tx aborted
-  Prevent: consistent lock order (e.g. ascending dates); short txs
-  Waiting ≠ deadlock; lock wait still causes latency
-  Don't hold DB locks while calling external payment APIs
+ATOMIC BOOKING
+  Begin transaction
+  Claim required nightly inventory conditionally
+  Verify all required claims succeeded
+  Insert reservation
+  Commit together
+  Any failed claim/insert -> rollback entire allocation
+  Lock inventory dates consistently to reduce deadlocks
 
-TX BOUNDARIES
-  Encompass coherent DB work that must succeed/fail together
-  TypeORM: use transaction manager — not silent global dataSource.manager
-  External side effects OUTSIDE DB tx; durable workflow + idempotency
-  Smallest coherent atomic unit — not the whole multi-system process
+LOCKS
+  SELECT FOR UPDATE protects selected existing rows
+  Does NOT automatically lock nonexistent/future matching rows
+  Ordinary lock wait != deadlock
+  Deadlock = circular wait
+  PostgreSQL deadlock error SQLSTATE 40P01
+  Consistent lock ordering reduces common cycles
 
-RETRIES
-  Retry COMPLETE transaction (re-decide on fresh data) for 40001 / 40P01
-  Bound attempts; exponential backoff + jitter
-  NEVER blindly retry callbacks with irreversible external charges
-  Unique violations may be real duplicates — classify errors
+OPTIMISTIC CONCURRENCY
+  UPDATE ... WHERE id = ? AND version = ?
+  SET version = version + 1
+  Zero rows = stale edit/conflict
+  Good for low-contention entity edits
+  Local version != protection of arbitrary cross-row invariant
 
-TOOLKIT MATCH TO INVARIANT
-  UNIQUE / EXCLUDE constraints     identified seat / non-overlapping room
-  Atomic conditional update        shared counter / inventory row
-  FOR UPDATE                       contested existing rows
-  Optimistic version               rare concurrent entity edits
-  Serializable + retry             complex predicate / multi-row invariants
-  Redis distributed lock           usually NOT primary correctness for PG data
-                                   (lease expiry / fencing risks)
+SERIALIZABLE
+  Prevents nonserializable committed histories
+  Not one giant blocking database lock
+  SSI tracks read/write dependencies
+  Aborted transaction needs complete-decision retry
+  Can add contention/retry overhead
+  All relevant invariant-changing paths need coherent enforcement
 
-SENIOR LINE: correctness across concurrent schedules — not "we use transactions."
+RETRY RULES
+  40001 -> usually retry entire transaction
+  40P01 -> appropriate deadlock retry
+  Bound attempts and total deadline
+  Use backoff/jitter where appropriate
+  Reevaluate business decisions with fresh data
+  Unique violation may mean real duplicate, not transient retry
+  Never blindly replay irreversible external side effects
+
+TRANSACTION BOUNDARIES
+  Include coherent DB changes that must commit together
+  Avoid slow external calls while holding DB locks
+  PostgreSQL cannot roll back payment-provider charges
+  Outbox can durably record intention to publish
+  Distributed workflow needs idempotency and reconciliation
+  Commit succeeded but ACK lost -> remote outcome ambiguous
+
+MATCH THE TOOL TO THE INVARIANT
+  Unique key/identity           UNIQUE constraint
+  Physical-room overlap         Exclusion constraint
+  Explicit inventory counter    Conditional atomic UPDATE
+  Existing contested rows       SELECT FOR UPDATE
+  Rare conflicting entity edits Optimistic version
+  Complex predicate invariant   Serializable + retry
+  Cross-service operation       Durable workflow/idempotency
+
+SENIOR INTERVIEW ANSWER
+  "I'd first define the inventory invariant and authoritative
+   state. For explicit nightly capacity, I'd use conditional
+   updates in one transaction with the reservation insert.
+   For more complex cross-row predicates I'd consider
+   Serializable and full-transaction retries. External payments
+   need separate durable coordination and idempotency."
+
+MENTAL MODEL
+  What invariant?
+  Which transactions can violate it?
+  Which shared state forces coordination?
+  What happens when a transaction fails?
+  Which side effects lie outside the database?
 ```

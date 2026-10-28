@@ -3,144 +3,200 @@ id: CS330-L01
 course: CS330
 title: "Relational Database Design"
 type: core
-manuscript: manuscript
-edition: "2.0.0"
+manuscript: revised
+edition: "2.1.0"
 legacy_ids: [BACK301-S02]
 prev: null
 next: CS330-L02
 ---
 
-
-
-
-
-
-
-
-
 # CS330 — Relational Databases and Transactions
+
 ## Lecture 01: Relational Database Design
 
-*How to model a changing business without turning its database into a museum of regrettable decisions.*
-
-**Estimated study time:** 85–105 minutes, including the PostgreSQL lab.
-
----
-
-### How to listen to this lecture
-
-Written for continuous listening first, then for on-screen re-reading. Theme: **the schema is a model of business facts, not a mirror of TypeScript objects.** Sticky-note callouts mark where convenient duplication becomes an anomaly — and where a snapshot is history, not a sin. Near the end, answer the oral challenges **out loud** before reading solutions. The PostgreSQL lab lives after the spoken lecture ends — keep it for a screen session.
-
-By the end, you should be able to say why a flat reservation table fails when the business grows, how keys separate identity from business uniqueness, what normalization prevents and when snapshots are required, how constraints enforce relationships (and what they cannot), and how expand–migrate–contract keeps production online.
-
----
+*The database contains valid rows. The SQL executes correctly. Every test passes. Yet a customer opens an old reservation and discovers that the price has changed since checkout. The problem isn't the query. It's what the schema believes about the world.*
 
 # Part I — Intuition
 
-*Before deciding what tables to create, imagine the hotel's actual world. A database schema is a map of that world, and a bad map can confidently tell us the wrong story.*
+## The picture to carry in your head
 
-### The picture to carry in your head
+Imagine a small hotel with twelve rooms, one receptionist, and a paper reservation book.
 
-Imagine a small hotel with twelve rooms, one receptionist, and a thick paper reservation book. Each booking takes one line: the customer's name, their room, their dates, and the agreed price. If you were writing software for this hotel on its first day, you might copy that book into a single table. That seems sensible. It even works.
+Each booking occupies one line: guest name, room number, arrival date, departure date, and nightly price.
 
-Now imagine the hotel becomes part of a travel-booking platform. It changes its name. Several rooms are renovated and renamed. Customers book three rooms at a time. Nightly prices change daily. Some guests cancel one room without cancelling the entire trip, and accountants need to reconstruct exactly what someone agreed to pay six months ago.
+If you were developing software for this hotel, translating the reservation book into a single database table would seem perfectly sensible.
 
-The book no longer has enough boxes for reality. That's the heart of relational database design: **not how many columns we can create, but which facts belong to which things, and how those facts change independently**.
+And initially, it would work.
 
-## 1. A name is not a hotel
+Then the hotel joins a travel-booking platform.
 
-Suppose your first table stores the hotel name inside every reservation row. We have a hundred reservations at the hotel called Riverside Inn. When the hotel is renamed Riverside House, someone edits those hundred records to update the name.
+Its third floor is renovated. Several rooms receive new numbers. The *Economy Double* category becomes *Classic Double*. Prices vary by season and by night. A family books three rooms in one transaction, then cancels one of them.
 
-But which question were those records supposed to answer? If we want to know the hotel's current name, updating a hundred copies of it seems wasteful. If we want to know what the customer saw on their original confirmation, rewriting the historical name may actually destroy information we wanted to keep.
+Meanwhile, the accounting department asks you to reconstruct exactly what another customer agreed to pay six months ago.
 
-A single field was being asked to represent two different facts: **what the hotel is called now** and **what the customer was told then**. The design failed because it couldn't distinguish them.
+Suddenly, the elegant original table becomes a liability.
 
-Let's give each real thing a separate identity. There is a hotel, there is a customer, and there is a reservation linking them. The hotel has its current name. The reservation has its own identity, stay dates, and agreed booking details. A reservation refers to the hotel rather than repeating every current hotel attribute.
+The hotel has changed its current price, and old reservations now display that price.
 
-The first picture shows the relationships. One hotel can have many reservations. One customer can make many reservations. Each reservation points to the hotel and customer it belongs to.
+The customer has three rooms, but the database treats each room as a separate reservation.
 
-```mermaid
-flowchart TB
-  H["Hotel<br/>id: 42<br/>current name: Riverside House"]
-  C["Customer<br/>id: 17"]
-  R1["Reservation 801<br/>hotel_id: 42<br/>customer_id: 17"]
-  R2["Reservation 802<br/>hotel_id: 42"]
-  H --> R1
-  H --> R2
-  C --> R1
-```
+A room number changes, and historical references become confusing.
 
-The numbers are identifiers. They aren't the names shown to customers; they're stable handles for the entities our system needs to distinguish. This explains why an identifier deserves its own place in the model.
+None of this requires corrupt data. The individual rows can all satisfy the database's technical rules.
 
-**Checkpoint:** If the hotel changes its current name, which record normally needs updating? The hotel record. Old bookings can still refer to that same hotel ID.
+The trouble is that **the database represents an inaccurate model of the business**.
 
-## 2. Why separate tables are useful, not merely tidy
+That's the central idea of relational database design.
 
-Imagine you store the customer's email beside every booking. The customer changes email addresses. If you update only nine of their ten reservations, the database now disagrees with itself. Which address is current?
+A schema is not merely a collection of places to store values. It expresses what things exist, which facts belong to them, how those facts relate, and which combinations are allowed.
 
-This is an *update anomaly*. It's a surprisingly simple problem: we copied one fact into many places and now must keep the copies synchronized.
+## 1. A name is not an identity
 
-There are related failures. Maybe you can't store a hotel before its first reservation because hotels exist only inside booking rows. Or deleting the last reservation also deletes the only remaining record of the hotel. Those are design problems, not SQL syntax errors.
+Consider the hotel's name: *Grand Baltic*.
 
-A well-chosen relational model stores stable business facts in appropriate places and links them through keys. This reduces accidental duplication and gives us clearer rules about what may exist independently.
+Suppose the property changes its branding to *Baltic Grand*.
 
-But separating everything into a thousand tables isn't the goal. We're trying to **represent the actual relationships and dependencies of the business**, not win a contest for maximum normalization.
+Is it now a different hotel?
 
-## 3. Which information should we copy on purpose?
+Of course not.
 
-Now for a twist. The hotel normally charges 180 euros per night. A customer booked in June with a promotional price of 120 euros. By October, the hotel's new rate is 240 euros.
+The name changed. The underlying entity persisted.
 
-If we calculate the customer's old invoice by looking up today's hotel rate, we'll produce a wildly incorrect invoice. And if we update every booking whenever the current rate changes, we'll erase the historical agreement.
+A useful database model distinguishes identity from mutable descriptions.
 
-So although we don't want arbitrary duplicates of the hotel's current name or customer email, we *do* want a preserved booking-price snapshot. It's not a faulty copy of today's price. It's a different fact: **what was agreed at the time of this booking**.
+We might give the hotel a stable database identifier and store its current name as an attribute.
 
-The second picture separates current state from historical agreement. A change in today's catalogue does not rewrite yesterday's contract.
+Reservations can refer to that stable identifier without becoming invalid when the name changes.
 
-```mermaid
-flowchart LR
-  H["Hotel / room category<br/>Current nightly rate: €240"] --> Q["New price quote<br/>computed now"]
-  B["Reservation 801<br/>Agreed nightly rate: €120<br/>Booked in June"] --> I["Historical invoice<br/>uses agreed terms"]
-```
+This principle appears everywhere.
 
-This is one of the most valuable database-design distinctions. Some repeated-looking information is a mistake. Some is a legitimate snapshot. You decide by asking what each value is supposed to mean over time.
+A customer's email address is not necessarily their permanent identity.
 
-**Checkpoint:** Should a new room rate silently change a confirmed booking from six months ago? No. The old booking's agreed terms need their own durable representation.
+A physical room's displayed number may change.
 
-## 4. Relationships have shapes
+A product's SKU might be replaced.
 
-Consider a new requirement: one customer wants to reserve three rooms in one purchase. Our original rule was that one reservation equals one room. It no longer fits the business.
+A company's legal name can change without creating an entirely new organization.
 
-We might now distinguish a booking order from the individual reserved room items. One order belongs to a customer, and several items belong to the order. Each item carries its own room category, dates, and price details. If one item is cancelled, the rest of the order can remain intact.
+The design question is: **What makes this thing the same thing over time?**
 
-Notice that we didn't just add a new array to a JavaScript object. We asked what the *business entities* are and how many of one thing can belong to another. Those counts and relationships are often called **cardinality**.
+Once you've answered that, choosing a primary key becomes much easier.
 
-A hotel might have many rooms. A reservation order might have many items. A particular physical room might be associated with many stays over time, but not overlapping confirmed assignments if that is the inventory model. Those are different kinds of rules.
+## 2. Two facts that look identical may mean different things
 
-Relational databases give us tools to enforce parts of these relationships. A foreign key can require that the referenced hotel exists. A unique constraint can prevent duplicated identifiers or selected combinations of facts. But some rules, such as availability across overlapping date ranges, require more careful constraints or transactional coordination.
+Now consider the room price.
 
-The data model describes reality. The constraints help prevent us from recording an impossible version of it.
+A Deluxe room currently costs €249 per night.
 
-## 5. Even a correct model eventually changes
+But a customer booked that room last month for €189.
 
-The hotel company will inevitably invent another requirement. Perhaps bookings may be transferred between customers. Perhaps some room categories offer connected rooms. Perhaps the business must retain the exact legal name appearing on a historical invoice.
+Which price should appear on the old invoice?
 
-A database schema is therefore not a permanent stone tablet. It is a working model that needs controlled evolution.
+The agreed €189.
 
-We cannot always change it in one dramatic deployment, because yesterday's backend may still be running while tomorrow's version rolls out. Real migrations often proceed in stages: introduce a compatible new structure, begin writing it, carefully move old data, then remove obsolete structures only once nobody needs them.
+The current room price and the historical agreed price are different business facts, even though they may originally have held the same number.
 
-That is the intuition behind safe schema migration. The challenge isn't simply to end with a beautiful schema. It's to **move from one model to another while the business continues operating**.
+This distinction is important because database designers frequently hear that duplication is bad.
 
-### The minute-long mental replay
+Often it is.
 
-Start with the hotel reservation book. Separate things with independent identities: customer, hotel, booking, perhaps booking items. Link them through stable keys rather than repeatedly copying current attributes. Keep historical snapshots when the past agreement is itself a fact worth preserving. Enforce what the database can enforce, and change the structure carefully as the business evolves.
+If every reservation repeats the hotel's current address, changing that address requires updating many rows. Copies can become inconsistent.
 
-When the Deep Dive begins discussing entities, primary and foreign keys, normalization, denormalization, constraints, and migrations, place them around this one question: **which fact belongs where, and what should happen when reality changes?**
+But preserving the agreed price in a reservation is not necessarily redundant duplication of the current price.
 
-### Three questions before the Deep Dive
+It records a historical agreement.
 
-1. **Why not put the hotel name into every reservation as the only representation of the hotel?** Changing one current fact would require coordinated edits in many rows, and the system would confuse current identity with historical information.
-2. **Is storing an agreed booking price a normalization mistake?** Not necessarily. It is a historical business fact, distinct from the current catalogue rate.
-3. **Does a foreign key guarantee that a room isn't double-booked?** No. It establishes a reference relationship, not every time-dependent inventory rule.
+The rule isn't "never duplicate data."
+
+It's **don't accidentally store multiple independently maintained copies of the same fact, and don't discard historical facts that must remain true.**
+
+## 3. Relationships have shapes
+
+Our hotel sells several room categories.
+
+Each category may contain many physical rooms.
+
+A customer may create many reservations.
+
+One reservation may contain several accommodation items.
+
+These relationships have different shapes.
+
+A hotel has many room types.
+
+A reservation has many reservation items.
+
+Each item refers to a room type and may describe a quantity, agreed price, or rate plan.
+
+Why not create three independent reservations when someone books three rooms?
+
+Because the business may treat them as one booking with a shared confirmation, payment arrangement, and cancellation policy.
+
+But a customer might later cancel only one room.
+
+The intermediate reservation-item entity gives us somewhere to represent that distinction.
+
+Cardinality isn't merely a diagramming convention.
+
+It describes how the business behaves.
+
+## 4. Database constraints are promises about valid reality
+
+Suppose our API rejects a reservation when checkout is earlier than check-in.
+
+Good.
+
+But what happens when an administrator imports reservations through a script? Or another service writes directly to the database?
+
+The TypeScript validation in our API doesn't run there.
+
+A database constraint can enforce the date relationship regardless of which application writes the row.
+
+A foreign key can prevent references to nonexistent hotels.
+
+A uniqueness constraint can prevent duplicate room codes within the same property.
+
+These are valuable because they enforce rules at the shared persistence boundary.
+
+But not every business rule can be expressed through a simple constraint.
+
+A reservation spanning five nights might require coordinating inventory across five dates.
+
+A state transition might depend on the previous status.
+
+Database design must distinguish rules that can be enforced locally from rules requiring transactional coordination.
+
+## 5. Even a good schema will change
+
+Return to our growing hotel platform.
+
+Product management introduces a new booking channel: direct, partner, or corporate.
+
+You need to add it to millions of existing reservations.
+
+You could immediately introduce a mandatory database column.
+
+But existing records lack values, and old application instances may still be writing reservations during deployment.
+
+A technically reasonable schema change can become a production outage.
+
+So database design has a lifecycle.
+
+We must think not only about the correct final representation but also about how to reach it safely from the current one.
+
+A common technique is to expand the schema in a compatible way, migrate data and application behavior gradually, enforce the new rules, and only then remove the old representation.
+
+The model must be correct.
+
+It must also be possible to operate and evolve.
+
+## Three questions before the Deep Dive
+
+1. Why should a reservation reference a stable hotel identifier rather than use the hotel's current name as its identity?
+2. Why is duplicating a hotel's current address across reservations different from preserving an agreed historical price?
+3. Why might introducing a new mandatory column cause an outage even if the SQL migration looks correct?
+
+If you can answer those, you already understand the most important intuition: **the schema models facts, their meanings, and their lifecycles—not merely the shape of convenient application objects.**
 
 *The intuition pass ends here.*
 
@@ -148,443 +204,885 @@ When the Deep Dive begins discussing entities, primary and foreign keys, normali
 
 # Part II — Deep Dive
 
-# 1. The Reservation That Changed Its Price After the Guest Checked Out
+## 1. The reservation that changed after checkout
 
-It's October 2026, and your hotel-booking platform has been running successfully for eighteen months.
+It's October 2026.
 
-The original developer—possibly you—designed a wonderfully straightforward database. A reservation has a customer, a hotel room, two dates, and a price.
+Our booking platform has been running successfully for eighteen months.
 
-Something like this — one flat reservations table with customer, hotel, room, dates, and nightly price inline:
+A customer contacts support.
 
-```sql
-CREATE TABLE reservations (
-  id BIGSERIAL PRIMARY KEY,
-  customer_name TEXT,
-  customer_email TEXT,
-  hotel_name TEXT,
-  room_number TEXT,
-  room_type TEXT,
-  check_in DATE,
-  check_out DATE,
-  nightly_price NUMERIC(10, 2)
-);
-```
+Six months ago, she booked three nights at €189 per night.
 
-At launch, this seems perfectly sensible.
+Now the reservation page displays €249.
 
-The product supports individual reservations. Every reservation has one room. Every room has one price. The hotel has twelve rooms, and the application receives perhaps fifty bookings a week.
+Nobody modified her reservation directly.
 
-Nothing complicated. Then business happens. The hotel renovates its third floor and renumbers several rooms.
+The application simply joins the reservation to the room type's current pricing information.
 
-Its standard room, previously called *Economy Double*, becomes *Classic Double*. The revenue manager updates nightly rates from €189 to €249.
+The hotel's revenue manager recently increased that price.
 
-A customer books three rooms in one transaction. Another customer changes dates halfway through a stay.
+The query is working exactly as written.
 
-And the accounting department asks you to reconstruct the exact financial details of a reservation from six months ago.
+The database is returning perfectly valid data.
 
-Suddenly, answering simple questions becomes surprisingly difficult. Which room was the customer actually promised?
+Yet the result is wrong.
 
-Was the reservation for a particular physical room or merely a room category? Should changing a room number alter historical bookings?
+The mistake occurred earlier, when the schema assumed a room type's price and a reservation's agreed price represented the same information.
 
-If the nightly rate has changed, which price belongs on the old invoice?
+They don't.
 
-If a reservation includes three rooms, should there be three reservations—or one reservation containing three rooms? And what happens if one of those rooms is cancelled?
+This is the first important distinction of database modeling:
 
-The database isn't corrupted. Its tables contain perfectly valid rows. The problem is more interesting.
+**A correct query against an incorrect model can produce a confidently incorrect business answer.**
 
-**The schema represents an oversimplified version of the business, and the business has outgrown its assumptions.**
+Before designing tables, we need to discover what facts actually exist in the domain.
 
-> **Sticky note #1**
->
-> Valid rows can still encode the wrong business model.
+## 2. Model the business before choosing tables
 
-This is why database design deserves considerably more thought than deciding which TypeScript properties should become SQL columns.
+Consider the word *room*.
 
-A relational database isn't merely a storage mechanism.
+Our hotel has one hundred physical rooms divided into five categories: Standard, Deluxe, Suite, Family, and Accessible.
 
-It is a formal description of relationships, identities, dependencies, and restrictions in the world your application represents.
+When a customer books a Deluxe room for next weekend, what have they purchased?
 
-If that description is wrong, even perfectly executed SQL can produce incorrect business behavior.
+They may have purchased a right to occupy a suitable Deluxe room rather than one particular numbered room.
 
-Today, we'll explore how to construct a useful description—and how to evolve it when reality refuses to cooperate.
+The hotel might assign the actual physical room during check-in.
 
----
+That gives us at least four distinct concepts.
 
-# 2. Before Drawing Tables, Understand the World
+A **room type** describes the accommodation category being sold.
 
-Imagine you're asked to design the reservation database for a hotel. Your first instinct might be to identify entities:
+A **physical room** represents an individual unit in the building.
 
-- Hotel
-- Room
-- Customer
-- Reservation
-- Payment
+**Inventory** describes which accommodation capacity is available for particular dates.
 
-That's a reasonable beginning. But it's not yet a data model. An entity name tells us surprisingly little about its actual meaning.
+A **reservation** records the customer's booking commitment.
 
-Consider the word *room*. A hotel has 100 physical rooms. But it might sell only five room categories: Standard, Deluxe, Suite, Family, and Accessible.
+These concepts have different identities and lifecycles.
 
-When a customer books a Deluxe room for next Friday, are they booking a particular physical room? Not necessarily.
+A physical room might be renovated without changing the room category it belongs to.
 
-They might simply be purchasing the right to occupy any suitable Deluxe room during that period. The actual physical room may be assigned when the guest checks in.
+A room category may be renamed without replacing its physical rooms.
 
-This means our model needs to distinguish two different concepts.
+Inventory availability changes every time a qualifying reservation is made or canceled.
 
-**Room type:** A category of accommodation offered for sale.
+And the reservation must retain the terms agreed with the customer, even when the hotel's current offering changes.
 
-**Physical room:** An individual accommodation unit that physically exists in the hotel.
+Now imagine Deluxe capacity is ten rooms.
 
-The distinction immediately changes our schema. A hotel owns room types; each type owns physical rooms — Standard with 101–103, Deluxe with 201–202:
+For a proposed three-night stay, eight rooms are already reserved on the first night, nine on the second, and all ten on the third.
 
-```text
-HOTEL
-  |
-  +-- ROOM TYPE: Standard
-  |      |
-  |      +-- Room 101
-  |      +-- Room 102
-  |      +-- Room 103
-  |
-  +-- ROOM TYPE: Deluxe
-         |
-         +-- Room 201
-         +-- Room 202
-```
+Can we sell another Deluxe room for the whole stay?
 
-A reservation may initially refer to the room type rather than the room. Now imagine the hotel has ten Deluxe rooms. On November 12, eight are booked.
+No.
 
-On November 13, nine are booked. On November 14, all ten are booked. How many Deluxe rooms can we sell for a reservation spanning November 12–15?
+Availability must hold for every required night.
 
-Zero. Not because the property has no Deluxe rooms. Not because there are no vacancies on November 12.
+That conclusion follows from the business model, not from a particular database query.
 
-But because the booking needs accommodation across every night in the requested interval. Already, a seemingly simple domain has revealed several different concepts:
+The question we must answer before designing persistence is:
 
-**Accommodation category, physical unit, inventory availability, and reservation.**
+**Which facts can exist, change, or disappear independently?**
 
-These concepts are related, but they aren't interchangeable. And this is the first major principle of relational modeling:
+This is how we discover entity boundaries.
 
-**A good schema begins by identifying which facts are genuinely distinct—not by translating the application's existing objects into tables.**
+## 3. Entities, relationships, and cardinality
 
-> **Sticky note #2**
->
-> Room type ≠ physical room ≠ inventory night ≠ reservation.
+A relational database represents information through relations, commonly implemented as tables.
 
-TypeScript classes can be rewritten relatively easily.
+For our platform, a reasonable starting point includes hotels, room types, customers, reservations, and reservation items.
 
-A mistaken persistence model becomes increasingly expensive to correct as more data, business logic, and external integrations depend upon it.
+A hotel offers many room types.
 
----
+Each room type belongs to one hotel.
 
-# 3. Entities, Relationships, and Cardinality
+A customer may make many reservations.
 
-A relational model expresses information through relations—implemented in SQL systems primarily as tables.
+Each reservation belongs to a customer under the particular account model we've chosen.
 
-We already know how to create tables, so let's concentrate on the design questions beneath them.
+These are one-to-many relationships.
 
-Suppose our system contains hotels, room types, customers, and reservations. We might begin with four core tables: hotels carry identity, name, and timezone; room types carry hotel ownership, name, and guest capacity; customers carry identity, email, and name; reservations carry hotel, customer, stay dates, and status:
+### Why reservation items matter
 
-```text
-HOTELS
-  id
-  name
-  timezone
+Suppose reservation R-1042 contains two Deluxe rooms and one Standard room.
 
-ROOM_TYPES
-  id
-  hotel_id
-  name
-  max_guests
+We could represent these as three independent reservations.
 
-CUSTOMERS
-  id
-  email
-  name
+But that might be wrong.
 
-RESERVATIONS
-  id
-  hotel_id
-  customer_id
-  check_in
-  check_out
-  status
-```
+The customer made one booking, received one confirmation, and perhaps paid one deposit.
 
-What relationships exist? A hotel offers many room types. Each room type belongs to one hotel — hotel one-to-many room types.
+Within that booking, individual accommodation commitments might still be canceled or changed separately.
 
-A customer can make many reservations. Each reservation belongs to one customer account, according to this particular model — customer one-to-many reservations. These are **one-to-many relationships**.
+A useful model is:
 
-Notice that cardinality is a statement about the business, not merely a property of SQL. What if a reservation can contain multiple room types?
+One reservation has many reservation items.
 
-And the same room type can appear across thousands of reservations? We now have a many-to-many relationship. A common solution is an intermediate table — reservations one-to-many reservation items, and room types one-to-many reservation items:
+Each reservation item identifies a room type, quantity, agreed price, and potentially separate fulfillment state.
 
-```text
-RESERVATIONS
-    |
-    | 1
-    |
-    | N
-RESERVATION_ITEMS
-    | N
-    |
-    | 1
-ROOM_TYPES
-```
+This effectively resolves a many-to-many relationship between reservations and room types.
 
-Each reservation item describes one component of the booking. For example, reservation R-1042 might have two Deluxe and one Standard:
+The intermediate table also gives us somewhere to store facts belonging to the relationship itself.
 
-1. R-1042 — Deluxe — quantity 2.
-2. R-1042 — Standard — quantity 1.
+This is a key modeling insight.
 
-One reservation now represents three rooms. That is fundamentally different from creating three independent reservations.
+Sometimes a relationship is important enough to become an entity with its own attributes and lifecycle.
 
-They might share one customer, one payment, one cancellation policy, and one confirmation. But they might also support partial cancellation or separate room assignments.
+### What about one-to-one relationships?
 
-The intermediate table provides a place for information that belongs to the relationship itself—such as quantity, price, selected rate plan, or special requirements.
+One-to-one relationships can be useful when separating information with a distinct security boundary, optional lifecycle, or access pattern.
 
-### One-to-one relationships
+For example, a customer might have an optional billing profile.
 
-One-to-one relationships are less common than beginners might expect. Sometimes they separate optional or sensitive information: customers one-to-zero-or-one customer billing profiles.
+But splitting every large table into several one-to-one tables merely for aesthetic reasons adds joins and operational complexity.
 
-But don't split a table into two just because one group of columns feels aesthetically different.
+Use the relationship that expresses the actual domain.
 
-A one-to-one relationship is useful when the separation reflects a meaningful lifecycle, ownership, security boundary, or access pattern.
+Not the one that looks most elegant on a diagram.
 
-Otherwise, you've added another join without necessarily improving the model.
+## 4. Identity and business uniqueness
 
-### The question that prevents many mistakes
+Let's discuss keys.
 
-When considering a relationship, ask:
+A primary key identifies a row.
 
-> Can these things exist, change, or be deleted independently?
+But what should count as an identity?
 
-A room type can exist without reservations. A reservation cannot meaningfully refer to a nonexistent customer account under our current assumptions.
+Consider physical room 204 in the Grand Baltic hotel.
 
-A hotel may rename a room type without changing what an earlier customer purchased. These answers reveal where the boundaries between entities should lie.
+The number 204 isn't globally unique.
 
----
+Another hotel may have its own room 204.
 
-# 4. Identity: What Makes Two Things the Same Thing?
+The combination of hotel and room number may be unique within the current business rules.
 
-Let's talk about keys. A primary key identifies a row. That sounds trivial until we consider what should qualify as an identity.
+But even that combination can change if the property renumbers its rooms.
 
-Suppose we have room number `204` at hotel Grand Baltic.
+A stable surrogate primary key gives the physical room a persistent technical identity.
 
-Is `204` a unique room identifier? Obviously not across all hotels. Perhaps the combination of hotel and room number is unique: `UNIQUE (hotel_id, room_number)`.
+We can separately enforce uniqueness of room number within the hotel.
 
-That is a **composite key constraint**.
+For example, the database can require that the combination of hotel ID and room number be unique.
 
-It expresses a meaningful business rule: one hotel cannot have two physical rooms with the same number at the same time, according to our model.
+These are different guarantees.
 
-But should `(hotel_id, room_number)` be the primary key? Not necessarily. Hotels renumber rooms.
+**Primary key:** Which record is this?
 
-Room numbers are business identifiers that can change. A stable database-generated ID may be a better technical identity. Rooms get a surrogate primary key plus a hotel-scoped uniqueness rule on room number:
-
-```sql
-CREATE TABLE rooms (
-  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  hotel_id BIGINT NOT NULL,
-  room_number TEXT NOT NULL,
-
-  UNIQUE (hotel_id, room_number)
-);
-```
-
-Now we have two distinct ideas.
-
-**Primary key:** The stable identity used by the database.
-
-**Business uniqueness constraint:** The rule that prevents conflicting real-world identifiers.
-
-These need not be the same.
+**Business uniqueness:** Which combinations must not coexist?
 
 ### Natural versus surrogate keys
 
-A *natural key* is derived from meaningful business data.
+A natural key comes from meaningful domain data.
 
-Examples include a country's ISO code or a product's externally assigned identifier, provided its semantics genuinely guarantee uniqueness and stability.
+A surrogate key is created primarily to identify the record, such as a generated integer or UUID.
 
-A *surrogate key* is introduced primarily to identify a record. Examples include generated integers and UUIDs.
+Natural keys are attractive when their meaning, uniqueness, and stability genuinely hold.
 
-Surrogate keys are common because business identifiers have a troublesome habit of changing. Email addresses change. Room numbers change.
+But business identifiers often change.
 
-Product codes get reorganized. Even identifiers described as permanent sometimes turn out to be permanent until next Tuesday.
+Email addresses change. Products are recoded. Rooms are renumbered.
 
-A reasonable default for many SaaS applications is to use stable surrogate primary keys while separately enforcing genuine business uniqueness.
+For many SaaS systems, stable surrogate identities plus separately enforced business uniqueness are a practical default.
 
-That doesn't imply a universal preference for UUIDs over integers. Integers are compact and naturally ordered when generated sequentially.
+That doesn't mean UUIDs are universally better than integers.
 
-UUIDs can be generated independently and avoid reliance on one database sequence for assigning globally unique identifiers.
+Generated integers are compact and can have good index locality.
 
-Their storage and indexing characteristics differ, and not all UUID-generation strategies have the same locality properties.
+UUIDs offer different generation and distribution properties, with storage and indexing trade-offs that depend on their version and generation scheme.
 
-The right choice depends on distribution, scale, interoperability, and operational requirements.
+The important design decision is separating technical identity from mutable business descriptions.
 
-What matters more than the fashionable key format is that **identity and business meaning are not accidentally conflated**.
+## 5. Normalization: preventing the three anomalies
 
-> **Sticky note #3**
->
-> Surrogate primary key for stability; separate UNIQUE for business rules.
+Return to our original flat reservation table.
 
----
+It repeats the hotel name, hotel address, customer information, room description, and current room characteristics on every booking.
 
-# 5. Why Normalization Exists: The Three Anomalies
+This design may make one reservation easy to display.
 
-Let's return to our original reservation table — customer, hotel, room, dates, and price all on one row:
+But maintaining it becomes dangerous.
 
-```text
-reservation_id
-customer_name
-customer_email
-hotel_name
-hotel_address
-room_number
-room_type
-check_in
-check_out
-price
-```
+### The update anomaly
 
-At first glance, it's convenient. Everything needed to display a reservation sits in one row. No joins.
+The hotel's address changes.
 
-No separate lookups. Beautiful. Until the hotel's address changes.
+Thousands of reservation rows contain the old address.
 
-You now need to update every reservation containing that hotel's address—potentially hundreds of thousands of historical rows. What if one update fails?
+Updating every copy is expensive, and an incomplete update leaves conflicting information.
 
-Some reservations say the hotel is on Main Street 12. Others say Main Street 14. Which is correct?
+One current fact now exists in several inconsistent forms.
 
-We've encountered an **update anomaly**. The same current fact exists in multiple places, and modifying it requires coordinating multiple copies.
+### The insertion anomaly
 
-There are two related problems.
+We want to register a hotel before it receives its first reservation.
 
-### Insertion anomaly
+But hotel information exists only inside reservation rows.
 
-Suppose you want to register a hotel before it receives any reservations. But the only place to store hotel information is inside a reservation record.
+We cannot represent the new hotel without inventing a booking or introducing special cases.
 
-How do you create the hotel without inventing a reservation? Your representation ties together facts that should be independently representable.
+The model wrongly requires two independent facts to exist together.
 
-### Deletion anomaly
+### The deletion anomaly
 
 Suppose the last reservation for a hotel is deleted.
 
-If the hotel exists only through its reservation rows, deleting that final reservation also removes the only stored information about the hotel.
+If that reservation also contains the only stored record of the hotel's identity and address, deleting one fact destroys another.
 
-Deleting one fact accidentally destroys another. These problems motivated the development of relational normalization techniques.
-
-The underlying objective is straightforward:
-
-**Store independently meaningful facts in a way that reduces unnecessary duplication and prevents unrelated operations from corrupting them.**
-
-Instead of repeatedly storing the hotel's address in reservation rows, hotels hold current identity and address; reservations reference the hotel:
-
-```text
-HOTELS
-  id
-  name
-  address
-
-RESERVATIONS
-  id
-  hotel_id
-  ...
-```
-
-The reservation references the hotel. If the current address changes, we update the hotel's record. The reservation still refers to the same hotel.
-
-No mass update of reservation rows is necessary.
+These are the classic motivations for relational normalization.
 
 ### Functional dependencies
 
-There's a useful theoretical idea beneath this. Imagine a relation containing hotel ID, hotel name, and hotel address.
+There's a formal idea beneath the examples.
 
-If every hotel ID identifies exactly one hotel with one current name and address, we have a functional dependency: `hotel_id → hotel_name, hotel_address`.
+Suppose a hotel ID identifies one hotel with one current address.
 
-Knowing the hotel ID determines the associated current hotel information. Now imagine storing that information inside reservations: `reservation_id → hotel_id → hotel_address`.
+Then, within our model, the hotel ID determines the current address.
 
-The reservation ID determines the hotel ID, which determines the hotel address. The address is not fundamentally a property of the reservation.
+We describe this as a **functional dependency**.
 
-That dependency suggests a separate hotel relation. This is the kind of reasoning that relational normalization formalizes.
+Now suppose reservation ID determines hotel ID, and hotel ID determines the hotel's current address.
 
-### The normal forms, without the ritual chanting
+If we repeatedly store the current hotel address in every reservation, we're maintaining an attribute whose real dependency belongs elsewhere.
 
-You'll commonly encounter First, Second, and Third Normal Form.
+Separating hotels from reservations reflects that dependency.
 
-**First Normal Form (1NF)** requires an appropriate relational representation of values, rather than treating a single cell as an arbitrary collection of independently queryable values.
+### The normal forms without turning them into a ritual
 
-For example, don't store reserved room IDs as `"101,102,108"` and then build business logic around splitting that string. Represent repeated relationships explicitly.
+First Normal Form is concerned with representing data as relational attributes rather than smuggling independently meaningful collections into a single value.
 
-**Second Normal Form (2NF)** addresses dependencies on only part of a composite candidate key.
+For example, storing room IDs as the string `"101,102,108"` and repeatedly parsing that string is a poor substitute for representing the relationship explicitly.
 
-Suppose a line item is identified by `(reservation_id, room_type_id)`, and its row also stores `room_type_name`.
+Second Normal Form addresses dependencies on only part of a composite candidate key.
 
-If `room_type_name` depends only on `room_type_id`, rather than the entire composite key, that attribute belongs elsewhere.
+Suppose a reservation item is identified by reservation ID and room-type ID, while room-type name depends only on room-type ID. That name belongs to the room-type entity rather than being independently maintained on each reservation item.
 
-**Third Normal Form (3NF)** further addresses dependencies among non-key attributes that cause unnecessary duplication.
+Third Normal Form addresses further undesirable dependencies that allow non-key facts to determine other non-key facts, subject to its precise formal definition.
 
-The hotel-address example illustrates the intuition: reservation data shouldn't repeatedly carry an independently maintained hotel address merely because the reservation references that hotel.
+The hotel-address example captures the intuition.
 
-The precise formal definitions are more subtle, but for our engineering purposes, the central question is:
+For interviews, understanding the anomalies and functional dependencies is more valuable than chanting normal-form definitions without being able to apply them.
 
-> Does this attribute belong to the entity represented by this row, or am I storing a fact about something else?
+The goal is to store facts according to the dependencies that actually define them.
 
-That question will take you surprisingly far.
+## 6. Historical snapshots are not necessarily bad normalization
+
+Now return to the customer whose reservation price changed.
+
+Didn't we just argue against repeating information?
+
+Yes—but only when the repeated values represent the same independently maintained fact.
+
+The hotel's current nightly rate and the price agreed for an existing reservation are not the same fact.
+
+Their meanings differ.
+
+One describes today's offering.
+
+The other describes the historical transaction.
+
+A reservation item may therefore preserve the agreed price, rate plan, currency, and relevant commercial terms.
+
+Depending on the business, it may also preserve nightly price breakdowns, tax treatment, and other contractual details.
+
+The reservation must remain interpretable after the hotel updates its current pricing.
+
+The same principle applies to product descriptions on invoices, tax rates on past transactions, and exchange rates used in completed financial operations.
+
+Historical facts shouldn't silently change when current reference data changes.
+
+### Two forms of deliberate duplication
+
+We should distinguish two situations.
+
+**Historical snapshots** preserve information whose meaning is tied to a past event or agreement.
+
+**Derived summaries** duplicate information that can be recalculated from authoritative source records, usually to improve query performance or support reporting.
+
+Both can be legitimate.
+
+But they have different correctness requirements.
+
+A historical agreed price is part of the transaction's authoritative record.
+
+A monthly reservation count might be a derived value that must be updated or rebuilt when underlying reservations change.
+
+The question isn't whether a column is duplicated.
+
+It's what the duplicate represents and how its correctness is maintained.
+
+## 7. Building a useful hotel schema
+
+Let's design a small relational structure.
+
+The hotel table holds a stable identity, current name, and property timezone.
+
+Room types belong to hotels and define categories such as Deluxe or Standard.
+
+Customers have stable identifiers.
+
+Reservations connect customers to hotels and define stay dates, booking status, and creation time.
+
+Reservation items connect reservations to room types, describe quantities, and preserve agreed commercial information.
+
+Physical room assignments can be modeled separately when necessary.
+
+The detailed SQL implementation appears in the practical lab.
+
+For listening, the important challenge is understanding the relationships the schema must enforce.
+
+### Cross-hotel integrity
+
+Suppose reservation R-1042 belongs to Hotel A.
+
+Room type Deluxe-7 belongs to Hotel B.
+
+Our reservation-item table references both records.
+
+If it has one foreign key checking that R-1042 exists and another checking that Deluxe-7 exists, both checks can succeed.
+
+Yet the combination is invalid.
+
+The reservation item links a booking at Hotel A to a room type offered by Hotel B.
+
+This is a subtle but important failure.
+
+Independent foreign keys prove independent existence.
+
+They don't automatically prove that two referenced records belong to the same hotel.
+
+### Composite foreign keys
+
+One solution is to carry the hotel ID into the reservation item and enforce consistency with both parent records.
+
+The item references the combination of reservation ID and hotel ID.
+
+It also references the combination of room-type ID and hotel ID.
+
+Now PostgreSQL can reject a reservation item whose room type belongs to a different hotel.
+
+This requires appropriate unique or primary-key constraints on the referenced combinations.
+
+It also introduces some redundancy and indexing cost.
+
+But that redundancy exists for a reason: it enables the database to enforce a cross-entity business invariant.
+
+An alternative schema could encode ownership differently.
+
+The general principle is that **relational constraints can enforce relationships among facts, not merely the existence of individual rows**.
+
+## 8. Constraints: useful guarantees and their boundaries
+
+Let's examine the most important constraints through the hotel example.
+
+### `NOT NULL`
+
+A reservation must refer to a hotel.
+
+Therefore, its hotel ID should not be null.
+
+But an assigned physical room might legitimately be unknown until check-in.
+
+An optional room assignment may therefore permit null.
+
+Nullability should express domain meaning.
+
+Making everything optional creates ambiguous records.
+
+Making everything mandatory prevents the representation of legitimate intermediate states.
+
+### `UNIQUE`
+
+A hotel may have only one room type with code `DELUXE`.
+
+Another hotel may use the same code.
+
+So a composite uniqueness rule on hotel ID and code expresses the business requirement.
+
+In PostgreSQL, ordinary unique constraints generally treat nulls as distinct, permitting multiple null values under the relevant rules.
+
+PostgreSQL also provides `NULLS NOT DISTINCT` when a different null-uniqueness policy is needed.
+
+This is why a uniqueness rule must be designed together with nullability.
+
+### `FOREIGN KEY`
+
+A room type should not reference a nonexistent hotel.
+
+A reservation item should not reference a nonexistent reservation.
+
+Foreign keys enforce these relationships across different application writers.
+
+They also introduce lifecycle decisions.
+
+Should deleting a hotel delete every historical reservation?
+
+Probably not.
+
+Reservations may carry financial, legal, and operational significance long after a property becomes inactive.
+
+An `ON DELETE CASCADE` rule can be appropriate for child records whose existence has no independent meaning.
+
+It can be disastrous when historical business records should survive the deletion of their parent entity.
+
+### `CHECK`
+
+A reservation item must have positive quantity.
+
+A reservation must have checkout after check-in.
+
+A booked amount must not be negative in the relevant representation.
+
+These are good candidates for row-local checks.
+
+But a simple `CHECK` constraint isn't a general-purpose mechanism for coordinating arbitrary data across multiple rows or tables.
+
+There are also semantic limitations.
+
+A status constraint can ensure that the status is one of `pending`, `confirmed`, or `cancelled`.
+
+It doesn't automatically enforce valid transitions.
+
+A cancelled reservation becoming confirmed again may require an explicit workflow.
+
+A permitted value isn't necessarily a permitted transition.
+
+And a syntactically valid reservation isn't necessarily backed by available inventory.
+
+### Why application validation still matters
+
+Database constraints protect shared persistence.
+
+Application validation protects user experience and catches problems earlier.
+
+A customer's incorrect date range should normally receive a useful explanation rather than an unexplained database error.
+
+But the database must still protect the invariant from imports, scripts, alternate services, and unexpected code paths.
+
+Use both layers for their respective purposes.
+
+## 9. Temporal modeling: dates are not timestamps
+
+Now consider a guest checking in on November 12 and checking out on November 15.
+
+Which nights are reserved?
+
+November 12, 13, and 14.
+
+The checkout date is excluded.
+
+This is naturally represented as a **half-open interval**: November 12 inclusive, November 15 exclusive.
+
+Half-open intervals are useful because adjacent stays can meet at the same boundary without overlapping.
+
+A guest departing November 15 can be followed by another guest arriving November 15.
+
+The first stay ends exactly where the next begins.
+
+### Why SQL `DATE` is often appropriate
+
+A hotel night is primarily a local calendar concept.
+
+The business is selling accommodation for particular dates in the property's timezone.
+
+Using UTC timestamps as the primary representation can complicate ordinary stay rules.
+
+For check-in and checkout dates, SQL `DATE` is often the natural choice.
+
+For events such as reservation creation or payment authorization, `TIMESTAMPTZ` is appropriate because these describe instants in time.
+
+The hotel's IANA timezone, such as `Europe/Vilnius`, remains important for interpreting local business rules.
+
+A fixed UTC offset isn't a complete timezone definition.
+
+And a hotel night doesn't always correspond to exactly twenty-four elapsed hours across daylight-saving transitions.
+
+Choose temporal types according to what the time means.
+
+## 10. Two kinds of double booking
+
+Can the database prevent a room from being sold twice?
+
+Yes—but first we must define what kind of inventory we're selling.
+
+### An assigned physical room
+
+Suppose physical room 204 is booked from November 12 through the morning of November 15.
+
+Another confirmed reservation for the same room from November 14 to November 17 would overlap.
+
+PostgreSQL provides range types and exclusion constraints that can express this rule.
+
+A GiST exclusion constraint can forbid two relevant records from having the same room identifier and overlapping date ranges.
+
+The `&&` range operator represents overlap.
+
+The `btree_gist` extension provides suitable GiST operator support for ordinary scalar equality comparisons.
+
+We can apply the constraint only to reservation statuses that actually block inventory, such as held or confirmed.
+
+This gives us a database-enforced invariant.
+
+Concurrent application requests cannot simply bypass it by making their checks at inconvenient times.
+
+### A pool of interchangeable rooms
+
+Now imagine the hotel sells ten Deluxe rooms as one shared category.
+
+Customers book the category rather than choosing physical rooms.
+
+A single physical-room exclusion constraint doesn't express that inventory model.
+
+We need to ensure that reservations never exceed available category capacity on any night of the stay.
+
+A three-night reservation may affect three nightly inventory records.
+
+Two transactions can compete for the last available unit on one of those nights.
+
+Reading availability and then updating it in separate operations is not sufficient.
+
+We need appropriate transactional coordination.
+
+That may involve conditional updates, row locking, isolation levels, or another carefully designed inventory mechanism.
+
+CS330-L03 will examine these mechanisms in depth.
+
+For now, the durable distinction is:
+
+**An exclusion constraint can protect non-overlapping occupancy of one identified resource. Pooled inventory needs a capacity invariant across a collection of resources and dates.**
+
+Those are different data models.
+
+## 11. Money and status: precision matters
+
+A schema can be structurally sound and still misrepresent business values.
+
+Consider money.
+
+Storing a financial amount in binary floating-point can introduce representational error because many decimal fractions cannot be represented exactly.
+
+For many financial applications, integer minor units or PostgreSQL `NUMERIC` provide more appropriate representations.
+
+For example, €189.00 may be represented as 18,900 cents.
+
+But not every currency uses two decimal places, and some calculations require greater precision than ordinary settlement units.
+
+A complete monetary model defines currency, precision, rounding rules, and historical interpretation.
+
+A three-character currency field is not automatically a validated currency code.
+
+### State needs more than a list of labels
+
+Now consider reservation status.
+
+We can enforce membership in an allowed set.
+
+But whether a transition from `cancelled` to `confirmed` is permitted depends on the business workflow.
+
+A status transition may require additional authorization, inventory checks, or payment reconciliation.
+
+The database can help enforce these rules, but a row-local status check doesn't express the entire workflow.
+
+**Valid values, valid relationships, and valid state transitions are different guarantees.**
+
+## 12. Denormalization with an explicit maintenance contract
+
+Suppose our platform has millions of reservations.
+
+The administration dashboard repeatedly asks how many confirmed bookings each hotel received this month.
+
+Calculating the aggregate from authoritative reservations may initially be inexpensive.
+
+At scale, repeatedly executing the same expensive aggregation might become costly.
+
+We could maintain a summary table containing hotel ID, month, confirmed booking count, and gross booking value.
+
+That is a derived representation.
+
+It may improve reporting performance.
+
+But now we have another correctness obligation.
+
+What happens when a reservation is cancelled?
+
+What happens when a historical booking is corrected?
+
+What happens when a refund changes the financial interpretation?
+
+Who updates the summary?
+
+How fresh must it be?
+
+Can it be rebuilt from authoritative data?
+
+If the summary supports quarterly analytics, a short delay may be acceptable.
+
+If it determines whether the final available room may be sold, stale data could cause an overselling bug.
+
+The practical default is to normalize authoritative operational data first, then introduce derived representations when there is a measured reason and a defined maintenance policy.
+
+Denormalization is a trade-off, not a moral failure.
+
+## 13. The migration that took production down
+
+Our schema has become more mature.
+
+Now product management wants every reservation to record its booking channel: direct, partner, or corporate.
+
+We have five million existing reservations and several running application versions.
+
+The naïve migration introduces `booking_channel` as a mandatory column immediately.
+
+But historical rows contain no value.
+
+And older application instances may still insert reservations without the new field.
+
+Even a migration with a default can introduce unintended historical semantics or operational locking costs.
+
+A schema change is therefore not just a SQL statement.
+
+It is a coordinated transition across application versions, stored data, database constraints, and live traffic.
+
+### Expand
+
+Introduce the column in a backward-compatible, initially nullable form.
+
+Old application versions continue operating.
+
+New versions can begin populating it.
+
+The temporary flexibility is intentional.
+
+### Migrate application behavior
+
+Deploy compatible code to all relevant write paths.
+
+That includes HTTP handlers, workers, importers, administration scripts, and scheduled jobs.
+
+If we use a default value, it must have defensible business meaning.
+
+Don't label historical partner bookings as direct merely because that's an easy default.
+
+### Backfill existing data
+
+Populate missing values.
+
+On a large table, avoid assuming one enormous update is operationally harmless.
+
+A production backfill may need batches, progress tracking, idempotent execution, and attention to WAL generation, replication lag, and locks.
+
+### Enforce the new invariant
+
+Once compatible writers are deployed and historical data is corrected, add the required constraint.
+
+PostgreSQL supports introducing some constraints as `NOT VALID`, enforcing them for new or modified rows without immediately scanning the entire existing table.
+
+Validation can occur separately.
+
+For a non-null requirement, a validated check constraint may help prepare for a later `SET NOT NULL`, subject to PostgreSQL version and locking details.
+
+The exact deployment sequence should be tested against the actual database.
+
+### Contract
+
+Only after incompatible old application versions are gone should obsolete compatibility paths or old schema representations be removed.
+
+This overall pattern is commonly called **expand–migrate–contract**.
+
+It often requires several deployments.
+
+That's not overengineering.
+
+It's recognizing that production databases have history, traffic, and independently deployed consumers.
+
+### The operational cost of constraints and indexes
+
+Foreign keys, uniqueness constraints, and indexes have benefits, but they aren't free.
+
+Indexes consume storage and increase write-maintenance work.
+
+Large schema changes can acquire locks or require substantial scans.
+
+PostgreSQL's `CREATE INDEX CONCURRENTLY` can allow ordinary writes to continue during an index build, though it has additional operational requirements and may leave an invalid index after failure.
+
+It also cannot run inside an ordinary transaction block.
+
+These details matter because a logically correct design can still be deployed incorrectly.
+
+Relational design has three dimensions:
+
+**Logical correctness:** Are we representing the right facts?
+
+**Integrity:** Are invalid values and relationships rejected?
+
+**Operational behavior:** Can queries, writes, and migrations work safely at production scale?
+
+A schema needs all three.
 
 ---
 
-# 6. A Dangerous Misunderstanding: Normalization Is Not a Religion
+# The Oral Examination
 
-At this point, you might conclude that duplicate information is always bad. That would be a mistake. Imagine a customer books a room for three nights at €189 per night.
+Answer aloud before reading the solutions. For each question, explain the reasoning rather than naming a fashionable database pattern.
 
-Six months later, the hotel raises the rate to €249. Should the reservation display €189 or €249? Obviously, it should preserve the agreed historical price.
+**Question 1 — The historical invoice**
 
-The current room rate is a property of the hotel's present commercial offering.
+A developer proposes removing the price and description from order items and always joining the product table for current information. They argue that normalization forbids duplication. What's wrong with this reasoning?
 
-The price agreed upon when the reservation was created is a property of that reservation or its pricing agreement.
+**Question 2 — The three-room reservation**
 
-Those are **different facts**, even if they originally contained the same number.
+A customer books two Deluxe rooms and one Standard room, then cancels one Deluxe room. How would you model the booking and its individual accommodation commitments?
 
-Therefore, storing the booked price alongside the reservation is not necessarily improper denormalization. It may be essential historical information. Current rates live on a rate schedule; agreed prices live on reservation items:
+**Question 3 — The cross-hotel reference**
 
-```text
-ROOM_RATE
-  room_type_id
-  effective_date
-  current_price
+A reservation belongs to Hotel A, while its item references a room type belonging to Hotel B. Both foreign keys are individually valid. How could the database prevent this combination?
 
-RESERVATION_ITEM
-  reservation_id
-  room_type_id
-  agreed_price
-```
+**Question 4 — The dangerous cascade**
 
-In real hotel systems, pricing can vary by night, occupancy, tax rules, promotions, and rate plans.
+A developer adds `ON DELETE CASCADE` from hotels to reservations. A hotel is removed from the platform, and its historical bookings disappear. What was the modeling mistake?
 
-The reservation may therefore need a detailed price breakdown rather than a single nightly figure. But the principle is the same.
+**Question 5 — Two kinds of inventory**
 
-We must preserve what the customer actually agreed to purchase.
+Why can an exclusion constraint prevent overlapping stays in a particular physical room but not automatically prevent overselling a category with ten interchangeable rooms?
 
-### Current state versus historical facts
+**Question 6 — The million-row migration**
 
-The same distinction appears throughout business software: a product's current title versus the title on a historical invoice, or today's tax rate versus the rate that applied when an order completed. Reconstructing historical documents by joining against today's mutable reference data can produce fiction. Sometimes data duplication preserves history rather than creating inconsistency.
+You need to introduce a mandatory booking-channel field into a live reservations table while multiple application versions may coexist. Describe a safe migration strategy.
 
-A useful rule:
+**Question 7 — The deceptively valid value**
 
-**Normalize facts that represent the same independently maintained information. Preserve snapshots when historical context gives the information a distinct meaning.**
+A reservation status is one of the allowed values, yet the transition into that status was illegal. Why doesn't a simple `CHECK` constraint solve this?
 
-> **Sticky note #4**
->
-> Same number, different fact — current rate ≠ agreed price.
+**Question 8 — The senior design question**
 
-This is one reason experienced database designers spend time understanding business semantics before manipulating table structures.
-
-The correct design is determined by what the facts mean. Not merely by whether two columns happen to contain identical values.
+Your team wants to duplicate monthly reservation statistics for performance. Under what conditions is this reasonable, and what guarantees must accompany the design?
 
 ---
 
-# 7. Building a More Serious Hotel Schema
+# Solutions and Discussion
 
-Let's construct a small but meaningful relational model.
+## Solution 1 — Current and historical facts
 
-We'll intentionally keep payments, complex pricing, and room assignment outside the initial implementation so we can concentrate on the relationships. First, hotels — identity, name, and property timezone:
+The developer is confusing a product's current catalogue information with the terms of a completed transaction.
+
+An order item should preserve the commercial details relevant to the historical agreement.
+
+Those fields are not merely redundant copies of the current product record; they have a distinct temporal meaning.
+
+The exact snapshot requirements depend on business and legal rules.
+
+## Solution 2 — One booking, several items
+
+A reservation can represent the overall booking, with reservation items representing individual accommodation commitments.
+
+Each item can reference a room type, quantity, price, and relevant state.
+
+Partial cancellation can affect an item without necessarily cancelling the entire booking.
+
+If the business treats every room as an independent agreement, a different grouping model may be justified.
+
+The choice follows the domain lifecycle.
+
+## Solution 3 — Composite relationship integrity
+
+Independent foreign keys establish existence, not shared hotel ownership.
+
+One approach carries `hotel_id` in the item and uses composite foreign keys referencing the reservation's and room type's corresponding hotel-scoped identifiers.
+
+The referenced combinations require suitable uniqueness constraints.
+
+Other schema designs may express the same ownership invariant differently.
+
+## Solution 4 — Deleting the parent shouldn't erase history
+
+The schema confused an inactive hotel with a hotel whose historical existence should be erased.
+
+Reservations may have independent financial, legal, and operational meaning.
+
+A lifecycle status or carefully governed deletion policy may be more appropriate.
+
+Cascading deletion is suitable when child records genuinely have no independent reason to survive their parent.
+
+## Solution 5 — Different resource models
+
+A physical-room exclusion constraint prevents overlapping date ranges for one identified room.
+
+Category inventory involves capacity shared by interchangeable units over several nights.
+
+It requires coordinating allocations across the relevant inventory records and concurrent transactions.
+
+A simple physical-room overlap rule cannot enforce pooled capacity.
+
+## Solution 6 — Expand, migrate, enforce, contract
+
+Add the column compatibly, deploy all writers to populate it, backfill historical records in manageable batches, validate the new invariant, then remove obsolete compatibility behavior.
+
+Consider application-version coexistence, locks, write amplification, replication, and the exact PostgreSQL version.
+
+Avoid treating a large production migration as one atomic code deployment.
+
+## Solution 7 — Values aren't transitions
+
+A `CHECK` constraint can restrict the set of values a row may contain.
+
+A state transition depends on previous state, current state, and potentially other records.
+
+Application logic and transactional database mechanisms must enforce the transition contract.
+
+## Solution 8 — Derived data requires maintenance rules
+
+A summary can be useful when it materially improves read performance or supports analytical workloads.
+
+But its authoritative source, freshness requirement, update mechanism, recovery strategy, and rebuildability must be explicit.
+
+A dashboard may tolerate eventual consistency where an inventory commitment cannot.
+
+---
+
+# The Mental Model Worth Keeping
+
+When designing a relational schema, ask five questions:
+
+**Identity:** What makes this entity the same entity over time?
+
+**Meaning:** Which facts belong to it, and which apparently similar facts actually mean different things?
+
+**Relationships:** How do the entities depend on one another, and what cardinalities and lifecycles follow?
+
+**Invariants:** Which invalid states can the database itself prevent, and which require coordinated transactions?
+
+**Evolution:** Can the representation change safely while old data and application versions still exist?
+
+A good schema doesn't merely make today's queries convenient.
+
+**It represents the business accurately, protects important invariants, preserves necessary history, and remains possible to evolve.**
+
+# Next Lecture — CS330-L02: SQL and Query Performance
+
+We've designed a schema that expresses meaningful business facts.
+
+But what happens when those tables contain tens of millions of rows?
+
+Why does one SQL query finish in milliseconds while another takes seconds?
+
+Why can adding an index sometimes make performance worse?
+
+And why does PostgreSQL choose a query plan that looks obviously wrong to a human?
+
+In the next lecture, we'll study how relational databases physically find, combine, and return information: B-tree indexes, selectivity, query planning, joins, execution plans, and performance diagnosis.
+
+*The spoken lecture ends here. The remaining material is for practical investigation and screen-based revision.*
+
+---
+
+# Optional Practical Lab — Let PostgreSQL Protect the Business
+
+The following experiments are intended for a disposable PostgreSQL database. Do not run destructive schema changes against a production database.
+
+## Experiment A — A small but meaningful hotel schema
+
+Start with hotels and room types:
 
 ```sql
 CREATE TABLE hotels (
@@ -592,17 +1090,10 @@ CREATE TABLE hotels (
   name TEXT NOT NULL,
   timezone TEXT NOT NULL
 );
-```
 
-The timezone might be something like `Europe/Vilnius`.
-
-Storing the hotel's timezone matters because reservation nights are defined according to the property's local calendar. Next, room types — hotel-scoped code, name, guest capacity, and two uniqueness rules:
-
-```sql
 CREATE TABLE room_types (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   hotel_id BIGINT NOT NULL REFERENCES hotels(id),
-
   code TEXT NOT NULL,
   name TEXT NOT NULL,
   max_guests INTEGER NOT NULL CHECK (max_guests > 0),
@@ -612,11 +1103,9 @@ CREATE TABLE room_types (
 );
 ```
 
-The first uniqueness constraint protects a business identifier within the hotel.
+The second unique constraint supplies a composite referenced key for hotel-scoped relationships. It is intentionally redundant with the single-column primary key from a pure uniqueness perspective.
 
-The second provides a composite key that other tables can reference when we need to enforce hotel-specific relationships. The single-column primary key already uniquely identifies a room type, so this additional unique constraint is an intentional integrity mechanism with some storage and write overhead.
-
-Now customers — display identity without assuming email is a login key:
+Add customers and reservations:
 
 ```sql
 CREATE TABLE customers (
@@ -624,20 +1113,9 @@ CREATE TABLE customers (
   email TEXT NOT NULL,
   display_name TEXT NOT NULL
 );
-```
 
-Notice we haven't declared `email` unique. That's deliberate.
-
-Whether email must be unique depends on whether this table represents login accounts, booking contacts, or individual people.
-
-Real hotels may receive multiple bookings using the same email address. A contact email isn't necessarily a reliable personal identity.
-
-If this were an authentication-account table, we would examine email uniqueness and case handling more carefully. Now reservations — hotel, customer, half-open stay dates, a status restricted to pending, confirmed, or cancelled (defaulting to pending), a check that checkout is after check-in, and a composite key for hotel-scoped references:
-
-```sql
 CREATE TABLE reservations (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-
   hotel_id BIGINT NOT NULL REFERENCES hotels(id),
   customer_id BIGINT NOT NULL REFERENCES customers(id),
 
@@ -650,12 +1128,13 @@ CREATE TABLE reservations (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
   CHECK (check_out > check_in),
-
   UNIQUE (id, hotel_id)
 );
 ```
 
-Finally, reservation items — quantity, a non-negative quoted total in minor currency units with a three-letter currency code, and composite foreign keys that keep hotel ownership consistent:
+We deliberately haven't made customer email unique. Whether email identifies a login account, booking contact, or person is a business decision.
+
+Finally, add reservation items that must belong to the same hotel as both their parent reservation and referenced room type:
 
 ```sql
 CREATE TABLE reservation_items (
@@ -680,143 +1159,41 @@ CREATE TABLE reservation_items (
 );
 ```
 
-There is something interesting here. Why include `hotel_id` in `reservation_items` when both the reservation and room type already identify a hotel?
+**Challenge:** Create two hotels, one room type at each hotel, and one reservation belonging to Hotel A. Attempt to attach a room type from Hotel B to that reservation.
 
-Because we've chosen to enforce an additional invariant:
+Explain which constraint rejects the combination.
 
-**A reservation item cannot refer to a room type from a different hotel than its parent reservation.**
+## Experiment B — Uniqueness has scope
 
-Without the composite foreign keys, this would be structurally possible:
+Insert a `DELUXE` room type into Hotel A.
 
-1. Reservation belongs to Hotel A.
-2. Room type belongs to Hotel B.
-3. Reservation item connects the two.
+Try inserting another `DELUXE` room type into the same hotel.
 
-Both ordinary foreign keys could be individually valid while the combined business relationship was invalid.
+Then insert `DELUXE` into Hotel B.
 
-By including the hotel identifier and using composite foreign keys, PostgreSQL can enforce the relationship itself.
+The first duplicate should fail under the hotel-scoped uniqueness rule. The second hotel's code should be allowed.
 
-This is a deliberate trade-off: a little redundant information and additional indexes in exchange for a stronger database-enforced invariant.
+**Challenge:** Explain why a global `UNIQUE(code)` constraint would encode the wrong business rule.
 
-Another design might avoid such duplication through different table ownership or identifiers. There isn't one universally correct schema.
+## Experiment C — Valid dates are not enough
 
-But the exercise illustrates something important.
+Insert a reservation with check-in on November 15 and checkout on November 12.
 
-**Relational constraints can express not just the existence of records, but the validity of relationships among them.**
+The row-local date constraint should reject it.
 
-Our schema still doesn't enforce that a reservation has at least one item, that inventory exists, or that a particular status transition is permitted. That's fine.
+Now insert two reservations for the same room type covering overlapping dates.
 
-A schema is one part of the correctness model, not the entire application.
+Those rows may both be valid under the current schema.
 
----
+Why?
 
-# 8. Constraints: Make Invalid States Difficult to Represent
+Because our schema hasn't yet established an inventory-capacity constraint.
 
-Suppose our reservation service rejects stays where checkout is not after check-in with a TypeScript guard such as `if (checkOut <= checkIn) throw new Error("Invalid dates")`.
+**Challenge:** Explain the difference between a valid date interval and a valid allocation of scarce accommodation.
 
-Good. Now imagine another application writes to the same database. Or a background migration contains a bug.
+## Experiment D — Prevent overlapping physical-room assignments
 
-Or an administrator runs SQL manually. Your TypeScript validation doesn't exist at those entry points. But the database constraint does: `CHECK (check_out > check_in)`.
-
-The database rejects invalid rows regardless of which application submitted them. This is one of the strongest arguments for database constraints.
-
-They establish guarantees at the shared persistence boundary. Let's examine their responsibilities.
-
-### NOT NULL
-
-A column declaration like `hotel_id BIGINT NOT NULL` means the field must contain a non-null value. This is often more important than developers appreciate.
-
-Making every property optional and relying on application conventions can produce a database full of ambiguous states. But beware: `NULL` has semantics.
-
-It can mean unknown, missing, or not applicable, depending on the domain. For instance, an unassigned physical room might legitimately be represented by a null `room_id`.
-
-A null booking status, on the other hand, is probably a modeling mistake.
-
-### UNIQUE
-
-`UNIQUE (hotel_id, code)` prevents two room types in one hotel from sharing the same code. It does not prevent two different hotels from using `DELUXE`. That's exactly what we want.
-
-A subtle PostgreSQL detail: ordinary unique constraints permit multiple nulls because null values are normally treated as distinct for uniqueness checks.
-
-PostgreSQL also supports `NULLS NOT DISTINCT` when a different uniqueness policy is required.
-
-### FOREIGN KEY
-
-`hotel_id BIGINT REFERENCES hotels(id)` prevents a room type from referencing a nonexistent hotel. Foreign keys also define what happens when the referenced row is updated or deleted.
-
-Should deleting a hotel delete its reservations? In a production reservation system, probably not.
-
-Historical reservations, financial records, and audit obligations may need to survive indefinitely.
-
-Cascading deletes are useful for genuinely dependent records, such as temporary child data with no independent lifecycle.
-
-They are dangerous when used indiscriminately across business-critical entities.
-
-### CHECK
-
-`CHECK (quantity > 0)` enforces a condition on the new or updated row. But ordinary PostgreSQL `CHECK` constraints cannot reliably express arbitrary cross-row or cross-table business rules.
-
-For example:
-
-> The number of sold Deluxe rooms on every date must never exceed the hotel's capacity.
-
-That's not a simple row-local condition. It involves multiple bookings, quantities, dates, and potentially mutable inventory. We'll need different mechanisms for that.
-
-### Constraints are not application validation replacements
-
-A database error is useful as a last line of defense. But customers deserve informative responses.
-
-Applications often validate earlier to produce better messages and avoid unnecessary work. The database still enforces authoritative integrity.
-
-Think of application validation as the polite employee at the entrance. The database constraint is the locked door behind them. You generally want both.
-
----
-
-# 9. The Curious Problem of Reservation Dates
-
-Let's revisit dates, because hotel reservations provide a beautiful example of how representation affects correctness.
-
-A customer checks in on November 12 and checks out on November 15. Which nights are reserved? November 12, 13, and 14.
-
-Not November 15. The checkout date is the exclusive upper boundary. Mathematically, we can represent the stay as the half-open interval `[2026-11-12, 2026-11-15)`.
-
-The opening bracket means November 12 is included. The closing parenthesis means November 15 is excluded. This is a **half-open interval**.
-
-Why is that useful? Because another guest can check in on November 15 without overlapping the previous reservation. Guest A occupies `[Nov 12, Nov 15)`; Guest B occupies `[Nov 15, Nov 18)`.
-
-The intervals meet but don't overlap. Half-open intervals occur throughout software engineering because they simplify boundaries and eliminate many off-by-one errors.
-
-### Dates versus timestamps
-
-Should we store hotel stays using UTC timestamps? Not automatically. A hotel night is typically a property-local calendar concept.
-
-Check-in and checkout dates are therefore naturally represented as SQL `DATE` values. The exact arrival time may be a separate field or timestamp.
-
-For event records, such as when a reservation was created, PostgreSQL's `TIMESTAMPTZ` is generally appropriate.
-
-It represents an instant in time; PostgreSQL stores it in a normalized manner and renders it according to session timezone settings.
-
-For a property-local calendar rule, an IANA timezone identifier such as `Europe/Vilnius` is valuable.
-
-Timezones have daylight-saving transitions, historical changes, and rules that cannot be captured safely by a permanently fixed UTC offset.
-
-A hotel night isn't always exactly 24 elapsed hours. This is a surprisingly practical lesson.
-
-**Choose temporal types according to the meaning of the time being represented.**
-
-Not merely according to the fact that the value looks vaguely date-shaped.
-
----
-
-# 10. Can the Database Prevent Double Booking?
-
-Here's an interesting question. Suppose every reservation is assigned to a particular physical room. Room 204 is reserved from November 12 to November 15.
-
-Another customer tries to reserve the same room from November 14 to November 17. Can PostgreSQL itself reject the second reservation? Yes.
-
-PostgreSQL has range types and exclusion constraints.
-
-We can model an assigned-room reservation using a date range and require that reservations for the same room do not overlap. A simplified example — GiST exclusion so held or confirmed stays for the same room cannot overlap on a half-open date range:
+PostgreSQL can enforce non-overlapping occupancy for a specific assigned room using a range exclusion constraint.
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS btree_gist;
@@ -841,164 +1218,40 @@ CREATE TABLE assigned_stays (
 );
 ```
 
-The exclusion constraint expresses:
+For a self-contained experiment, this table uses only the room identifier without declaring the full physical-room table. A production schema should establish the appropriate referential relationships.
 
-> For two relevant rows, it must not be true that they have the same room and overlapping date ranges.
+Try inserting two confirmed stays for the same room with overlapping dates.
 
-The `btree_gist` extension supplies equality support for scalar types in GiST indexes. The `&&` operator checks whether ranges overlap.
+Then try two adjacent stays where the first checkout date equals the second check-in date.
 
-The `[)` notation represents our half-open interval. This is rather elegant. We've encoded an important business invariant directly in the database.
+Finally, create an overlapping canceled reservation.
 
-Two concurrent applications cannot simply ignore it. But here's the catch. Remember that customers often book room categories rather than specific physical rooms.
+**Challenge:** Why is the half-open interval important? Why does the status condition change which rows participate in the exclusion rule?
 
-A hotel may have ten interchangeable Deluxe rooms. The customer isn't reserving Room 204. They're purchasing one unit of Deluxe inventory across several nights.
+## Experiment E — The historical-price distinction
 
-Our exclusion constraint doesn't solve that problem. It prevents overlapping reservations for an **identified physical room**.
+Create a conceptual pricing model containing current room-type rates and agreed reservation-item prices.
 
-It doesn't enforce capacity for a **pool of interchangeable rooms**. Those are different inventory models.
+Change the current room rate after a reservation has been confirmed.
 
-For pooled inventory, we might track availability or allocations by room type and date. Suppose Deluxe capacity is ten each night:
+Verify that the reservation item's agreed price does not change.
 
-1. November 12 — reserved 8 of 10.
-2. November 13 — reserved 9 of 10.
-3. November 14 — reserved 10 of 10; that night is sold out.
+**Challenge:** Explain why this is not simply accidental duplicate data.
 
-But now a reservation spanning three nights must coordinate changes across three inventory rows. And concurrent requests may compete for the final unit.
+## Experiment F — A safe mandatory-column migration
 
-Simply reading `reserved < total_capacity` before updating is not sufficient. We need transactional enforcement. That's the subject of CS330-L03.
+Start with an existing reservations table.
 
-For today, the important insight is that two superficially similar business concepts—room assignment and category inventory—lead to substantially different persistence models.
+Add an optional booking-channel column:
 
----
-
-# 11. Money, Status, and Other Semantic Traps
-
-Database schemas often fail in small, mundane ways rather than through spectacular architectural mistakes. Take money. Suppose we store `price DOUBLE PRECISION`.
-
-That looks reasonable until floating-point representation becomes relevant. Binary floating-point cannot exactly represent many decimal fractions.
-
-Financial software usually needs exact decimal arithmetic or carefully defined integer minor-unit representations.
-
-For many applications, something like `amount_minor BIGINT NOT NULL` with `currency CHAR(3) NOT NULL` is appropriate.
-
-For EUR, `18900` means €189.00.
-
-But currencies don't all use two decimal places, and some financial calculations require precision smaller than the currency's ordinary settlement unit.
-
-A `NUMERIC` representation can also be appropriate.
-
-The real requirement is a deliberate monetary model: currency, precision, rounding, arithmetic, and historical interpretation.
-
-`CHAR(3)` only constrains representation length, not whether a valid currency code was supplied.
-
-Now consider reservation status: `pending`, `confirmed`, or `cancelled`.
-
-We can enforce membership in that set using a check constraint. But that doesn't mean every transition is valid.
-
-Should a cancelled reservation be allowed to become confirmed again? Perhaps through an explicit reinstatement operation. Perhaps never.
-
-Should a reservation become confirmed without successful inventory allocation? Certainly not if confirmation promises accommodation. These are state-transition rules.
-
-They depend on the previous state, current state, and sometimes related data.
-
-A row-level constraint can restrict which states are representable, but it doesn't automatically enforce the complete transition graph.
-
-That's application and transaction logic, potentially assisted by database mechanisms. The distinction is worth remembering:
-
-**A valid value is not necessarily a valid transition.**
-
-The same issue appears in payments, orders, subscriptions, delivery workflows, and AI-agent execution states.
-
----
-
-# 12. Denormalization: When Duplication Is the Right Decision
-
-Suppose your database now contains millions of reservations. The administration dashboard frequently asks:
-
-> How many confirmed reservations does each hotel have this month?
-
-A normalized query might aggregate reservations directly. That's perfectly reasonable at first.
-
-But as the application grows, repeatedly computing expensive aggregates may become costly. One option is a summary table — hotel, month, confirmed count, and gross booking value:
-
-```text
-HOTEL_MONTHLY_STATISTICS
-
-hotel_id
-month
-confirmed_reservations
-gross_booking_value
+```sql
+ALTER TABLE reservations
+ADD COLUMN booking_channel TEXT;
 ```
 
-Now we have stored information that could theoretically be computed from the underlying reservations. That is a form of denormalization. Why introduce it?
+Update the application so every relevant writer populates the field.
 
-Performance. Or to support reporting workloads without constantly scanning operational tables. But the advantage comes with an obligation.
-
-The summary must be maintained. What happens when a reservation is cancelled? When a refund is issued?
-
-When an old reservation is corrected? The summary may become stale or incorrect unless those events are reflected properly.
-
-A common mistake is introducing denormalized data because it looks faster without defining its consistency contract. A better approach begins with questions:
-
-What is the source of truth? How fresh must the summary be? Can it be rebuilt?
-
-What happens if an update is missed? Does the summary drive operational decisions, or is it merely displayed on a dashboard?
-
-If it's used for quarterly analytics, a few minutes of delay may be harmless.
-
-If it's used to decide whether the last available room may be sold, stale data could be disastrous. This suggests a general rule:
-
-**Normalize operational truth by default. Introduce derived or duplicated representations when they serve a specific purpose and you understand their maintenance costs.**
-
-There are excellent reasons to denormalize. Performance, read patterns, historical snapshots, external integrations, and analytical workloads are all legitimate.
-
-The problem isn't duplication itself. It's ungoverned duplication.
-
----
-
-# 13. Schema Evolution: The Migration That Took Production Down
-
-Now imagine the platform has five million reservation records. Product management wants every reservation to include a booking channel: `direct`, `partner`, or `corporate`.
-
-Easy enough. You write `ALTER TABLE reservations ADD COLUMN booking_channel TEXT NOT NULL` and deploy it.
-
-Unfortunately, existing rows have no value for the new column.
-
-PostgreSQL cannot accept the intended `NOT NULL` requirement without a suitable value for those rows.
-
-Even when the migration is syntactically valid with a default, adding constraints or changing large tables may require locks, scans, or other operations whose cost matters in production.
-
-And there's another problem. Old application instances may still be running during deployment.
-
-What happens if they try to insert reservations without providing the new field? They may fail.
-
-You've now discovered that a schema migration isn't simply a database script.
-
-**It is a coordinated change across application versions, stored data, database constraints, and operational traffic.**
-
-Let's design a safer approach.
-
-### Phase 1 — Expand
-
-Introduce the new column in a backward-compatible way: `ALTER TABLE reservations ADD COLUMN booking_channel TEXT`.
-
-Existing application code can continue to operate. New code can begin writing the field. At this stage, the database permits null values.
-
-That's intentional transitional flexibility.
-
-### Phase 2 — Deploy compatible application code
-
-Update every relevant write path to populate `booking_channel`.
-
-That includes HTTP controllers, background workers, administrative scripts, imports, and scheduled operations.
-
-Where appropriate, establish a default semantic value such as `direct` or `legacy`. But don't invent business meaning carelessly.
-
-A reservation imported from a partner should not be labelled `direct` merely because that's convenient.
-
-### Phase 3 — Backfill historical data
-
-Populate missing values in existing rows — set null channels to `legacy`:
+For a small test dataset, backfill nulls:
 
 ```sql
 UPDATE reservations
@@ -1006,15 +1259,7 @@ SET booking_channel = 'legacy'
 WHERE booking_channel IS NULL;
 ```
 
-This demonstrates the transformation, but running one giant update against millions of rows may produce excessive locks, transaction logs, replication pressure, and operational disruption.
-
-A production backfill may need bounded batches, progress tracking, and retryable execution. The data transformation should be idempotent wherever practical.
-
-### Phase 4 — Enforce the invariant
-
-Once all write paths are compatible and old data has been addressed, introduce the required constraint.
-
-For large tables, PostgreSQL supports an approach involving a not-yet-validated check constraint — add the check as `NOT VALID` so new writes are checked without scanning the whole table yet:
+Now introduce a constraint without immediately validating historical rows:
 
 ```sql
 ALTER TABLE reservations
@@ -1022,466 +1267,40 @@ ADD CONSTRAINT booking_channel_present
 CHECK (booking_channel IS NOT NULL) NOT VALID;
 ```
 
-A `NOT VALID` check avoids immediately scanning all existing rows when the constraint is added. However, it still applies to newly inserted or updated rows.
-
-That's why compatible writers must be deployed first. Then validate existing rows with `VALIDATE CONSTRAINT booking_channel_present`.
-
-PostgreSQL can validate existing rows separately, with different locking characteristics from immediately adding a fully validated constraint.
-
-Where appropriate, we can subsequently set the column itself to `NOT NULL`. The exact locking and scanning behavior depends on the PostgreSQL version and the operation.
-
-### Phase 5 — Contract
-
-Only after old application versions no longer depend on the previous representation should obsolete columns or compatibility logic be removed.
-
-This sequence is commonly called:
-
-**Expand → Migrate → Contract**
-
-> **Sticky note #5**
->
-> Expand → migrate → contract — never lock production into one giant ALTER.
-
-The same principle applies to renaming fields, splitting tables, introducing new foreign keys, and changing data representations.
-
-A safe migration may require several deployments. That might feel excessive for something as simple as one column.
-
-But a production database isn't an empty development database. It has history, traffic, operational constraints, and software versions that may temporarily coexist.
-
-The migration strategy must respect all four.
-
----
-
-# 14. Foreign Keys, Indexes, and Operational Cost
-
-Before leaving schema evolution, there's an important practical detail. Constraints aren't free. Foreign keys need to be checked.
-
-Unique constraints require supporting indexes. Additional indexes consume storage and increase write overhead.
-
-And schema changes may acquire locks that interfere with concurrent operations. Suppose we add an index on hotel and check-in: `CREATE INDEX idx_reservations_hotel_date ON reservations (hotel_id, check_in)`.
-
-On a small development database, this may finish almost instantly.
-
-On a table containing hundreds of millions of rows, a conventional index build can interfere with writes for an unacceptable period. PostgreSQL supports building without blocking ordinary writes: `CREATE INDEX CONCURRENTLY idx_reservations_hotel_date ON reservations (hotel_id, check_in)`.
-
-This allows ordinary writes to continue during the build, although the operation generally takes longer, consumes resources, and has additional operational considerations.
-
-It also cannot run inside a regular transaction block. A failed concurrent build may leave an invalid index requiring cleanup.
-
-These details matter because correctness and availability interact.
-
-A perfectly reasonable schema modification can still be an operational incident if deployed carelessly. We'll explore indexes in detail during the next session.
-
-For now, remember that relational modeling has at least three dimensions:
-
-**Logical correctness:** Does the schema represent the right facts?
-
-**Integrity:** Does it prevent invalid relationships and values?
-
-**Operational behavior:** Can the database support the required queries, writes, and migrations under real load?
-
-A schema can succeed in one dimension and fail in another.
-
----
-
-# 15. The Oral Examination
-
-Pause the lecture for each one.
-
-Answer **out loud** — as if an interviewer were across the table — before you listen to or read the solutions.
-
-They're designed to reinforce practical judgment rather than obscure SQL trivia.
-
-### Challenge A — The Historical Invoice
-
-**Suggested time: 8 minutes**
-
-An e-commerce application stores orders with references to a product table.
-
-Product names and prices change over time.
-
-A developer proposes eliminating duplicated price and description fields from order items, arguing that normalization requires querying the product table whenever an old invoice is displayed.
-
-Is this correct?
-
-How should historical order information be modeled?
-
-### Challenge B — One Reservation, Multiple Rooms
-
-**Suggested time: 8 minutes**
-
-A hotel reservation can contain several rooms of different categories.
-
-A customer may cancel one room without cancelling the others.
-
-What entities and relationships would you introduce?
-
-Should each room necessarily become an independent reservation?
-
-### Challenge C — Cross-Tenant Integrity
-
-**Suggested time: 10 minutes**
-
-Your database has hotels and room types.
-
-Both have valid primary keys and foreign keys.
-
-But your reservation items can still associate a reservation belonging to Hotel A with a room type belonging to Hotel B.
-
-How could you prevent this at the database level?
-
-### Challenge D — The Disappearing Hotel
-
-**Suggested time: 8 minutes**
-
-Your schema contains `hotel_id BIGINT REFERENCES hotels(id) ON DELETE CASCADE`.
-
-A hotel is removed from the platform.
-
-Every associated reservation is automatically deleted.
-
-What is wrong with this design?
-
-When might cascading deletion actually be appropriate?
-
-### Challenge E — The Production Migration
-
-**Suggested time: 10 minutes**
-
-You need to make a nullable field mandatory in a table with fifty million rows.
-
-Your application is deployed across multiple instances, and old and new versions may coexist temporarily.
-
-How would you approach the change?
-
-### Challenge F — The Last Deluxe Room
-
-**Suggested time: 10 minutes**
-
-A hotel has ten Deluxe rooms.
-
-Two transactions simultaneously attempt to reserve the last available unit for the same night.
-
-Both read the current inventory and see that one unit remains.
-
-Both prepare a reservation.
-
-Which part of the database schema can prevent the invalid result?
-
-And what additional mechanism might be required?
-
----
-
-# 16. Solutions and Discussion
-
-*Listen or read only after you have answered each challenge out loud.*
-
-### Solution A — Historical invoices
-
-The developer is confusing two different kinds of information.
-
-A product's current catalogue price and the price agreed upon when an order was placed are not the same fact.
-
-Likewise, a product's current name might not match the description legally relevant to a completed transaction.
-
-An order item should normally preserve appropriate historical commercial details.
-
-Those snapshots aren't merely redundant copies of current product data.
-
-They represent the agreement at the time of purchase.
-
-The exact snapshot requirements depend on the business, tax obligations, and invoicing rules.
-
-### Solution B — Reservation components
-
-A reasonable model uses a reservation as the overarching booking and reservation items as its constituent accommodation commitments.
-
-Each item can identify a room category, quantity, price, and potentially its own cancellation or fulfillment state.
-
-Physical room assignments can be modeled separately when necessary.
-
-Creating independent reservations for every room may complicate payment, cancellation, communication, and booking-level operations.
-
-However, if the business truly treats each reservation as an independent agreement, separate reservations linked by a booking group may be appropriate.
-
-The distinction comes from the business lifecycle—not simply the number of rooms.
-
-### Solution C — Cross-tenant integrity
-
-Ordinary foreign keys can prove that a reservation exists and that a room type exists.
-
-They don't necessarily prove that the two belong to the same hotel.
-
-Composite foreign keys can include the hotel identifier and enforce consistency with both parent records.
-
-Alternatively, a different schema might encode tenant ownership without duplicating the hotel identifier.
-
-What matters is that the model prevents cross-tenant combinations rather than relying solely on independent existence checks.
-
-This is especially important in multi-tenant SaaS systems.
-
-### Solution D — Cascading deletion
-
-Cascading deletion from hotels to reservations is likely inappropriate because reservation records may have independent historical, financial, and legal significance.
-
-Removing a hotel from active service should not automatically erase its booking history.
-
-A soft-delete or lifecycle status might better represent the hotel becoming inactive.
-
-Cascading deletion is appropriate when child rows truly have no independent meaning once their parent is removed.
-
-For example, removing a temporary import batch might reasonably delete temporary staging rows that exist only within that batch.
-
-The correct behavior follows data ownership and retention requirements.
-
-### Solution E — Expand, backfill, enforce, contract
-
-Begin by identifying existing null values and every application write path.
-
-Deploy compatible code that can populate the new field.
-
-Backfill historical rows carefully, potentially in batches.
-
-Introduce the required database constraint when old writers are no longer producing incompatible records.
-
-Validate existing data and tighten the schema.
-
-Finally, remove transitional compatibility logic.
-
-Locking, table size, long-running transactions, replication effects, and rollback procedures should be considered before deployment.
-
-The essential principle is that the application and database must remain compatible during the transition.
-
-### Solution F — Concurrency-aware inventory
-
-A row-local check such as `reserved <= capacity` can help prevent invalid inventory values.
-
-But a naive read-then-write sequence may still be unsafe if both transactions rely on the same outdated availability information.
-
-The operation must coordinate concurrent claims.
-
-One approach uses a conditional atomic update that succeeds only while capacity remains available.
-
-Another uses appropriate row locking and transactional inventory allocation.
-
-The exact strategy depends on the inventory schema and business rules.
-
-The important insight is that schema design and concurrency control are inseparable once correctness depends on shared mutable state.
-
-We'll investigate that mechanism in depth in CS330-L03.
-
----
-
-# 17. The Mental Model Worth Keeping
-
-A relational database isn't simply a collection of tables corresponding to application objects. It's a model of the facts your business needs to preserve.
-
-Good relational design starts by asking:
-
-**What are the real entities?**
-
-Distinguish concepts that appear similar but have different identities or lifecycles. A hotel room category is not necessarily a physical room.
-
-A reservation is not necessarily a room assignment. A booking contact is not necessarily a hotel guest.
-
-**Which facts belong together?**
-
-Normalization helps separate independently maintained information and avoid update, insertion, and deletion anomalies.
-
-**Which facts must remain historically true?**
-
-Snapshots and carefully chosen denormalization can preserve agreements and historical meaning.
-
-**Which relationships must never become invalid?**
-
-Primary keys, foreign keys, uniqueness, and check constraints can enforce important guarantees directly in PostgreSQL.
-
-**Which business rules require coordination beyond ordinary constraints?**
-
-Inventory availability, valid state transitions, and concurrent modifications may require transactions and more sophisticated database mechanisms.
-
-**How will the model survive change?**
-
-Real schemas evolve while applications remain online. Safe migrations are part of backend engineering, not merely database maintenance.
-
-Remember these durable distinctions:
-
-- **Entity names ≠ data model** — room type, physical room, inventory night, and reservation are different facts.
-- **Primary key ≠ business uniqueness** — stable identity and real-world uniqueness constraints often diverge.
-- **Normalization ≠ delete every duplicate** — snapshots preserve agreements; current reference data is a different fact.
-- **Valid value ≠ valid transition** — check constraints restrict representable states, not the full transition graph.
-- **Assigned room ≠ pooled inventory** — exclusion constraints and capacity accounting solve different problems.
-- **Schema change ≠ one ALTER** — expand, migrate, and contract across coexisting application versions.
-
-> **The master sticky note**
->
-> The goal isn't an academically perfect schema. It's a representation that is correct, understandable, adaptable, and operationally realistic — and that distrusts simplicity when the business itself isn't simple.
-
----
-
-# 18. Next Lecture — CS330-L02: SQL and Query Performance
-
-We've constructed a normalized reservation database. Hotels are separate from room types. Reservations contain items.
-
-Constraints protect relationships. The schema is clean, the business rules are reasonably represented, and everything works beautifully.
-
-Until the customer history page starts taking four seconds to load. The SQL query hasn't changed. The application code hasn't changed.
-
-In development, the query completes in 15 milliseconds. In production, it takes four seconds. What's happening?
-
-The answer leads us into a fascinating part of database engineering. PostgreSQL doesn't simply execute SQL by following a fixed sequence of instructions.
-
-It must decide *how* to retrieve the requested information. Should it scan the entire table? Use an index?
-
-Join tables in a different order? Build an in-memory hash table? Sort a million rows?
-
-Read from disk or reuse cached pages? And how does it estimate which strategy will be cheapest before executing the query?
-
-In **CS330-L02**, we'll investigate SQL execution, B-tree indexes, selectivity, query planners, joins, statistics, pagination, and execution plans.
-
-We'll discover why adding an index sometimes transforms performance—and why adding another can make things worse. The database now knows how our business is organized.
-
-Next, we'll investigate how it actually finds anything.
-
----
-
-## Optional Practical Lab — Let PostgreSQL Protect the Model
-
-*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet.*
-
-You'll need any PostgreSQL instance and a SQL console. The following commands use temporary tables and won't require changes to an existing application schema.
-
-**Suggested time: 15–20 minutes.**
-
-> **Gym rules:** predict before you run. Challenge spoilers are in Solutions and Discussion above; lab answers follow the experiments.
-
-### Experiment A — Composite uniqueness
-
-Create a temporary room table — surrogate id plus hotel-scoped uniqueness on room number:
+Validate it separately:
 
 ```sql
-CREATE TEMP TABLE demo_rooms (
-  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  hotel_id INTEGER NOT NULL,
-  room_number TEXT NOT NULL,
-
-  UNIQUE (hotel_id, room_number)
-);
+ALTER TABLE reservations
+VALIDATE CONSTRAINT booking_channel_present;
 ```
 
-Now insert the same room number under two hotels — both should succeed:
+Where justified by the supported PostgreSQL version and tested locking behavior, the column can subsequently be made formally `NOT NULL`.
+
+The example demonstrates the stages. A real five-million-row migration should use controlled batching and deployment coordination rather than blindly copying these commands into production.
+
+**Challenge:** Why should compatible application writers be deployed before the new constraint starts rejecting missing values?
+
+## Experiment G — Index creation under live traffic
+
+Consider an index supporting common hotel/date lookups:
 
 ```sql
-INSERT INTO demo_rooms (hotel_id, room_number)
-VALUES (1, '204');
-
-INSERT INTO demo_rooms (hotel_id, room_number)
-VALUES (2, '204');
+CREATE INDEX CONCURRENTLY
+idx_reservations_hotel_date
+ON reservations (hotel_id, check_in);
 ```
 
-Both succeed.
+PostgreSQL supports concurrent index creation to avoid blocking ordinary table writes for the entire build, but the process has important operational trade-offs and cannot run inside a regular transaction block.
 
-But try inserting hotel 1 / room 204 again — `INSERT INTO demo_rooms (hotel_id, room_number) VALUES (1, '204');` — PostgreSQL should reject the duplicate within that hotel.
+A failed concurrent index build can leave an invalid index requiring attention.
 
-The uniqueness rule doesn't mean room numbers are globally unique.
-
-It means they're unique within a particular hotel.
-
-This is a small example of a database encoding domain semantics.
-
-### Experiment B — Valid values versus valid relationships
-
-Create two temporary tables — hotels and room types with a foreign key to hotels:
-
-```sql
-CREATE TEMP TABLE demo_hotels (
-  id INTEGER PRIMARY KEY,
-  name TEXT NOT NULL
-);
-
-CREATE TEMP TABLE demo_room_types (
-  id INTEGER PRIMARY KEY,
-  hotel_id INTEGER NOT NULL
-    REFERENCES demo_hotels(id),
-
-  name TEXT NOT NULL
-);
-```
-
-Insert a hotel with `INSERT INTO demo_hotels VALUES (1, 'Baltic Grand');`.
-
-Then try a room type that points at a nonexistent hotel: `INSERT INTO demo_room_types VALUES (10, 999, 'Deluxe');`.
-
-The room type contains entirely reasonable values.
-
-The identifier is an integer.
-
-The name is a string.
-
-But the relationship is invalid because Hotel 999 doesn't exist.
-
-PostgreSQL rejects the row.
-
-That's referential integrity.
-
-### Experiment C — Why a valid date pair is still insufficient
-
-Create bookings with only a local date check — checkout must be after check-in:
-
-```sql
-CREATE TEMP TABLE demo_bookings (
-  id INTEGER PRIMARY KEY,
-  room_id INTEGER NOT NULL,
-  check_in DATE NOT NULL,
-  check_out DATE NOT NULL,
-
-  CHECK (check_out > check_in)
-);
-```
-
-Insert two overlapping stays for the same physical room — both rows satisfy the check:
-
-```sql
-INSERT INTO demo_bookings VALUES
-  (1, 204, '2026-11-12', '2026-11-15');
-
-INSERT INTO demo_bookings VALUES
-  (2, 204, '2026-11-14', '2026-11-17');
-```
-
-Both succeed.
-
-Every row satisfies the check constraint.
-
-And yet the same physical room is booked twice for overlapping nights.
-
-This is the key observation.
-
-**A database can enforce every declared constraint perfectly while still allowing an invalid business state if the constraints don't express the necessary invariant.**
-
-The next challenge is to think about what additional constraint or transactional operation would be needed.
-
-For an assigned physical room, a PostgreSQL exclusion constraint may solve the overlap problem.
-
-For pooled category inventory, the model and enforcement strategy will be different.
-
-We've reached the boundary between relational modeling and concurrency control.
-
-### Lab solutions
-
-*Read after attempting the experiments.*
-
-**Experiment A — Composite uniqueness.** Both cross-hotel inserts succeed; the second insert for hotel 1 / room 204 fails. Uniqueness is scoped to `(hotel_id, room_number)`, not to room number alone.
-
-**Experiment B — Referential integrity.** Locally sensible column values still fail when `hotel_id` does not exist in `demo_hotels`. Foreign keys enforce relationship validity, not merely type shape.
-
-**Experiment C — Missing invariant.** Both overlapping bookings insert successfully because `CHECK (check_out > check_in)` is row-local. Preventing double booking for an assigned room needs an exclusion constraint (or equivalent); pooled inventory needs a different model plus transactional coordination.
+**Challenge:** Why does an index improve some reads while increasing storage and write-maintenance costs?
 
 ---
 
-## Further Reading
+# Further Reading
 
-The following official PostgreSQL references complement this session:
+Official PostgreSQL references:
 
 - **Constraints:** https://www.postgresql.org/docs/current/ddl-constraints.html
 - **Range Types and Exclusion Constraints:** https://www.postgresql.org/docs/current/rangetypes.html
@@ -1490,104 +1309,139 @@ The following official PostgreSQL references complement this session:
 - **ALTER TABLE and Constraint Validation:** https://www.postgresql.org/docs/current/sql-altertable.html
 - **CREATE INDEX and Concurrent Index Builds:** https://www.postgresql.org/docs/current/sql-createindex.html
 
+Related chapters:
+
+- CS330-L02 — SQL and Query Performance
+- CS330-L03 — Transactions: When Correct Operations Produce Incorrect Results
+- CS340-L03 — Document Databases and MongoDB
+
 ---
 
 ## Dense Cheatsheet — Interview Glance Card
 
-*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
-
 ```text
-CS330-L01  RELATIONAL DATABASE DESIGN — INTERVIEW GLANCE CARD
+CS330-L01 — RELATIONAL DATABASE DESIGN
 
 CORE MODEL
-  Schema = model of business facts, not a mirror of TypeScript objects
-  Valid rows can still encode the wrong business model
-  Distinct concepts ≠ interchangeable names
-    room type ≠ physical room ≠ inventory night ≠ reservation
+  Schema = representation of business facts and relationships
+  Valid SQL + valid rows can still encode the wrong business model
+  Design identity, meaning, integrity, and evolution together
 
-ENTITIES, RELATIONSHIPS, CARDINALITY
-  Cardinality is a business statement, not merely SQL syntax
-  1:N common (hotel → room types; customer → reservations)
-  M:N via intermediate table (reservation_items) — place for quantity,
-    price, rate plan, partial cancel / assignment
-  1:1 rare — useful for lifecycle / ownership / security / access pattern;
-    don't split for aesthetics
-  Independence test: can these things exist, change, or be deleted separately?
+DOMAIN DISTINCTIONS
+  Room type != physical room
+  Reservation != reservation item
+  Inventory per night != current room-rate listing
+  Current rate != historically agreed price
+  Current name/address != entity identity
 
-IDENTITY AND KEYS
-  Primary key     stable technical identity (often surrogate)
-  Business UNIQUE real-world uniqueness (hotel_id, room_number)
-  Natural key     from business data — only if unique AND stable
-  Surrogate key   generated ID/UUID — common because business IDs change
-  Don't conflate identity with business meaning
-  Integers vs UUIDs: compactness/order vs independent generation / locality
+ENTITY BOUNDARIES
+  What can exist independently?
+  What can change independently?
+  What can be deleted independently?
+  What owns the relationship's attributes?
 
-NORMALIZATION — THREE ANOMALIES
-  Update anomaly   same current fact copied → coordinated mass updates
-  Insertion anomaly can't store independent fact without inventing another
-  Deletion anomaly deleting one fact accidentally destroys another
-  Goal: store independently meaningful facts; reduce unnecessary duplication
-  Functional dependency: hotel_id → hotel_name, hotel_address
-  1NF  don't stuff independently queryable collections into one cell
-  2NF  no non-key attrs depending on only part of a composite key
-  3NF  no unnecessary non-key → non-key duplication (hotel address on reservation)
-  Engineering question: does this attribute belong to THIS row's entity?
+RELATIONSHIPS
+  1:N — hotel -> room types
+  1:N — reservation -> reservation items
+  M:N — resolved through intermediate entity
+  Reservation item stores quantity, price, rate plan, state
+  1:1 useful for true lifecycle/security/ownership boundaries
 
-SNAPSHOTS ≠ DENORMALIZATION SIN
-  Current rate ≠ agreed price (same number, different fact)
-  Normalize independently maintained current facts
-  Preserve historical snapshots (invoice title/price, tax at order time)
-  Reconstructing history via today's mutable reference data → fiction
+IDENTITY
+  Primary key = stable row identity
+  Business UNIQUE = real-world uniqueness constraint
+  Natural key = meaningful business-derived key
+  Surrogate key = generated technical identifier
+  Stable surrogate PK + separate business UNIQUE often practical
+  Room number unique within hotel, not globally
 
-CONSTRAINTS (SHARED PERSISTENCE BOUNDARY)
-  NOT NULL   require value; NULL semantics = unknown / missing / N/A
-  UNIQUE     scoped uniqueness; ordinary PG UNIQUE treats NULLs as distinct
-             (NULLS NOT DISTINCT available when needed)
-  FOREIGN KEY existence + ON UPDATE/DELETE behavior
-             CASCADE dangerous for historical/financial entities
-  CHECK      row-local conditions; NOT arbitrary cross-row inventory rules
-  App validation = polite entrance; DB constraint = locked door — want both
-  Valid value ≠ valid transition (status CHECK ≠ full state machine)
+NORMALIZATION
+  Update anomaly — multiple copies of one current fact
+  Insertion anomaly — cannot store one fact without another
+  Deletion anomaly — removing one fact destroys another
+  Functional dependency — key determines attributes
+  1NF — relational values, not comma-separated lists
+  2NF — no improper dependency on part of composite key
+  3NF — address relevant transitive/non-key dependencies
+  Normalize independently maintained operational facts
 
-HOTEL SCHEMA PATTERNS (LECTURE MODEL)
-  hotels, room_types (hotel-scoped UNIQUE code), customers, reservations,
-  reservation_items with quantity + quoted_total_minor + currency
-  Composite FKs (reservation_id, hotel_id) / (room_type_id, hotel_id)
-    → prevent Hotel A reservation + Hotel B room type
-  Schema enforces relationships; not every business rule (min items,
-    inventory, status transitions)
+HISTORY
+  Historical agreed price is a distinct fact from current rate
+  Preserve snapshots needed for invoices / contracts / audits
+  Historical duplication != automatically normalization defect
 
-DATES AND TEMPORAL TYPES
-  Stay nights = half-open [check_in, check_out) — checkout exclusive
-  Hotel nights → DATE + property IANA timezone (Europe/Vilnius)
-  Event instants → TIMESTAMPTZ
-  Choose types by meaning, not "looks date-shaped"
+CONSTRAINTS
+  NOT NULL — required value
+  UNIQUE — prohibited duplicates within defined scope
+  FOREIGN KEY — referenced existence / relationship
+  CHECK — row-local valid-value or relationship rule
+  Composite FKs can enforce same-hotel ownership
+  CHECK value membership != legal state transition
+  Application validation improves UX
+  DB constraints protect all writers
 
-DOUBLE BOOKING — TWO DIFFERENT MODELS
-  Assigned physical room: GiST EXCLUDE on room_id + daterange overlap
-    (btree_gist; WHERE held/confirmed)
-  Pooled category inventory: capacity by type×night — needs transactional
-    coordination (→ CS330-L03); exclusion constraint alone insufficient
+TENANT / HOTEL INTEGRITY
+  Reservation belongs to Hotel A
+  Room type belongs to Hotel B
+  Independent FKs may both pass
+  Composite FK using hotel_id can prevent mismatch
+  Cross-entity invariant needs appropriate schema structure
 
-MONEY / STATUS TRAPS
-  Prefer amount_minor BIGINT + currency CHAR(3) or NUMERIC — not float
-  CHAR(3) length ≠ valid currency code
-  Status membership ≠ permitted transitions
+TEMPORAL MODELING
+  Hotel stay = half-open [check_in, check_out)
+  Checkout date excluded
+  Adjacent stays can meet without overlap
+  DATE for property-local calendar nights
+  TIMESTAMPTZ for event instants
+  IANA timezone for property-local rules
+  A hotel night need not be exactly 24 elapsed hours
+
+INVENTORY
+  Assigned room:
+    EXCLUDE USING gist (room_id WITH =,
+      daterange(check_in, check_out, '[)') WITH &&)
+    Conditional on blocking status
+  Room-type pool:
+    Multiple interchangeable units per night
+    Capacity may span multiple date rows
+    Needs transactional capacity enforcement
+  Physical-room overlap != pooled inventory model
+
+MONEY / STATUS
+  Prefer exact NUMERIC or defined integer minor units
+  Floating point can be unsuitable for financial amounts
+  Currency precision/rounding must be explicit
+  CHAR(3) != valid currency-code guarantee
+  Allowed status != allowed transition
 
 DENORMALIZATION
-  Derived summaries OK for performance / reporting — with maintenance contract
-  Ask: source of truth? freshness? rebuildable? drives ops decisions?
-  Normalize operational truth by default; govern every duplicate
+  Derived summaries can improve reporting
+  Define source of truth and freshness
+  Define update, repair, and rebuild mechanisms
+  Do not drive scarce inventory from stale reports
+  Govern duplicated operational data
 
-SCHEMA EVOLUTION — EXPAND → MIGRATE → CONTRACT
-  1 Expand nullable / compatible column
-  2 Deploy writers that populate it
-  3 Backfill (batched, idempotent)
-  4 Enforce (CHECK … NOT VALID then VALIDATE; then NOT NULL)
-  5 Contract remove compatibility once old versions gone
-  CREATE INDEX CONCURRENTLY for large tables; ops cost is a design dimension
+MIGRATIONS
+  EXPAND — compatible schema change
+  MIGRATE — deploy writers + backfill data
+  ENFORCE — validate constraints after compatibility
+  CONTRACT — remove old representation last
+  Batch large backfills; mind WAL, locks, replication
+  NOT VALID + VALIDATE can separate enforcement/scan phases
+  CREATE INDEX CONCURRENTLY reduces write blocking
+  Indexes have write/storage costs and operational risks
 
-LOGICAL ✓  INTEGRITY ✓  OPERATIONAL ✓ — a schema can fail any one
+THREE DIMENSIONS
+  Logical correctness — represent right facts
+  Integrity — reject invalid combinations
+  Operations — perform and evolve safely under load
 
-SENIOR LINE: distrust simplicity when the business itself isn't simple.
+SENIOR INTERVIEW LINE
+  "I'd identify stable domain identities and independent facts,
+   model cardinalities and historical meaning, enforce as much
+   integrity as appropriate at the persistence boundary, and
+   ensure schema changes are compatible with live deployments."
+
+MENTAL MODEL
+  Identity -> Meaning -> Relationships -> Invariants -> Evolution
 ```

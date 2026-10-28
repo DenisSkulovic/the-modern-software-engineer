@@ -124,9 +124,9 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
-| `CS330-L01` | Relational Database Design | `manuscript` | `2.0.0` | `BACK301-S02` |
-| `CS330-L02` | SQL and Query Performance | `manuscript` | `2.0.0` | `BACK301-S03` |
-| `CS330-L03` | Transactions: When Correct Operations Produce Incorrect Results | `manuscript` | `2.0.0` | `BACK301-S04` |
+| `CS330-L01` | Relational Database Design | `revised` | `2.1.0` | `BACK301-S02` |
+| `CS330-L02` | SQL and Query Performance | `revised` | `2.1.0` | `BACK301-S03` |
+| `CS330-L03` | Transactions: When Correct Operations Produce Incorrect Results | `revised` | `2.1.0` | `BACK301-S04` |
 
 #### CS340 — Data Systems Beyond Relational Databases
 

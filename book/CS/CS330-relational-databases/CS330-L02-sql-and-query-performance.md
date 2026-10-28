@@ -3,156 +3,224 @@ id: CS330-L02
 course: CS330
 title: "SQL and Query Performance"
 type: core
-manuscript: manuscript
-edition: "2.0.0"
+manuscript: revised
+edition: "2.1.0"
 legacy_ids: [BACK301-S03]
 prev: CS330-L01
 next: CS330-L03
 ---
 
-
-
-
-
-
-
-
-
 # CS330 — Relational Databases and Transactions
 
 ## Lecture 02: SQL and Query Performance
 
-*Why a database sometimes spends four seconds answering a question it could have answered in fifteen milliseconds—and how to investigate what it's actually doing.*
-
-**Estimated study time:** 90–110 minutes, including the optional PostgreSQL lab.
-
----
-
-### How to listen to this lecture
-
-Written for continuous listening first, then for on-screen re-reading. Theme: **SQL describes the result you want; the planner chooses the physical work** — and **slow queries are diagnosed from plans and row estimates, not folklore**. Sticky-note callouts mark the durable trade-offs. Near the end, answer the oral challenges **out loud** before reading solutions. The PostgreSQL investigation lab lives after the spoken lecture ends — keep it for a screen session.
-
-By the end, you should be able to say why identical SQL can be 250× slower on larger data, when a sequential scan beats an index, how composite and partial indexes align with filters and `ORDER BY`, what `EXPLAIN ANALYZE` reveals when estimates diverge from reality, why N+1 and deep `OFFSET` pages hurt, and which questions to ask before adding another index.
-
----
+*The same SQL query takes fifteen milliseconds in development and four seconds in production. The database is healthy. The query is correct. Yet it performs far more work than necessary. To understand why, we need to stop thinking about SQL as instructions and start thinking about the physical work behind an answer.*
 
 # Part I — Intuition
 
-*SQL describes the answer we want. But the database still has to decide how much work to do to find it. Imagine searching a hotel's reservation archive with and without a useful index.*
+## The picture to carry in your head
 
-### The picture to carry in your head
+Imagine a vast archive containing fourteen million reservation records.
 
-Our booking platform stores fourteen million reservations. Customer support needs the twenty-five most recent confirmed check-ins for one particular hotel during October. On a small development database, the page opens instantly. In production, it takes four seconds.
+You're the archive manager. A colleague arrives with a question:
 
-The query hasn't changed. Neither has the backend code. The database just contains far more information, and somewhere inside it, a plan is being made.
+"Show me the twenty-five most recent confirmed reservations for Hotel 482 during October."
 
-Imagine a huge archive containing fourteen million paper booking cards. You ask the archivist for twenty-five specific cards. One archivist walks past every shelf, opens every box, and checks every card. Another archivist consults a carefully maintained catalogue, goes straight to the relevant hotel and date range, and retrieves the first twenty-five matching cards.
+The request sounds simple.
 
-They answer the same question. One performs vastly less work. That difference is at the heart of SQL query performance.
+Twenty-five records. One hotel. One month.
 
-## 1. The question is not the procedure
+Surely finding them should be easy.
 
-When you write a SQL query, you're normally describing which rows should appear, under which conditions, and in which order. You're not manually instructing the database to open shelf number seventeen, follow a particular index branch, or compare rows in a chosen order.
+But that depends entirely on how the archive is organized.
 
-The database has to decide how to produce the answer. That decision becomes a **query execution plan**. The plan is the work the database intends to perform, not merely the result you asked it to return.
+If the records are stored in boxes according to the order they arrived, you may need to inspect an enormous number of boxes before you can identify the relevant reservations.
 
-For our support dashboard, the logical request is simple: find confirmed reservations, for hotel 482, within a date range, ordered newest first, and return twenty-five.
+If you have an organized catalogue of reservations by hotel and check-in date, you can navigate directly to the relevant section and retrieve the required entries.
 
-The physical choices are less simple. Maybe scan all the records and filter afterward. Maybe use an index to jump near the requested dates. Maybe use one index, fetch the underlying rows, then sort. Some plans may be excellent for eight thousand reservations and terrible for fourteen million.
+The question hasn't changed.
 
-The first diagram shows two ways to answer the same question. Both are correct if executed faithfully; their costs differ.
+The number of records requested hasn't changed.
 
-```mermaid
-flowchart TB
-  Q["Find 25 recent confirmed bookings<br/>for hotel 482 in October"] --> A["Scan a huge reservation table"]
-  Q --> B["Use a suitable ordered index"]
-  A --> C["Check many rows<br/>discard most<br/>possibly sort"]
-  B --> D["Navigate to matching range<br/>read relevant entries<br/>stop after 25"]
-  C --> E["Same 25-row answer"]
-  D --> E
-```
+What changed is the **physical work required to answer it**.
 
-**Checkpoint:** If SQL produces the same correct twenty-five rows through two different plans, does the database necessarily do the same amount of work? No. That's why studying the plan matters.
+This is the central idea of SQL performance.
 
-## 2. The index is a map, not a second database magician
+A SQL query describes a result. PostgreSQL chooses an execution strategy for producing that result.
 
-An index resembles the alphabetical or topical index at the back of a large textbook. Without it, you might inspect every page to find references to one subject. With it, you can find useful locations without reading the whole book.
+Sometimes the strategy is excellent.
 
-A database index records selected values in an organization that supports certain searches efficiently. PostgreSQL commonly uses B-tree indexes for equality, ranges, and useful ordering patterns. The index helps locate relevant rows or, in some cases, supply enough information to answer part or all of a query directly.
+Sometimes it is reasonable for one dataset and terrible for another.
 
-But indexes don't make every query fast. Imagine indexing hotel IDs. If nearly every reservation belongs to one hotel, that index doesn't narrow the search very much. Or imagine asking for every reservation in the database. Reading the table sequentially might be better than following millions of individual index references.
+And sometimes the database makes the wrong choice because its understanding of the data is incomplete.
 
-The important word is **selectivity**: how much of the data a condition rules out. Finding twelve matching rows out of fourteen million is different from finding twelve million.
+## 1. SQL describes the destination, not the route
 
-A useful index is matched to the actual workload, not merely created because a column happens to exist.
+In ordinary application code, we often specify an algorithm.
 
-## 3. A catalogue can be organized in more than one way
+Take an array.
 
-Imagine organizing booking cards by hotel ID, then by check-in date, newest first. If a clerk asks for one hotel's recent check-ins, that organization is wonderful. The clerk can go to the hotel section and walk through recent dates.
+Filter it.
 
-Now imagine the clerk asks for every booking made by customer 17, regardless of hotel. The same catalogue is much less helpful. We organized it for a different question.
+Sort it.
 
-This is the intuition behind a **composite index**: several fields arranged in a chosen order. A particular column order can support some combinations of filtering and sorting far better than others.
+Return the first twenty-five elements.
 
-A support dashboard query using hotel, status, date, and descending order may benefit from an index designed around that access pattern. The right design depends on actual query predicates, distribution, ordering requirements, and how PostgreSQL can use the index.
+SQL is different.
 
-The second diagram illustrates two catalogues built from the same records. Neither organization is universally best.
+We describe the records we want, the conditions they must satisfy, and the ordering we require.
 
-```mermaid
-flowchart LR
-  R["Same reservation records"] --> H["Catalogue by hotel + date<br/>Great for hotel dashboard"]
-  R --> C["Catalogue by customer<br/>Great for customer history"]
-  H --> S["Hotel 482<br/>latest October bookings"]
-  C --> T["Customer 17<br/>all bookings"]
-```
+The database has considerable freedom to decide how to retrieve them.
 
-You should hear a familiar principle from the data-structures course: organize information to make the operations you perform frequently cheap. A database index is a practical expression of that principle.
+It might scan a table.
 
-**Checkpoint:** Would an index ordered primarily by customer ID necessarily be ideal for finding the latest check-ins for one hotel? No. It organizes the archive around a different leading question.
+It might navigate an index.
 
-## 4. Why doesn't the database always choose the best route?
+It might combine several indexes.
 
-Our archive librarian has a problem. Before fetching the cards, the librarian must estimate how much work each strategy will require. Perhaps the archive contains far more October reservations for hotel 482 than expected. Perhaps the catalogue is out of date. Perhaps a particular value is unusually common.
+It might join records using a nested loop, a hash table, or sorted streams.
 
-Databases face similar uncertainty. They collect statistical information about their data and use it to estimate row counts and execution costs. The **query planner** compares candidate strategies using those estimates.
+It might avoid sorting because the required order already exists in an index.
 
-If an estimate is substantially wrong, the chosen plan can be poor. That's why a slow query isn't always fixed by shouting, “Add an index!”
+That freedom is one of the great strengths of relational databases.
 
-We should inspect what PostgreSQL planned, how many rows it expected, how many it actually processed, and where the time went. `EXPLAIN` shows a planned execution strategy. `EXPLAIN ANALYZE` actually executes the query and reports observed work, which must be used carefully with queries that modify data.
+But it also creates a responsibility for engineers: **understand the physical plan chosen for an important query**.
 
-In ordinary terms: ask the archivist **which route did you take, what did you expect to find, and what happened instead?**
+A correct SQL statement does not guarantee an efficient execution plan.
 
-## 5. More indexes can make writes slower
+## 2. An index is a second organization of the same data
 
-Suppose we build a catalogue for every imaginable question: by hotel, customer, room, date, status, amount, creation time, cancellation reason, and dozens of combinations.
+Return to the archive.
 
-Search might become easier for some cases. But whenever a reservation is inserted or updated, the database may need to maintain the relevant indexes too. They occupy storage, consume memory and I/O, and increase write cost.
+Suppose the original reservations are stored in large boxes, roughly according to when they were inserted.
 
-So an index is not free acceleration. It's a trade: spend effort and space maintaining an organization so certain future reads become cheaper.
+We create a separate catalogue sorted by hotel identifier and check-in date.
 
-That is why indexing should follow real query patterns. One valuable index may be better than ten speculative ones.
+Each catalogue entry contains the relevant search keys and a way to locate the original record.
 
-## 6. The hidden queries behind one screen
+Now finding Hotel 482's October reservations can be dramatically faster.
 
-Here's one last twist. Suppose the dashboard loads twenty-five reservations quickly, but then makes one additional database query for each customer name. The screen looks simple. Yet one page load has become twenty-six separate database operations, with repeated network and query overhead.
+That's the intuition behind a B-tree index.
 
-This is the familiar **N-plus-one query problem**. It often appears when application code or an ORM fetches related entities one at a time. A suitable join or batched query may be much more efficient.
+It doesn't ordinarily rearrange the whole table into the desired order.
 
-And suppose the support team navigates to page ten thousand using a giant offset. The database may still need to walk past many qualifying rows before producing that page. A cursor based on stable ordering fields can help for many sequential browsing workflows.
+It maintains a separate searchable structure.
 
-These are not unrelated SQL trivia. They're all questions about **how much physical work we're asking the database to perform to deliver a logical answer**.
+That structure costs space.
 
-### The minute-long mental replay
+It also costs work to maintain whenever relevant data is inserted or modified.
 
-The customer-support screen asks for twenty-five bookings. SQL describes that answer. PostgreSQL chooses a physical plan. A table scan may read vastly more data than necessary; an appropriate index may narrow the search and preserve useful order. The planner estimates which route is cheapest, but its estimates can be wrong. Indexes speed particular read patterns at a maintenance cost, and application code can multiply database work through excessive queries or deep pagination.
+An index is therefore a trade: extra storage and write maintenance in exchange for faster access to particular patterns of data.
 
-When the Deep Dive mentions B-trees, selectivity, composite indexes, query plans, joins, and `EXPLAIN ANALYZE`, keep returning to the archive: **which shelves did we make the librarian visit, and could we have organized the work better?**
+And it only helps when the access pattern can use it effectively.
 
-### Three questions before the Deep Dive
+## 3. An index isn't useful merely because it exists
 
-1. **Does a SQL query tell PostgreSQL exactly how to find the rows?** Usually not. It describes the result; the planner selects an execution strategy.
-2. **Why not index every column?** Each index consumes resources and makes relevant writes more expensive, while many may not help real queries.
-3. **If an endpoint is slow, should we assume PostgreSQL is reading the entire table?** No. Inspect the actual query plan and observed row counts instead of guessing.
+Imagine a reservation database where ninety-two percent of all records have status `confirmed`.
+
+You create an index on the status column.
+
+Then you ask for every confirmed reservation.
+
+Should PostgreSQL use the index?
+
+Not necessarily.
+
+If almost every row qualifies, navigating through an index and retrieving the corresponding table data may be more expensive than scanning the table directly.
+
+Now imagine asking for the tiny minority of reservations with status `pending_review`.
+
+An index may be extremely useful.
+
+The difference is **selectivity**: how much of the dataset a condition eliminates.
+
+The best access path depends not simply on whether a column has an index, but on how many rows the query needs and how expensive retrieving them will be.
+
+## 4. The catalogue must match the question
+
+Suppose our archive catalogue is organized by hotel, then by check-in date.
+
+That's excellent for questions that begin with a hotel.
+
+But a query asking for every reservation across every hotel on one particular date may not benefit in the same way.
+
+The leading organization is different.
+
+This is why composite-index column order matters.
+
+An index on hotel followed by date is not interchangeable with an index on date followed by hotel.
+
+And an index that also supports the desired ordering can sometimes avoid an expensive sort.
+
+A thoughtfully selected composite index can be more useful than several unrelated single-column indexes.
+
+The right design follows the workload.
+
+## 5. The planner must estimate the journey
+
+How does PostgreSQL choose between scanning the table and using an index?
+
+It estimates the cost of possible execution strategies.
+
+To do that, it needs information about the data.
+
+How many rows exist?
+
+How many hotels?
+
+What proportion of reservations are confirmed?
+
+How are check-in dates distributed?
+
+Do particular values occur frequently?
+
+The planner doesn't usually execute every candidate strategy to find out which is fastest.
+
+It makes estimates.
+
+That means it can be wrong.
+
+Suppose one hotel has ten thousand reservations while another has five million.
+
+A query that works well for the first may behave very differently for the second.
+
+And if the planner estimates one hundred matching rows when the actual result contains one hundred thousand, it may choose a poor execution strategy.
+
+This is why understanding query plans is more valuable than applying database folklore.
+
+## 6. One screen can hide enormous work
+
+Our support dashboard displays twenty-five reservations.
+
+But what if the backend retrieves twenty-five reservations and then issues one separate query to load each customer's name?
+
+One screen now requires twenty-six database operations.
+
+What if it retrieves a hundred reservations?
+
+One hundred and one operations.
+
+This is the classic N-plus-one problem.
+
+Alternatively, the backend might construct one enormous join that multiplies reservation rows across several one-to-many relationships.
+
+That's a different kind of waste.
+
+And a page requested using an enormous `OFFSET` may force PostgreSQL to identify and skip many records before returning just twenty-five.
+
+The visual simplicity of the final screen tells us almost nothing about the work performed underneath.
+
+## Three questions before the Deep Dive
+
+Try explaining these aloud.
+
+1. Why can a sequential scan be faster than an index scan even when an appropriate index exists?
+2. Why can two queries using the same columns benefit from different index orders?
+3. Why might an endpoint returning only twenty-five records require the database to examine hundreds of thousands of rows?
+
+If you understand these distinctions, you have the foundation.
+
+**Query performance is about minimizing the cost of producing the requested result, not merely minimizing the number of rows returned.**
 
 *The intuition pass ends here.*
 
@@ -160,384 +228,193 @@ When the Deep Dive mentions B-trees, selectivity, composite indexes, query plans
 
 # Part II — Deep Dive
 
-# 1. The Query That Became 250 Times Slower Without Changing
+## 1. The query that became 250 times slower
 
-It's Monday morning, and somebody from customer support reports that the reservation management dashboard has become painfully slow.
+It's Monday morning.
 
-Not completely broken. That would almost be easier. It works, eventually.
+The customer-support team reports that the reservation dashboard has become painfully slow.
 
-An employee selects a hotel, chooses a date range, and waits four seconds for a list of reservations to appear.
+An employee selects Hotel 482, chooses October, and waits four seconds for the latest twenty-five confirmed reservations.
 
-You open the backend repository and find the responsible SQL query — select reservation identity, customer, dates, and status for one hotel's confirmed check-ins in October, newest first, limited to twenty-five rows:
+You find the SQL query.
 
-```sql
-SELECT
-    r.id,
-    r.customer_id,
-    r.check_in,
-    r.check_out,
-    r.status
-FROM reservations r
-WHERE r.hotel_id = 482
-  AND r.status = 'confirmed'
-  AND r.check_in >= DATE '2026-10-01'
-  AND r.check_in < DATE '2026-11-01'
-ORDER BY r.check_in DESC, r.id DESC
-LIMIT 25;
-```
+It filters by hotel identifier, confirmed status, and an October check-in range.
 
-Nothing particularly exotic. A few conditions, an ordering clause, and a limit. On your development database, the query completes in approximately 15 milliseconds.
+It orders by check-in date descending, using reservation ID as a secondary ordering key.
 
-In production, it takes four seconds. You compare the application code. Identical.
+Then it limits the result to twenty-five rows.
 
-You compare the SQL. Identical. You check the database server.
+On the development database, it takes approximately fifteen milliseconds.
 
-CPU usage is moderate. Memory isn't exhausted. There's plenty of free disk space.
+In production, it takes four seconds.
 
-The database hasn't crashed. It hasn't lost data. It hasn't even become obviously overloaded.
+The SQL is identical.
 
-And yet this perfectly ordinary query is now roughly 250 times slower. What's going on? Here's the first clue.
+The query is logically correct.
 
-Your development database contains 8,000 reservations. Production contains 14 million. That seems like an obvious explanation. More data means more work.
+The difference is the data and the physical execution path.
 
-But hold on.
+The production table contains fourteen million reservations.
 
-If a table contains 14 million reservations, why should PostgreSQL examine all 14 million merely to retrieve 25 reservations from one hotel?
+And the current plan performs much more work than the desired twenty-five-row result suggests.
 
-Surely there must be a smarter way. There is. In fact, PostgreSQL has several fundamentally different ways to execute this query.
+Let's investigate how PostgreSQL produces an answer.
 
-It can scan the entire table. It can search an index. It can combine several indexes.
+## 2. A table isn't an array in memory
 
-It can retrieve rows in an order that avoids sorting. It can choose to read thousands of rows or perhaps only a few dozen.
+A common mental mistake is imagining a PostgreSQL table as one enormous JavaScript array.
 
-And the truly interesting part is that **PostgreSQL itself must decide which approach is most efficient**.
+We picture rows sitting next to one another, waiting to be filtered.
 
-Your SQL describes the result you want. It doesn't normally prescribe the algorithm that must produce it.
+But PostgreSQL stores table data in pages—commonly eight-kibibyte pages in a standard build.
 
-Somewhere between your SQL statement and the returned rows, the database makes an architectural decision on your behalf.
+Its ordinary row storage is called the **heap**.
 
-This decision is called a *query execution plan*.
+The word doesn't refer to a heap priority-queue data structure.
 
-Understanding how PostgreSQL chooses and executes these plans is one of the most valuable database skills an application engineer can develop.
+It describes the table's storage organization, which is not intrinsically ordered by hotel ID, check-in date, or some other business column.
 
-Let's enter the machinery.
+A table page can contain multiple row versions and associated storage metadata.
 
----
+PostgreSQL also uses multiversion concurrency control, or MVCC, so different row versions can exist for transactional reasons.
 
-# 2. SQL Is a Description, Not a Recipe
+We'll study those details in L03.
 
-When we write ordinary application code, we're accustomed to specifying operations procedurally.
+For now, the important consequence is that asking for rows in a particular logical order does not mean the table is physically arranged that way.
 
-Consider this TypeScript pipeline — filter by hotel, filter confirmed status, sort by check-in descending, then take the first twenty-five:
+### Sequential scans
 
-```typescript
-const result = reservations
-  .filter(r => r.hotelId === 482)
-  .filter(r => r.status === "confirmed")
-  .sort((a, b) => b.checkIn.localeCompare(a.checkIn))
-  .slice(0, 25);
-```
+A sequential scan visits table pages and evaluates the relevant predicates against the rows.
 
-The JavaScript code describes a particular sequence of operations. Filter the array. Filter the remaining elements.
+For a small table, this can be extremely efficient.
 
-Sort them. Take the first 25. Even if the runtime optimizes parts of this execution, we've expressed an algorithm.
+For a query that needs most of a large table, it can also be efficient.
 
-SQL works differently. The same intent as a result description — hotel 482, ordered by check-in descending, limited to twenty-five — without naming the algorithm:
+Scanning pages in sequence can be cheaper than following many scattered index references.
 
-```sql
-SELECT *
-FROM reservations
-WHERE hotel_id = 482
-ORDER BY check_in DESC
-LIMIT 25;
-```
+But for a query matching only a tiny fraction of fourteen million rows, scanning the entire table may perform vastly more work than necessary.
 
-We're describing the desired result. We aren't telling PostgreSQL how to obtain it.
+The question is not whether sequential scans are good or bad.
 
-The database might discover that an index already contains the reservations in the required order.
+It's whether scanning the table is a sensible way to answer this particular question.
 
-In that case, explicitly sorting the records would be unnecessary. It might retrieve the first 25 matching index entries and stop. Or it might decide to read the entire table and sort the relevant rows.
+## 3. B-tree indexes: the physical shortcut
 
-The database optimizer explores possible execution strategies and estimates their costs. From SQL through parsing, rewriting, and planning, candidate paths such as sequential scan, index scan, and bitmap scan compete; one plan tree is chosen and executed to produce the result rows:
+PostgreSQL's default index type is B-tree.
 
-```text
-                 SQL QUERY
-                     |
-                     v
-             Parsing and Analysis
-                     |
-                     v
-               Query Rewriting
-                     |
-                     v
-                Query Planner
-                     |
-           +---------+---------+
-           |         |         |
-           v         v         v
-       Seq Scan  Index Scan  Bitmap Scan
-           |         |         |
-           +---------+---------+
-                     |
-                     v
-              Chosen Plan Tree
-                     |
-                     v
-                Executor
-                     |
-                     v
-                 Result Rows
-```
+A B-tree organizes search keys in a balanced, ordered structure.
 
-The optimizer's job is to find a good execution strategy without spending more time optimizing the query than executing it.
+Internal index pages guide navigation toward the appropriate region.
 
-This is why PostgreSQL uses estimates rather than exhaustively testing every possible plan.
+Leaf pages contain index entries associated with table locations, subject to the index's design and implementation.
 
-For a complex query involving many tables, the number of potential join orders and algorithms becomes enormous.
+This allows PostgreSQL to locate relevant entries without examining every table row.
 
-The optimizer must make educated decisions.
+### The two-stage lookup
 
-And like any system making decisions from incomplete information, it can occasionally make the wrong one.
+Suppose an index contains hotel ID and check-in date.
 
-> **Sticky note #1**
->
-> SQL names the result; the planner names the algorithm — and its choice can be wrong when estimates are wrong.
+The database navigates to the relevant index entries.
 
-The important question is: *what information is it using?* To understand that, we need to understand how rows are physically stored and retrieved.
+But our query also needs customer ID, checkout date, and other columns.
 
----
+If those values aren't available in the index, PostgreSQL may need to retrieve the corresponding table rows from the heap.
 
-# 3. The Table Is Not an Array in Memory
+This creates an important performance distinction.
 
-Imagine our `reservations` table contains 14 million rows. It's tempting to picture them as an enormous JavaScript array. But a PostgreSQL table is stored in pages, usually 8 KiB each in a standard installation.
+Finding an index entry can be cheap.
 
-These pages contain row versions and associated storage information. PostgreSQL refers to the table's primary row storage as the **heap**.
+Following a large number of index entries to scattered heap pages may be expensive.
 
-The word *heap* here has nothing to do with the heap data structure we studied in the computer science foundations courses (CS110, CS220, CS320). It means the table isn't intrinsically maintained in the logical order of any particular column.
+If one hundred rows match, those lookups might be trivial.
 
-Rows occupy physical locations within storage pages. A simplified heap — pages of row versions with no guaranteed logical order by ID, date, customer, or hotel:
+If ten million rows match, the same access strategy might be terrible.
 
-```text
-RESERVATIONS TABLE — HEAP
+The index isn't a substitute for understanding selectivity and physical locality.
 
-Page 0
-  Row: Reservation 1042
-  Row: Reservation 1051
-  Row: Reservation 1052
-  ...
+### The primary key is also an index
 
-Page 1
-  Row: Reservation 1053
-  Row: Reservation 1068
-  ...
+PostgreSQL normally supports primary-key uniqueness through an appropriate unique index.
 
-Page 2
-  Row: Reservation 1072
-  Row: Reservation 1081
-  ...
+That makes searching by a primary key efficient.
 
-...
+But it doesn't automatically help queries filtered by hotel and check-in date.
 
-Page 120,000
-  ...
-```
+An index on reservation ID answers a different class of questions.
 
-The physical arrangement isn't guaranteed to correspond to reservation ID, date, customer, or hotel.
+The existence of a primary key isn't a complete indexing strategy.
 
-And updates can create new row versions because PostgreSQL uses Multi-Version Concurrency Control—MVCC.
+## 4. Selectivity: how much data can we avoid?
 
-We'll investigate MVCC properly next session. For now, what matters is that finding a logical row can involve reading storage pages. If the query must examine every row, PostgreSQL can perform a **sequential scan** — start at the beginning of the table, read each page, examine row versions, apply the `WHERE` conditions, and continue until finished:
+Imagine three queries against fourteen million reservations.
 
-```text
-Start at beginning of table
-         |
-         v
-Read page
-         |
-         v
-Examine row versions
-         |
-         v
-Apply WHERE conditions
-         |
-         v
-Continue until finished
-```
+The first retrieves one reservation by primary key.
 
-This sounds primitive.
+The second retrieves every confirmed reservation, representing perhaps seventy percent of the table.
 
-But sequential scanning has a significant advantage: reading a large amount of data in sequence can be efficient.
+The third retrieves confirmed reservations for Hotel 482 during October, perhaps a very small fraction of the entire dataset.
 
-The database can process pages systematically instead of repeatedly jumping between unrelated storage locations.
+All three use filters.
 
-Modern storage devices and operating-system caches make sequential access particularly attractive for large scans.
+But their selectivity differs dramatically.
 
-Therefore, a sequential scan is not automatically evidence of poor performance.
+### Highly selective predicates
 
-If your query needs 80% of the table, scanning it once may be considerably cheaper than performing millions of individual index lookups.
+A condition matching one row out of fourteen million is highly selective.
 
-However, if your query needs only 25 rows out of 14 million, there should usually be a better approach.
+An index can often locate the matching entry with comparatively little work.
 
-Enter the index.
+### Low-selectivity predicates
 
----
+A condition matching ten million rows is not selective.
 
-# 4. A B-Tree: How to Find a Needle Without Inspecting Every Piece of Hay
+If the query also needs many columns from the table, retrieving them through an index may offer little advantage.
 
-Suppose you maintain a telephone directory containing one million names. Someone asks for the phone number of a person named Zimmerman. Would you begin with page one and read every entry?
+A sequential scan may be cheaper.
 
-Of course not. The directory is alphabetically organized.
+### Combined predicates
 
-You can jump toward the end, narrow the relevant region, and find Zimmerman without examining the entire directory.
+A hotel identifier may narrow the search substantially.
 
-A database B-tree index exploits a similar idea. Create a single-column index on hotel identity with `CREATE INDEX idx_reservations_hotel ON reservations (hotel_id)`.
+A date range may narrow it further.
 
-PostgreSQL constructs a separate index structure containing hotel identifiers associated with references to table rows.
+Status might eliminate additional records.
 
-Conceptually, a root splits hotel ranges, internal nodes narrow further, and leaf pages hold the ordered keys — deliberately simplified; real B-trees have more levels:
+The important thing is how the conditions combine.
 
-```text
-                     ROOT
-              +-------+-------+
-              |               |
-          Hotels 1–500    Hotels 501–1000
-              |               |
-         +----+----+      +---+----+
-         |         |      |        |
-       1–250    251–500 501–750 751–1000
-         |         |
-         v         v
-       LEAF      LEAF
-       PAGES     PAGES
-```
+An index optimized for the combined access pattern can sometimes avoid large amounts of unnecessary reading.
 
-This diagram is deliberately simplified. PostgreSQL B-tree indexes contain internal pages and ordered leaf pages, and real structures can have more levels.
+### The dangerous assumption about a boolean index
 
-The important mechanism is hierarchical navigation.
+Consider indexing `is_active` when almost every row has `is_active = true`.
 
-Instead of examining every row, PostgreSQL follows the index toward the relevant key range.
+That index may offer little benefit for the majority case.
 
-For Hotel 482, it descends through the appropriate internal pages, reaches leaf entries for that key, and retrieves references to matching table rows.
+But an index targeting the rare inactive or problematic records could be valuable.
 
-In a healthy, well-sized B-tree, this usually involves traversing relatively few index levels.
+The design follows the distribution of values and the queries that actually matter.
 
-But don't overinterpret the familiar complexity notation. We often describe balanced tree lookup as approximately O of log n.
+**An index is useful when it avoids enough work to justify using it.**
 
-That's a useful abstract model. However, database performance isn't determined solely by algorithmic complexity. The expensive part may be fetching the matching rows from the underlying table.
+## 5. Composite indexes: column order is a strategy
 
-### The second journey: from index to heap
+Now let's examine our hotel dashboard.
 
-Suppose the index finds 3,000 reservations belonging to Hotel 482. The index entries identify where those rows are stored. The executor might need to visit many heap pages to retrieve the actual reservation data — the same hotel key pointing at scattered heap pages:
+It filters by hotel ID and a check-in date range, requires confirmed reservations, and orders by check-in date descending with reservation ID as a tie-breaker.
 
-```text
-B-TREE INDEX
-    |
-    +-- Hotel 482 -> Heap page 918
-    |
-    +-- Hotel 482 -> Heap page 28,410
-    |
-    +-- Hotel 482 -> Heap page 7,206
-    |
-    +-- Hotel 482 -> Heap page 64,812
-    |
-    ...
-```
+A candidate B-tree index uses hotel ID first, then check-in date descending, then reservation ID descending.
 
-The index search itself may be cheap. But the corresponding table access could involve thousands of scattered locations. If the pages aren't already cached, retrieving them may require substantial physical I/O.
+Why that order?
 
-Even cached page accesses and per-row processing have costs. This is the fundamental trade-off between sequential scanning and index scanning.
+Because the query begins with one particular hotel.
 
-**A sequential scan reads more data in an efficient order. An index scan attempts to read less data, potentially with more scattered accesses.**
+The leading equality condition narrows the relevant portion of the index.
 
-> **Sticky note #2**
->
-> Sequential scan ≠ always bad; index scan ≠ always good — the winner depends on how much data you actually need.
+Within that hotel, the date column can support both range filtering and the required ordering.
 
-Whether the index wins depends largely on how much data the query actually needs. And that brings us to selectivity.
+The ID provides a deterministic order for rows sharing the same check-in date.
 
----
-
-# 5. Selectivity: Not All WHERE Clauses Are Created Equal
-
-Consider three queries.
-
-Query A asks for one reservation by primary key:
-
-```sql
-SELECT *
-FROM reservations
-WHERE id = 10842;
-```
-
-Query B asks for every confirmed reservation:
-
-```sql
-SELECT *
-FROM reservations
-WHERE status = 'confirmed';
-```
-
-Query C asks for one hotel's reservations in a date window:
-
-```sql
-SELECT *
-FROM reservations
-WHERE hotel_id = 482
-  AND check_in >= DATE '2026-10-01'
-  AND check_in < DATE '2026-11-01';
-```
-
-These queries might have dramatically different selectivity.
-
-**Selectivity** describes what fraction of rows satisfy a condition.
-
-Suppose the table contains 14 million rows. Illustrative fractions:
-
-1. **Query A — by ID** matches about 1 row, roughly 0.000007% of the table.
-2. **Query B — confirmed** matches about 10 million rows, roughly 71% of the table.
-3. **Query C — hotel and dates** matches about 400 rows, roughly 0.003% of the table.
-
-Query A is extremely selective. A primary-key index lookup is the obvious candidate.
-
-Query B matches most of the table.
-
-An index on `status` might not help much if the query requires returning all those records.
-
-A sequential scan could be preferable. Query C is also highly selective, provided PostgreSQL has an appropriate access path. This is why adding an index on every column isn't a sensible optimization strategy.
-
-An index is beneficial when it allows the executor to avoid enough expensive work.
-
-### The deceptive boolean index
-
-Imagine a table containing 50 million orders. You create an index on the boolean paid flag with `CREATE INDEX idx_orders_paid ON orders (is_paid)`.
-
-But 95% of orders have `is_paid = true`. A query asking for paid orders still potentially needs 47.5 million rows. The index doesn't make that huge result small.
-
-On the other hand, if you frequently process the 5% of orders that remain unpaid, a partial index targeting the appropriate subset may be valuable.
-
-> **Sticky note #3**
->
-> Selectivity beats column presence — an index helps when it shrinks expensive work, not merely because a column appears in `WHERE`.
-
-The usefulness of an index depends on the workload and distribution of values, not merely on the presence of a column in a `WHERE` clause.
-
-Let's now return to our slow reservation query and design an index that understands what we're actually asking.
-
----
-
-# 6. Composite Indexes: The Order of the Columns Matters
-
-Our dashboard query filters by hotel, status, and dates, then orders by check-in date and reservation ID.
-
-A simplistic approach might create separate indexes on hotel, status, and check-in:
-
-```sql
-CREATE INDEX ON reservations (hotel_id);
-CREATE INDEX ON reservations (status);
-CREATE INDEX ON reservations (check_in);
-```
-
-PostgreSQL can sometimes combine indexes through bitmap operations. But three separate indexes are not automatically the best design. What if we create an index that organizes the data according to the actual query pattern — hotel first, then check-in and ID descending:
+A suitable index might look like this:
 
 ```sql
 CREATE INDEX idx_reservations_hotel_date
@@ -548,84 +425,45 @@ ON reservations (
 );
 ```
 
-Picture the index as a sorted catalogue. First by hotel. Then, within each hotel's entries, by check-in date in descending order.
+The important part for listening is the sequence: first identify the hotel, then move through its reservations in the desired date order, breaking ties by ID.
 
-Finally, by reservation ID in descending order. Conceptually, hotels nest their newest check-ins first:
+### Equality before range: a useful starting principle
 
-```text
-Hotel 481
-    Oct 31 — Reservation 9012
-    Oct 30 — Reservation 9011
-    ...
+For a common B-tree query pattern, equality conditions on leading index columns followed by a range condition can be effective.
 
-Hotel 482
-    Oct 31 — Reservation 10842
-    Oct 31 — Reservation 10792
-    Oct 30 — Reservation 10741
-    Oct 29 — Reservation 10693
-    ...
+For instance, an index on hotel ID and check-in date is naturally aligned with a query for one hotel and a bounded date range.
 
-Hotel 483
-    ...
-```
+But don't turn this into the superstition that every equality column must appear first regardless of the required ordering or workload.
 
-Now consider a selective hotel-and-date query that also orders the way the index is sorted:
+Index design depends on filters, sorting, result sizes, and actual plan behavior.
 
-```sql
-SELECT id, check_in
-FROM reservations
-WHERE hotel_id = 482
-  AND check_in >= DATE '2026-10-01'
-  AND check_in < DATE '2026-11-01'
-ORDER BY check_in DESC, id DESC
-LIMIT 25;
-```
+### What if the query filters only by date?
 
-PostgreSQL may navigate directly to the relevant hotel's date range.
+An index organized first by hotel may be much less useful for an all-hotels date search.
 
-Because the index already maintains the required ordering, it may not need a separate sorting step.
+PostgreSQL can sometimes exploit multicolumn B-tree indexes using techniques such as skip scans, depending on the distribution of leading-column values and the expected cost.
 
-It can potentially retrieve 25 qualifying records and stop.
+But that doesn't make column order irrelevant.
 
-That's a much more powerful optimization than merely indexing each filter column independently.
+For an index with thousands of distinct hotel IDs, repeatedly searching hotel-specific regions may be more expensive than another access path.
 
-### Why the column order matters
+The first principle remains: **design the index around the query patterns that matter most, and verify what the planner actually does**.
 
-Suppose we instead create an index that leads with check-in, then hotel — `CREATE INDEX idx_date_hotel ON reservations (check_in, hotel_id)`.
+## 6. Partial indexes: index only the relevant subset
 
-This organizes the entries primarily by date.
+Our dashboard displays confirmed reservations.
 
-For a query selecting one particular hotel across a date range, PostgreSQL may need to examine entries for many hotels within that range.
+It doesn't need pending, canceled, or expired records.
 
-An index beginning with `hotel_id` is often better for a workload where hotel equality comes first.
+Why should its index contain every reservation?
 
-A traditional practical guideline for multicolumn B-tree indexes is:
+PostgreSQL supports **partial indexes**.
 
-**Put highly useful equality conditions first, then consider range conditions and required ordering.**
+A partial index contains entries only for rows satisfying a defined predicate.
 
-But this is a heuristic, not a mathematical law.
+For example, we can index hotel, check-in date, and reservation ID only where status equals `confirmed`.
 
-Column distribution, query patterns, ordering, and PostgreSQL's planner capabilities all matter.
-
-Recent PostgreSQL versions also support B-tree skip-scan strategies for some queries that lack restrictions on leading columns.
-
-So the rule isn't that an index becomes completely unusable when the leftmost column isn't specified.
-
-It's that leading-column restrictions often make the index substantially more efficient.
-
-### An overlooked detail: tie-breaking
-
-Why include `id DESC`? Because multiple reservations can share the same check-in date. If we sort only by date, their relative order isn't fully specified.
-
-A stable unique tie-breaker gives us deterministic ordering. That's essential for reliable pagination, which we'll investigate shortly.
-
----
-
-# 7. Partial and Covering Indexes: Designing for a Particular Workload
-
-Let's make the query even more interesting. The dashboard only displays confirmed reservations. Do we really need an index entry for every cancelled, expired, and pending reservation?
-
-Not necessarily. PostgreSQL supports **partial indexes** — same hotel and date ordering keys, but only where status is confirmed:
+That can make the index smaller and more targeted than a corresponding full-table index.
 
 ```sql
 CREATE INDEX idx_confirmed_reservations_hotel_date
@@ -637,32 +475,41 @@ ON reservations (
 WHERE status = 'confirmed';
 ```
 
-This index contains entries only for confirmed reservations. It can be smaller than a corresponding full-table index.
+This index is attractive when confirmed-reservation queries are common and the reduction in index size or access work is valuable.
 
-And it is particularly relevant to queries whose conditions establish that `status = 'confirmed'`.
+But partial indexes have an important limitation.
 
-Our dashboard query qualifies. But there's a subtle restriction.
+### The planner must prove the predicate applies
 
-The planner must be able to establish that the query's predicate implies the partial index predicate.
+PostgreSQL can use a partial index only when it can establish that the query's conditions imply the index predicate.
 
-For example, a prepared statement using a generic plan with an unrestricted parameter `WHERE status = $1` cannot assume `$1` always equals `'confirmed'`. Such a generic plan may therefore be unable to use our partial index.
+If the query explicitly requires `status = 'confirmed'`, that relationship is straightforward.
 
-This is one reason SQL behavior can differ between literal examples and parameterized production queries.
+But imagine a generic prepared plan using `status = $1`.
 
-### Covering indexes
+The parameter might later be `confirmed`, `pending`, or something else.
 
-Suppose the dashboard needs identity, hotel, check-in, and customer — and our index has the first three keys but not customer:
+A generic plan cannot simply assume every possible value satisfies the partial-index predicate.
 
-```sql
-SELECT id, hotel_id, check_in, customer_id
-FROM reservations
-WHERE hotel_id = 482
-  AND status = 'confirmed'
-ORDER BY check_in DESC, id DESC
-LIMIT 25;
-```
+It may therefore be unable to use the index.
 
-Our index contains `hotel_id`, `check_in`, and `id`, but not `customer_id`. PostgreSQL may need to visit the heap to retrieve that final field. One option is a covering partial index that includes customer as payload:
+A custom plan generated for a particular parameter value can behave differently.
+
+This explains why an index may look perfect in a SQL console yet not appear in the application's actual prepared-query plan.
+
+**The query the planner sees matters—not merely the query you imagined writing.**
+
+## 7. Covering indexes and index-only scans
+
+Now suppose our dashboard needs customer ID in addition to the indexed hotel, date, and reservation ID.
+
+A normal index scan may need to visit the heap to retrieve customer ID.
+
+PostgreSQL supports included columns through `INCLUDE`.
+
+These columns are stored as index payload rather than as ordinary search-order keys.
+
+A covering partial index could include customer ID to make more of the selected data available directly from the index.
 
 ```sql
 CREATE INDEX idx_confirmed_dashboard
@@ -671,969 +518,808 @@ ON reservations (
   check_in DESC,
   id DESC
 )
-INCLUDE (customer_id)
+INCLUDE (customer_id, check_out)
 WHERE status = 'confirmed';
 ```
 
-The `INCLUDE` column is stored as payload. It isn't an additional search key. Now the index contains all the selected fields.
+Now the index may contain everything needed for some dashboard queries.
 
-Could PostgreSQL answer the query without visiting the table? Potentially. This is called an **index-only scan**.
+That creates the possibility of an **index-only scan**.
 
-But there's a catch. PostgreSQL must still verify MVCC visibility.
+But the name is slightly misleading.
 
-An index entry doesn't, by itself, establish that its row version is visible to the current transaction.
+### Why index-only doesn't guarantee zero heap visits
 
-PostgreSQL uses a visibility map to determine whether a heap page can safely be skipped. For recently modified pages, it may still need heap access. Therefore, *index-only* does not always mean literally zero heap fetches.
+PostgreSQL uses MVCC to determine which row versions are visible to a transaction.
 
-An execution plan can show an `Index Only Scan` together with a nonzero `Heap Fetches` count.
+An index entry doesn't by itself contain all the information needed to establish visibility.
 
-Covering indexes are especially useful for relatively stable data and frequently executed queries with a predictable set of required columns.
+PostgreSQL uses a visibility map to identify heap pages whose tuples can be considered visible without checking each row version.
 
-They are less attractive when they become enormous or when indexed payload values change frequently.
+If the relevant heap page isn't marked appropriately, even an index-only scan may need a heap fetch.
 
-And that brings us to a cost many developers overlook. Every index is another structure that must be maintained when data changes. We'll return to that shortly.
+This is why `EXPLAIN ANALYZE` can show an `Index Only Scan` with nonzero `Heap Fetches`.
 
----
+Index-only scans tend to be particularly attractive for suitable queries against relatively stable data.
 
-# 8. EXPLAIN: Looking Inside the Optimizer's Decision
+On frequently updated tables, visibility checks and index-maintenance costs may reduce the benefit.
 
-We've discussed several possible execution strategies. But how do you determine which one PostgreSQL actually chose? You ask it — plain `EXPLAIN` on a hotel-and-status filter:
+And including more columns makes the index larger.
 
-```sql
-EXPLAIN
-SELECT *
-FROM reservations
-WHERE hotel_id = 482
-  AND status = 'confirmed';
-```
+The question isn't whether an index can theoretically cover a query.
 
-PostgreSQL returns an execution plan. One possibility is a sequential scan with both predicates as filters:
+It's whether doing so improves the real workload enough to justify the storage and write costs.
 
-```text
-Seq Scan on reservations
-  Filter: ((hotel_id = 482) AND (status = 'confirmed'))
-```
+## 8. `EXPLAIN`: the database tells us its plan
 
-Another is an index scan that applies the hotel as an index condition and status as a residual filter:
+So far, we've reasoned about possible access paths.
 
-```text
-Index Scan using idx_reservations_hotel_date
-  Index Cond: (hotel_id = 482)
-  Filter: (status = 'confirmed')
-```
+But how do we learn what PostgreSQL actually intends to do?
 
-Or a bitmap index scan feeding a bitmap heap scan on the same hotel condition:
+We use `EXPLAIN`.
 
-```text
-Bitmap Heap Scan on reservations
-  Recheck Cond: (hotel_id = 482)
-  -> Bitmap Index Scan on idx_reservations_hotel_date
-       Index Cond: (hotel_id = 482)
-```
+A plan is a tree of operations.
 
-These are simplified illustrations, not output from a measured database. Each plan represents a different method of retrieving the result.
+Its leaf nodes obtain data.
+
+Other nodes filter, join, aggregate, sort, or limit it.
 
 ### Sequential scan
 
-Read table pages and evaluate the filter against rows. Useful when much of the table needs examination.
+A `Seq Scan` reads table pages and evaluates conditions.
+
+It can be entirely appropriate when many rows are needed.
 
 ### Index scan
 
-Navigate through the index and retrieve matching table rows.
+An `Index Scan` navigates an index and typically retrieves matching table rows.
 
-Useful when the index provides an efficient way to find a relatively small or conveniently ordered result.
+It can be useful when the index narrows the search or provides an advantageous order.
 
-### Bitmap index and heap scan
+### Bitmap index and heap scans
 
-First use index information to identify qualifying heap locations. Then retrieve matching heap pages in a more efficient order.
+A `Bitmap Index Scan` identifies candidate heap locations.
 
-This can be advantageous when the query matches enough rows that repeated individual heap lookups would be expensive, but not so many that a full sequential scan is preferable.
+A `Bitmap Heap Scan` then retrieves relevant table pages.
+
+This can reduce inefficient scattered heap access for certain result sizes.
 
 ### Index-only scan
 
-Attempt to satisfy the query using information stored in the index, consulting heap visibility where necessary.
+An `Index Only Scan` attempts to obtain required data from the index while checking visibility as needed.
 
-The optimizer chooses between these approaches based on its estimates. But `EXPLAIN` alone reveals what PostgreSQL *expects* to happen. What if those expectations are wrong?
+### Sort, join, and limit nodes
 
-That's where `EXPLAIN ANALYZE` enters the story.
+Other plan nodes arrange or combine the data.
 
----
+A `Sort` may process many rows even when a parent `Limit` returns only a few.
 
-# 9. EXPLAIN ANALYZE: The Database Gives Its Testimony
+A join node may execute a child operation repeatedly.
 
-Consider `EXPLAIN` with `ANALYZE` and `BUFFERS` so PostgreSQL actually runs the query and reports measured work:
+A limit node may be able to stop an underlying scan early—or may sit above operations that already did substantial work.
 
-```sql
-EXPLAIN (ANALYZE, BUFFERS)
-SELECT *
-FROM reservations
-WHERE hotel_id = 482
-  AND status = 'confirmed';
-```
+The plan tells us much more than whether an index exists.
 
-Unlike plain `EXPLAIN`, this actually executes the query and reports what happened.
+It shows the sequence of physical operations the database expects to perform.
 
-It includes estimated costs and row counts, actual execution times, actual row counts, loop counts, and information about buffer activity.
+## 9. `EXPLAIN ANALYZE`: expectations versus actual work
 
-A plan node might report something like: index scan on `idx_reservations_hotel_date`, estimated cost from 0.43 to 125.60 expecting about 80 rows, but actual time from 0.050 to 4.200 milliseconds with 3,100 rows in one loop:
+Plain `EXPLAIN` tells us the chosen plan and its estimates.
 
-```text
-Index Scan using idx_reservations_hotel_date
-  (cost=0.43..125.60 rows=80 width=64)
-  (actual time=0.050..4.200 rows=3100 loops=1)
-```
+`EXPLAIN ANALYZE` executes the query and reports what actually happened.
 
-These numbers are illustrative. Look at the discrepancy. The planner expected approximately 80 rows.
+With the `BUFFERS` option, we can also inspect useful buffer-accounting information.
 
-The query actually returned 3,100. That's almost a fortyfold underestimate. Why does this matter?
+This is where database performance diagnosis becomes much more concrete.
 
-Because the optimizer may have chosen an index scan believing it would perform a few dozen row lookups.
+### Estimated cost isn't elapsed time
 
-Instead, it performed thousands. Perhaps a different plan would have been cheaper.
+A plan node has estimated startup and total costs.
 
-### Understanding the important fields
+These numbers are measured in PostgreSQL's internal cost units.
 
-**Estimated cost.** The values after `cost=` are PostgreSQL's internal estimates of startup and total execution cost. They are not milliseconds. You cannot interpret `cost=100` as a prediction of 100 ms.
+They are not milliseconds.
 
-**Estimated rows.** The planner's estimate of the number of rows produced by that plan node.
+An estimated cost of 100 doesn't mean PostgreSQL predicts the query will take one hundred milliseconds.
 
-**Actual time.** Measured execution time, in milliseconds, for the node.
+Costs exist primarily to compare alternative plans within the planner's model.
 
-**Actual rows.** The average number of rows produced per execution of that node.
+### Estimated rows versus actual rows
 
-**Loops.** How many times the node was executed. This last field matters enormously for joins.
+Suppose the planner expects eighty rows from a particular index scan.
 
-If an inner index scan runs 10,000 times and reports an average of one row per loop, it may have produced approximately 10,000 rows overall.
+But the actual execution produces 3,100.
 
-A seemingly cheap operation repeated thousands of times can become expensive.
+That is almost a fortyfold underestimate.
 
-### Buffers: did we actually read from storage?
+The planner may have chosen an index scan believing it would perform a small number of heap lookups.
 
-You may see buffer activity such as `Buffers: shared hit=1200 read=85`.
+Instead, it performed thousands.
 
-A shared buffer hit means PostgreSQL found the required block in its shared buffer cache.
+Perhaps a different strategy would have been cheaper.
 
-A read means the block was brought into PostgreSQL's shared buffers, but it does not necessarily mean a physical disk access occurred; the operating system's filesystem cache may have supplied it.
+The mismatch between estimated and actual row counts is often more informative than the presence of a particular scan type.
 
-Buffer counts are block accesses, not necessarily counts of distinct pages. They tell you useful things about the amount and nature of database work. You may also see temporary blocks used for sorting or hashing.
+### Loops multiply work
 
-Those often reveal that an operation exceeded its available memory budget and required temporary storage.
+Imagine a nested-loop join.
 
-### Read plans from the bottom upward
+The inner index scan executes ten thousand times.
 
-Execution plans are trees. Leaf nodes generally obtain raw data. Parent nodes transform, join, sort, or aggregate that data.
+Its plan output reports one row per loop and an average time of a few microseconds.
 
-A useful debugging technique is to start with the data-access nodes and work upward. Ask:
+That sounds cheap.
 
-What data did PostgreSQL read? How many rows survived filtering? How did it combine them?
+But the operation was repeated ten thousand times.
 
-Did it sort them? How often did it repeat each operation? Where did the estimates diverge from reality?
+The cumulative work can be significant.
 
-> **Sticky note #4**
->
-> `EXPLAIN` is expectation; `EXPLAIN ANALYZE` is testimony — chase large estimated-versus-actual gaps before guessing indexes.
+When reading `EXPLAIN ANALYZE`, always inspect `loops`.
 
-A vital caution: `EXPLAIN ANALYZE` actually executes statements. Running it on an `UPDATE`, `DELETE`, or `INSERT` can modify data—use a controlled environment, and understand transaction and side-effect behavior before experimenting with writes. Even an expensive read-only query can consume significant production resources; treat the tool as an instrument, not a harmless observer.
+The reported actual row counts and timings for a node are generally averages per execution. Repeated execution changes their meaning.
 
----
+### Buffer hits and reads
 
-# 10. Why the Planner Sometimes Gets It Wrong
+A plan may report shared-buffer hits and reads.
 
-Let's investigate that dramatic difference between estimated and actual row counts. How does PostgreSQL estimate result sizes in the first place? It collects statistics about table contents.
+A shared hit means PostgreSQL found a required page in its own shared buffer cache.
 
-These include approximate table sizes, value distributions, common values, and histograms. For example, the planner might know that:
+A shared read means a block was brought into those buffers.
 
-- Approximately 70% of reservations are confirmed.
-- There are roughly 1,000 distinct hotel identifiers.
-- Certain check-in dates are unusually common.
-- A particular column contains many null values.
+It doesn't automatically prove that the block came from physical disk; the operating system's page cache may have supplied it.
 
-This helps estimate selectivity. But statistics are imperfect. They're generally based on samples and approximations.
+This matters when someone interprets a buffer-read count as a literal disk-operation count.
 
-And the planner cannot know every possible relationship among columns.
+Buffer statistics reveal important patterns of database work, but they must be interpreted according to their actual semantics.
+
+### Why `ANALYZE` isn't a harmless prefix
+
+`EXPLAIN ANALYZE` really executes the statement.
+
+For an `UPDATE` or `DELETE`, that can modify data.
+
+Even a `SELECT` can consume significant resources, invoke functions with side effects, or produce heavy load under certain conditions.
+
+Use a controlled environment or a carefully planned production-safe investigation.
+
+And remember that the executor's reported time isn't necessarily the entire application-observed latency.
+
+Connection-pool waiting, network transport, serialization, and application processing can add time outside the measured executor interval.
+
+## 10. Why the planner sometimes chooses badly
+
+PostgreSQL's optimizer estimates result sizes from collected statistics.
+
+These include row counts, distinct-value estimates, histograms, and common-value information.
+
+The estimates are useful but imperfect.
+
+They may become stale as data changes.
+
+They may also miss important relationships between columns.
 
 ### The correlation trap
 
-Imagine a multinational hotel platform. Nearly every reservation for Hotel 482 belongs to Lithuania. Your query asks for that hotel and country code `LT` — `WHERE hotel_id = 482 AND country_code = 'LT'`.
+Suppose Hotel 482 accounts for one percent of all reservations.
 
-Suppose Hotel 482 accounts for 1% of reservations, and Lithuania accounts for 5%. If the planner naively treats these conditions as independent, it might estimate one percent times five percent — five hundredths of one percent of the table, or 0.0005 as a fraction.
+And five percent of reservations belong to Lithuania.
 
-That's 0.05% of the table.
+If the planner treats hotel ID and country as independent, it may estimate that a query filtering on both selects approximately one percent multiplied by five percent of the table.
 
-But if nearly all Hotel 482 reservations are Lithuanian, the true fraction could be close to 1%.
+That's only 0.05 percent.
 
-The estimate could be wrong by a factor approaching twenty. Why? Because `hotel_id` and `country_code` are correlated.
+But if nearly every reservation for Hotel 482 is in Lithuania, the actual result could be close to one percent.
 
-PostgreSQL supports **extended statistics** to improve certain estimates involving related columns — dependencies and most-common-value combinations on hotel and country, then refresh with `ANALYZE`:
+The estimate is wrong by roughly a factor of twenty.
+
+That's a substantial difference for a cost-based optimizer.
+
+PostgreSQL can use **extended statistics** to learn certain cross-column relationships, including functional dependencies and frequent combinations of values.
+
+Creating suitable extended statistics can improve particular cardinality estimates.
+
+But it's not a universal cure for arbitrary join correlations or every range-predicate problem.
+
+### Stale statistics
+
+Suppose our production table has grown from one hundred thousand rows to fourteen million.
+
+Or reservations become concentrated among a small number of unusually large hotels.
+
+If statistics no longer reflect the relevant distribution, the planner can make poor choices.
+
+Autovacuum and auto-analyze normally maintain statistics, but exceptional workloads sometimes require targeted investigation.
+
+Refreshing statistics is useful when they are stale.
+
+It will not magically create an index that doesn't exist.
+
+And it won't fix an API waiting four seconds for a database connection when the SQL itself executes in ten milliseconds.
+
+**A planner can only optimize using the information and access paths available to it.**
+
+## 11. Joins: different ways to combine relationships
+
+In CS330-L01, we normalized the hotel schema.
+
+Reservations reference customers.
+
+Reservation items reference room types.
+
+That means producing a complete dashboard may require joins.
+
+A join specifies a logical relationship.
+
+PostgreSQL still must choose how to execute it.
+
+Three algorithms are particularly useful to recognize.
+
+### Nested-loop join
+
+Imagine retrieving twenty-five reservations, then looking up each customer through the customer's primary-key index.
+
+That's a nested-loop pattern.
+
+For every reservation, retrieve the matching customer.
+
+With a small outer result and cheap indexed lookups, this can be extremely efficient.
+
+But suppose the outer input contains one million reservations.
+
+Now the inner operation may execute one million times.
+
+The same algorithm may become expensive.
+
+The important evidence is the number of outer rows and inner-loop executions.
+
+A nested-loop join is not inherently bad.
+
+A nested loop with a huge unexpected outer input often is.
+
+### Hash join
+
+PostgreSQL can build an in-memory hash table from one input, using the join key.
+
+Then it scans the other input and probes the hash table.
+
+This is often useful for joining substantial datasets on equality conditions.
+
+But building the hash table consumes memory.
+
+If it cannot fit within the relevant memory budget, the operation may need batching and temporary storage.
+
+The best join algorithm depends on input size, filtering, memory, and other costs.
+
+### Merge join
+
+If both inputs are sorted on the join key, PostgreSQL can advance through them together.
+
+This can be efficient for large sorted inputs.
+
+But obtaining the sorted order may itself require work.
+
+An index might already provide a suitable order.
+
+Alternatively, PostgreSQL may need to sort an input before merging.
+
+### Join order matters too
+
+With several tables, the optimizer must decide which relationships to combine first.
+
+Imagine joining five tables before applying a highly selective hotel filter.
+
+That could create a large intermediate result.
+
+A plan that narrows relevant rows earlier may be much cheaper.
+
+But the planner's ability to choose that strategy depends on estimated cardinalities and supported transformations.
+
+When row estimates are wrong, join plans can go wrong in surprisingly expensive ways.
+
+## 12. The ORM trap: one page, 101 queries
+
+Now let's move back to the Node.js application.
+
+The dashboard retrieves one hundred reservations.
+
+For each reservation, the application separately looks up the customer's name.
+
+The result is correct.
+
+But the application performs one query for reservations and another hundred queries for customers.
+
+This is the **N-plus-one query problem**.
+
+Each lookup may be cheap in isolation.
+
+Together, they can incur substantial network round trips, database scheduling, and execution overhead.
+
+### Two common solutions
+
+One option is a join that retrieves reservation and customer information together.
+
+Another is to retrieve the page of reservations, then fetch all relevant customers in one batched query.
+
+Which is better?
+
+It depends on the data shape and query requirements.
+
+A join is often excellent for a straightforward many-to-one relationship.
+
+But when a query joins several one-to-many relationships, result rows may multiply.
+
+Suppose one reservation has five items and three related events.
+
+Joining both child collections carelessly can produce fifteen combinations for that reservation.
+
+The ORM might reconstruct the desired objects.
+
+But the database still produced and transferred the multiplied rows.
+
+This is **join-induced row explosion**, a different failure from N-plus-one.
+
+A useful strategy for complex API responses is:
+
+First, retrieve the appropriate page of primary entities.
+
+Then fetch related collections through a small number of batched queries.
+
+Finally, assemble the response.
+
+This may be easier to reason about than one enormous join.
+
+The point isn't that ORMs are bad.
+
+It's that they cannot eliminate the physical consequences of the SQL they generate.
+
+A senior engineer should know how to inspect that SQL.
+
+## 13. Sorting: why `LIMIT 25` can still be expensive
+
+Our query asks for the newest twenty-five reservations.
+
+It uses an `ORDER BY` clause and a `LIMIT`.
+
+Surely PostgreSQL only needs to examine twenty-five rows?
+
+Not necessarily.
+
+Without a suitable ordered access path, it may need to examine every matching reservation before identifying the newest twenty-five.
+
+PostgreSQL may use a bounded top-N sorting strategy rather than fully sorting every row in the conventional sense.
+
+That's an optimization.
+
+But it still needs to consider the candidate rows.
+
+### Index order can avoid the sort
+
+A B-tree index aligned with the filter and requested ordering can allow PostgreSQL to retrieve rows already in the desired order.
+
+It may then stop once enough qualifying rows have been found.
+
+This can be dramatically faster than scanning and sorting a large matching set.
+
+But the index must match the actual query requirements.
+
+A residual filter may cause PostgreSQL to examine additional index entries before it finds twenty-five qualifying rows.
+
+The difference between twenty-five rows returned and twenty-five entries examined still matters.
+
+### Sorting can use temporary storage
+
+Large sorts can exceed the memory made available to the operation.
+
+PostgreSQL may then use temporary files.
+
+That creates additional I/O.
+
+In an execution plan, sort methods and temporary-block activity can help reveal this behavior.
+
+Increasing a memory setting might help a particular operation, but it also increases potential memory consumption across concurrently executing operations.
+
+Again, more memory isn't a universal substitute for an appropriate access path.
+
+## 14. Pagination: page 10,000 isn't like page 1
+
+The dashboard displays reservations in pages of twenty-five.
+
+Page one uses an offset of zero.
+
+Page two skips twenty-five rows.
+
+Now imagine a user navigating to page ten thousand.
+
+The query requests twenty-five rows after skipping 249,975 earlier results.
+
+Even with an appropriately ordered index, PostgreSQL generally must traverse the relevant earlier entries to reach that position.
+
+Those skipped rows aren't free.
+
+Large offsets can make late pages increasingly expensive.
+
+### Keyset pagination
+
+Instead of saying "skip the first 249,975 rows," we can describe where the next page begins.
+
+Suppose the last row of the previous page had check-in date October 17, 2026, and reservation ID 10,842.
+
+Our ordering is by check-in date descending and ID descending.
+
+The next-page predicate asks for rows whose pair of values is less than that final pair.
+
+This is **keyset pagination**, sometimes exposed through an opaque cursor.
+
+A suitable composite index can navigate to the continuation point efficiently.
+
+The database no longer needs to walk through every earlier page merely to skip it.
+
+### Why the ID matters
+
+Many reservations can share the same check-in date.
+
+If we use only the date, pagination may skip records sharing that date or repeat them incorrectly.
+
+Including a unique tie-breaker establishes a stable total ordering for the query.
+
+### The limits of cursors
+
+Keyset pagination is especially useful for sequential navigation through large result sets.
+
+But it makes arbitrary jumps to numbered pages more difficult.
+
+Cursors also need to match the original filters and sorting definition.
+
+And they don't automatically provide a consistent database snapshot across several HTTP requests.
+
+If records are inserted or updated between pages, the results can change.
+
+The correct pagination strategy depends on product behavior and consistency requirements.
+
+The broader insight is that pagination changes the physical query workload.
+
+It's not merely a frontend presentation decision.
+
+## 15. Every index has an ongoing cost
+
+We've spent most of this lecture investigating the value of indexes.
+
+Now consider a table with fifteen indexes.
+
+Every inserted row may require updates to several index structures.
+
+Changes to indexed values can require additional maintenance.
+
+Indexes consume storage and cache capacity.
+
+They contribute to write amplification, WAL generation, and maintenance work.
+
+Not every index affects every update identically. PostgreSQL's storage and update mechanisms introduce important nuances, including cases where certain updates can avoid index modifications.
+
+But the general trade-off remains: indexes speed particular reads at a cost to other operations.
+
+### The wrong index can be an expensive decoration
+
+Suppose we add an index on a column rarely used for filtering or ordering.
+
+The planner hardly ever selects it.
+
+Yet the database must continue maintaining it where relevant.
+
+The index provides little value while consuming resources.
+
+A better approach is workload-driven index design.
+
+Identify important queries.
+
+Examine their filters, ordering, joins, and actual plans.
+
+Choose indexes that reduce substantial work.
+
+Then measure the effect on reads and writes.
+
+### Indexes should be treated as an investment
+
+A useful index has an expected return.
+
+That return may be lower response latency, improved throughput, reduced I/O, or more predictable tail performance.
+
+Its costs include storage, maintenance, write overhead, and migration complexity.
+
+This is why adding five indexes to fix one slow query is not automatically a good engineering decision.
+
+Find the smallest set that materially improves the important workload.
+
+## 16. Reconstructing the four-second query
+
+We now have enough knowledge to investigate our original incident.
+
+The support dashboard takes four seconds.
+
+The SQL is correct.
+
+The production table contains fourteen million rows.
+
+What should we do?
+
+### First, verify that the database query is actually slow
+
+The API might spend time waiting for a database connection, performing authorization checks, serializing large responses, or calling another service.
+
+Measure the actual SQL execution interval separately from the HTTP request duration.
+
+If the query finishes in twenty milliseconds, optimizing its index probably won't resolve a four-second endpoint.
+
+### Second, capture the real SQL and parameters
+
+If the application uses an ORM, inspect the generated statement.
+
+Include the actual parameter values or representative parameter distributions.
+
+A query may behave well for most hotels and poorly for one extremely large tenant.
+
+Prepared-statement plan behavior may also matter.
+
+We need to investigate what production actually executes.
+
+### Third, inspect the execution plan
+
+Use `EXPLAIN`, and where safe, `EXPLAIN (ANALYZE, BUFFERS)`.
+
+Look for scans reading far more data than needed.
+
+Look for large sort operations.
+
+Look for repeated nested-loop executions.
+
+Compare estimated and actual row counts.
+
+Check whether an index can supply the requested ordering.
+
+### Fourth, inspect the data distribution
+
+How many reservations belong to Hotel 482?
+
+How many are confirmed?
+
+How many fall within October?
+
+Is this hotel's data distribution unusual?
+
+Are statistics stale?
+
+Does the planner understand important correlations?
+
+The development database's small and uniform data may be a poor model of production.
+
+### Fifth, test the smallest plausible fix
+
+Suppose we discover that PostgreSQL scans and sorts a large number of matching reservations.
+
+A targeted partial composite index on confirmed reservations, organized by hotel and descending check-in date and ID, becomes a reasonable candidate.
+
+We create and test the index in an appropriate environment.
+
+Then repeat the query under representative data.
+
+We inspect the new plan.
+
+Does the database use the index?
+
+Does it avoid the costly sort?
+
+How many rows and pages does it examine?
+
+Does it actually reduce execution time?
+
+### Sixth, evaluate the wider consequences
+
+Our improvement might accelerate dashboard reads.
+
+But does it significantly increase write costs?
+
+Does it create additional storage pressure?
+
+Does it help other hotels and date ranges?
+
+Will the index remain useful as distributions change?
+
+We should measure the relevant workload, not merely celebrate one faster test query.
+
+A good optimization reduces real production cost without introducing unacceptable new costs elsewhere.
+
+---
+
+# The Oral Examination
+
+Answer each question aloud before reading its solution. Explain the likely mechanism and what evidence you'd seek.
+
+**Question 1 — The unused index**
+
+A table has ten million rows, and ninety-two percent of them have status `completed`. PostgreSQL chooses a sequential scan despite an index on status. Is the optimizer necessarily wrong?
+
+**Question 2 — Index ordering**
+
+You frequently query reservations by one hotel, within a check-in date range, ordered by check-in date descending and ID descending. What composite-index design would you consider, and why?
+
+**Question 3 — The partial-index surprise**
+
+You create a partial index for confirmed reservations. A literal query uses it, but a generic prepared query with `status = $1` doesn't. Why?
+
+**Question 4 — The bad row estimate**
+
+A plan expects eighty rows and actually returns 3,100. Why can this cause a poor access-path or join decision?
+
+**Question 5 — The join debate**
+
+A nested-loop join executes twenty-five indexed lookups. Another nested-loop join executes one million. Is the join type itself sufficient to determine which query is efficient?
+
+**Question 6 — The slow LIMIT**
+
+A query returns only twenty-five rows but performs a costly sort. Why doesn't `LIMIT 25` automatically make the query cheap?
+
+**Question 7 — The N-plus-one trap**
+
+An ORM loads one hundred reservations and then separately retrieves each customer's name. What are two reasonable alternatives, and what danger can arise from joining several one-to-many relationships?
+
+**Question 8 — The production diagnosis**
+
+The API takes four seconds, but `EXPLAIN ANALYZE` reports only thirty milliseconds of query execution. What would you investigate before adding an index?
+
+---
+
+# Solutions and Discussion
+
+## Solution 1 — A scan can be cheaper
+
+When most rows satisfy the condition, the index may eliminate little work. Retrieving almost the entire table through many index references can be more expensive than scanning it directly.
+
+Inspect row selectivity, required columns, actual plan behavior, and relevant statistics. An index isn't an obligation to use it.
+
+## Solution 2 — Match equality, range, and order
+
+A candidate B-tree index uses hotel ID first, then check-in date descending, then reservation ID descending.
+
+The hotel equality narrows the search, and the remaining keys align with the date range and requested ordering.
+
+Verify the plan and consider a partial index if confirmed-reservation queries dominate.
+
+## Solution 3 — Predicate implication matters
+
+The partial index includes only rows satisfying its predicate.
+
+A generic plan with an unrestricted status parameter cannot assume the parameter always means confirmed.
+
+The planner must establish that the query predicate implies the index predicate for the relevant plan.
+
+A custom parameter-specific plan may behave differently.
+
+## Solution 4 — The cost estimate was based on the wrong cardinality
+
+The planner may choose many individual index lookups or a particular join strategy because it expects a small result.
+
+If the actual result is much larger, the chosen plan may perform far more work than expected.
+
+Investigate statistics, correlations, and the access paths available.
+
+## Solution 5 — The amount of repeated work matters
+
+A nested loop with twenty-five cheap indexed lookups may be excellent.
+
+One million repeated lookups may be very expensive.
+
+Inspect outer-row count, inner-loop cost, and total execution behavior before judging the algorithm.
+
+## Solution 6 — The database may still need to examine many candidates
+
+Without an ordered access path, PostgreSQL may need to inspect all qualifying rows before selecting the newest twenty-five.
+
+A top-N sort can reduce sorting work but doesn't eliminate the need to consider the candidates.
+
+A matching ordered index may allow earlier termination.
+
+## Solution 7 — Batch or join deliberately
+
+A join can retrieve the customers with reservations.
+
+Alternatively, fetch the page of reservations, then retrieve customers in one batched query.
+
+Several one-to-many joins can multiply result rows, so a page-plus-batched-relations approach may be preferable for complex responses.
+
+## Solution 8 — Separate database time from request time
+
+The four seconds may come from connection-pool waiting, network delays, application processing, serialization, locks, or other work outside the measured executor interval.
+
+Trace the request and identify where elapsed time accumulates.
+
+Don't optimize a thirty-millisecond query merely because the endpoint is slow.
+
+---
+
+# The Mental Model Worth Keeping
+
+When a SQL query is slow, ask five questions:
+
+**Access:** How does PostgreSQL find the relevant rows?
+
+**Volume:** How many rows and pages must it examine compared with how many it returns?
+
+**Estimation:** Did the planner correctly predict the data volume and distribution?
+
+**Composition:** How do joins, sorting, and pagination multiply the work?
+
+**Trade-off:** Will the proposed index or query change improve the real workload without imposing unacceptable write and maintenance costs?
+
+**SQL describes the answer. The execution plan describes the work. Performance engineering means understanding and improving that work.**
+
+# Next Lecture — CS330-L03: Transactions and Isolation
+
+We've learned how to retrieve relational data efficiently.
+
+Now imagine two customers trying to reserve the final Deluxe room for the same night.
+
+Both queries execute quickly.
+
+Both transactions contain individually valid statements.
+
+Both eventually commit.
+
+Yet the hotel has confirmed two bookings for one remaining room.
+
+How can successful database operations combine into an invalid business outcome?
+
+In CS330-L03, we'll investigate transaction isolation, MVCC, locks, lost updates, serialization anomalies, and the mechanisms that make concurrent database operations correct rather than merely fast.
+
+*The spoken lecture ends here. The remaining material is for practical investigation and screen-based revision.*
+
+---
+
+# Optional Practical Lab — Watch PostgreSQL Change Its Mind
+
+Use a disposable local PostgreSQL database. None of these experiments should be applied blindly to a production table.
+
+## Experiment A — Build representative reservations
+
+Create a simplified reservations table:
 
 ```sql
-CREATE STATISTICS reservations_hotel_country_stats
-  (dependencies, mcv)
-ON hotel_id, country_code
-FROM reservations;
+CREATE TABLE reservations (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  hotel_id INTEGER NOT NULL,
+  customer_id INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  check_in DATE NOT NULL,
+  check_out DATE NOT NULL
+);
+```
+
+Generate an illustrative dataset using `generate_series`:
+
+```sql
+INSERT INTO reservations (
+  hotel_id, customer_id, status, check_in, check_out
+)
+SELECT
+  1 + (g % 1000),
+  1 + (g % 50000),
+  CASE WHEN g % 10 < 7
+    THEN 'confirmed'
+    ELSE 'cancelled'
+  END,
+  DATE '2026-01-01' + (g % 365),
+  DATE '2026-01-02' + (g % 365)
+FROM generate_series(1, 500000) AS g;
 
 ANALYZE reservations;
 ```
 
-The `dependencies` statistic captures certain functional relationships, while `mcv` captures common combinations of values.
+This is a synthetic dataset with deliberately simple distributions. It is not intended to replicate real production skew.
 
-These statistics can help the optimizer with supported combinations of predicates.
+**Question:** Why might a query's plan differ significantly when the dataset contains only five hundred rows rather than five hundred thousand?
 
-They are not a universal cure for all correlation problems, particularly those involving arbitrary joins, ranges, or complex expressions.
+## Experiment B — Inspect the unindexed access path
 
-### Stale statistics
-
-Suppose your table grows from 100,000 reservations to ten million. Or a major marketing campaign suddenly concentrates traffic on a handful of hotels.
-
-If the statistics haven't been refreshed adequately, PostgreSQL may be optimizing using an outdated picture of reality.
-
-Running `ANALYZE reservations;` refreshes planner statistics.
-
-Autovacuum normally handles automatic analysis, but unusual workloads or substantial changes may justify manual investigation.
-
-However, don't develop the habit of responding to every slow query with `ANALYZE` and a prayer.
-
-If the query lacks a useful index, fresher statistics won't conjure one into existence.
-
-And if the database is blocked on locks or exhausted connection pools, the planner may not be your problem at all.
-
-The fundamental principle is:
-
-**The optimizer makes decisions from its model of the data. Better information can improve those decisions, but it cannot replace an appropriate physical access path.**
-
----
-
-# 11. Joins: Three Different Ways to Combine Relationships
-
-In CS330-L01, we normalized our schema. Hotels live in one table. Reservations live in another.
-
-Customers live in a third. Now the dashboard needs reservation and customer information — join customers on identity for hotel 482:
-
-```sql
-SELECT
-  r.id,
-  r.check_in,
-  c.display_name
-FROM reservations r
-JOIN customers c
-  ON c.id = r.customer_id
-WHERE r.hotel_id = 482;
-```
-
-How should PostgreSQL execute this? Several algorithms are possible.
-
-### Nested-loop join
-
-Imagine PostgreSQL finds 25 reservations. For each reservation, it looks up the associated customer by primary key — find a reservation, look up its customer, find the next reservation, look up again:
-
-```text
-Find reservation
-      |
-      v
-Look up its customer
-      |
-      v
-Find next reservation
-      |
-      v
-Look up its customer
-      |
-      ...
-```
-
-This can be highly efficient when the outer result is small and the inner lookup uses an index.
-
-Twenty-five indexed customer lookups may be extremely cheap. But imagine the outer input contains one million reservations. Now the inner lookup might execute one million times.
-
-That's potentially expensive. A nested-loop join isn't inherently bad.
-
-Its cost depends on how many iterations it performs and how expensive each inner operation is.
-
-### Hash join
-
-PostgreSQL can read one input and build an in-memory hash table keyed by the join column. Then it scans the other input and probes that hash table — build from customers by ID, then probe with reservations:
-
-```text
-CUSTOMERS
-    |
-    v
-Build hash table by customer ID
-    |
-    v
-RESERVATIONS
-    |
-    v
-Probe customer hash table
-    |
-    v
-Joined rows
-```
-
-Hash joins are often attractive for joining substantial datasets when the join is based on equality.
-
-But building the hash table consumes memory.
-
-If the operation exceeds its memory budget, it may need to process data in batches involving temporary disk storage.
-
-### Merge join
-
-If both inputs are sorted by their join keys, PostgreSQL can advance through them together — sorted reservations and sorted customers feeding a merge:
-
-```text
-Sorted reservations ------+
-                          |
-                          v
-                       Merge Join
-                          ^
-                          |
-Sorted customers ---------+
-```
-
-Merge joins can be effective when large sorted inputs are available or when the required ordering is useful elsewhere in the plan.
-
-The database may exploit existing indexes or explicitly sort inputs.
-
-### Join order matters too
-
-Now imagine five related tables: reservations, customers, hotels, reservation items, and room types.
-
-PostgreSQL must decide not just which join algorithms to use, but which relationships to combine first.
-
-Joining large unfiltered tables before applying a highly selective condition might create an enormous intermediate result.
-
-Applying useful filters early can dramatically reduce subsequent work. The planner searches for efficient alternatives. And again, its choices depend on estimated cardinality.
-
-If it expects 100 intermediate rows but actually produces five million, a plan that seemed excellent can become disastrous.
-
-That is why row-estimation errors often propagate into join-performance problems.
-
----
-
-# 12. The ORM Trap: One Page, 101 Queries
-
-Let's switch perspectives. You're working in Node.js with TypeORM. The frontend requests 100 reservations with customer information.
-
-You write a repository find limited to one hundred rows:
-
-```typescript
-const reservations = await reservationRepository.find({
-  take: 100,
-});
-```
-
-Then, for each reservation, a separate customer lookup by ID:
-
-```typescript
-for (const reservation of reservations) {
-  reservation.customer = await customerRepository.findOneBy({
-    id: reservation.customerId,
-  });
-}
-```
-
-What's wrong? Nothing functionally. Every reservation receives the correct customer.
-
-But the backend executes one query to retrieve reservations, followed by 100 customer queries.
-
-That's the classic **N+1 query problem** — one query for the page, then one hundred for each customer, totaling 101 round trips.
-
-If each query incurs network, database scheduling, and execution overhead, the accumulated cost becomes substantial.
-
-Even worse, the database might be fast enough that individual queries look harmless. The problem is their multiplicity.
-
-### The obvious repair
-
-We could retrieve the related customers in one query with an `IN` list of IDs — `SELECT * FROM customers WHERE id IN (...)` — then associate customers with reservations in application memory. Or we could use a join that returns reservation and customer fields together for the hotel page:
-
-```sql
-SELECT
-  r.id,
-  r.check_in,
-  c.id AS customer_id,
-  c.display_name
-FROM reservations r
-JOIN customers c
-  ON c.id = r.customer_id
-WHERE r.hotel_id = 482
-ORDER BY r.check_in DESC, r.id DESC
-LIMIT 100;
-```
-
-In TypeORM, relationship loading and query-builder features can help, depending on mapping and loading strategy.
-
-But there's a second trap.
-
-### The giant join problem
-
-Suppose each reservation has five items and each item has three associated records.
-
-A careless join across several one-to-many relationships can multiply the number of result rows.
-
-One reservation may appear repeatedly in the SQL result because of combinations of its child relationships.
-
-Even if the ORM reconstructs the correct entity graph, it may need to transfer and process far more rows than expected.
-
-This isn't strictly N+1 anymore. It's *row explosion*. The lesson is not that joins are bad or that ORMs are inefficient.
-
-The lesson is that **an ORM doesn't repeal relational algebra or the physical cost of fetching data**.
-
-You still need to understand the generated SQL. For a complex reservation dashboard, a good strategy might be:
-
-1. Query the specific page of reservation IDs.
-2. Fetch associated customers and items in a small number of batched queries.
-3. Assemble the response.
-
-In many systems this is simpler and more predictable than constructing one enormous join spanning every relationship.
-
-A useful senior-engineering skill is recognizing when the ORM's convenience is hiding an expensive access pattern.
-
----
-
-# 13. Sorting: The Hidden Cost of ORDER BY
-
-Let's revisit our original query — hotel filter, newest check-ins first, limit twenty-five:
-
-```sql
-SELECT *
-FROM reservations
-WHERE hotel_id = 482
-ORDER BY check_in DESC
-LIMIT 25;
-```
-
-The `LIMIT 25` looks comforting. We're requesting only 25 rows. Surely PostgreSQL only needs to process 25 rows?
-
-Not necessarily.
-
-Without an appropriate index, PostgreSQL may need to examine every reservation belonging to Hotel 482 before determining which 25 are the latest.
-
-It might then perform a bounded top-N sort, keeping only the best candidates in memory.
-
-That's better than necessarily sorting the entire matching set in full, but it still must consider the candidate rows.
-
-An index aligned with both the filter and the ordering can change the situation dramatically — hotel, then check-in and ID descending:
-
-```sql
-CREATE INDEX idx_hotel_latest
-ON reservations (hotel_id, check_in DESC, id DESC);
-```
-
-Now PostgreSQL may be able to navigate to the hotel's records in the desired order and stop after retrieving the first 25.
-
-Instead of reading tens of thousands of rows, evaluating candidates, and finding the latest twenty-five, we may get: find the hotel's ordered index range, read the first twenty-five suitable entries, and return. That's a substantial reduction in work.
-
-But it depends on whether the index and query conditions genuinely permit early termination.
-
-A residual filter not represented effectively by the index may force PostgreSQL to scan many additional entries to find 25 matches.
-
-### Sorting large datasets
-
-Execution plans can report sort methods and memory usage. If an operation spills to disk, it may be constrained by the memory available for sorting.
-
-PostgreSQL's `work_mem` setting influences memory available to individual sort and hash operations.
-
-But setting `work_mem` to an enormous value globally is not automatically wise.
-
-A complex query can contain multiple memory-consuming operations, and many queries may run concurrently.
-
-An innocent-looking global increase can multiply memory consumption across the system. Again, the appropriate response is diagnosis rather than guesswork. Sometimes an index eliminates the sort.
-
-Sometimes a query rewrite reduces input size. Sometimes a memory adjustment is justified.
-
-And sometimes sorting is simply the right operation, with a cost that the application must accommodate.
-
----
-
-# 14. Pagination: Why Page 10,000 Is Not Like Page 1
-
-Consider a reservation listing API. The frontend requests page 1 — hotel 482, newest first, twenty-five rows from offset zero:
-
-```sql
-SELECT id, check_in
-FROM reservations
-WHERE hotel_id = 482
-ORDER BY check_in DESC, id DESC
-LIMIT 25 OFFSET 0;
-```
-
-Fine. Page 2 uses `LIMIT 25 OFFSET 25`. Also fine. Now imagine the user jumps to page 10,000 with `LIMIT 25 OFFSET 249975`.
-
-What does PostgreSQL do?
-
-It cannot simply teleport to the 249,976th logical result in an arbitrary filtered ordering without doing work to identify the skipped entries.
-
-Even with a suitable ordered index, it generally must traverse the preceding qualifying entries to reach the requested offset.
-
-The rows skipped by `OFFSET` are still computed. As the offset grows, the amount of work often grows too.
-
-### Cursor-based pagination
-
-Suppose the first page ends with check-in `2026-10-17` and ID `10842`.
-
-Instead of requesting page 2 through an offset, keep the same hotel filter and descending order, but replace the offset with a **row comparison**: treat check-in and id as a pair and require that pair to be *less than* October 17 2026 and id 10842 — then limit twenty-five. For descending “next page” semantics, that less-than on the sort tuple is the keyset predicate:
-
-```sql
-SELECT id, check_in
-FROM reservations
-WHERE hotel_id = 482
-  AND (
-    check_in,
-    id
-  ) < (
-    DATE '2026-10-17',
-    10842
-  )
-ORDER BY check_in DESC, id DESC
-LIMIT 25;
-```
-
-This is **keyset pagination**, often exposed to clients through opaque cursors. The query directly describes where the next page begins. A matching composite index can navigate efficiently to that position.
-
-This is especially attractive for large, frequently accessed datasets.
-
-### Why include both date and ID?
-
-Multiple reservations may have the same check-in date. If the cursor contained only the date, we could skip records sharing that date. Including the unique ID establishes a total ordering.
-
-In this example, both sort columns are descending and non-null, which makes the tuple comparison appropriate.
-
-Mixed sort directions or null semantics require more careful cursor predicates.
-
-### Cursor pagination isn't magic
-
-It introduces trade-offs. Jumping directly to arbitrary numbered pages becomes harder. The cursor must remain associated with the original filters and sort order.
-
-If records are inserted, deleted, or modified between requests, subsequent pages can reflect those changes.
-
-A cursor doesn't automatically produce a transactionally consistent snapshot across multiple HTTP requests.
-
-But for activity feeds, event histories, large reservation lists, and infinite scrolling, cursor pagination is often preferable to enormous offsets.
-
-The interesting principle is:
-
-**Pagination is not merely a frontend UI choice. It determines the access pattern the database must support.**
-
----
-
-# 15. Why More Indexes Can Make the Database Slower
-
-We've spent much of this lecture celebrating indexes. Let's ruin the party slightly. Imagine a table with twelve indexes.
-
-Every time the application inserts a reservation, PostgreSQL may need to update multiple index structures.
-
-When indexed values change, the corresponding index maintenance may also be required. Indexes consume storage. They generate additional write activity.
-
-They contribute to WAL volume, maintenance work, and cache pressure. And their existence doesn't guarantee that the planner will use them. Suppose the table receives 20,000 writes per second.
-
-Adding an index to accelerate a rare administrative report might impose continuous write overhead on a critical transactional workload.
-
-That could be a poor trade.
-
-### Updates and index maintenance
-
-PostgreSQL's MVCC implementation creates new row versions during updates.
-
-Some updates can use a HOT—Heap-Only Tuple—optimization, avoiding new index entries when the necessary conditions are satisfied.
-
-Updating indexed columns generally prevents that optimization.
-
-A database with many indexes on frequently modified fields may therefore incur substantial maintenance overhead.
-
-### Indexes should follow query patterns
-
-A sensible design process begins with actual queries. Which queries are frequent? Which are expensive?
-
-Which business operations have strict latency requirements? What rows do they filter? How do they sort?
-
-How much data do they return? Only then should you consider an index. For example, a customer-history index leading with customer, then created-at and ID descending:
-
-```sql
-CREATE INDEX idx_reservation_customer_history
-ON reservations (customer_id, created_at DESC, id DESC);
-```
-
-This might be useful for retrieving a customer's recent reservation history. But it won't automatically solve every hotel-administration query. Indexes are specialized data structures serving particular access patterns.
-
-They're not general-purpose speed buttons.
-
-> **Sticky note #5**
->
-> Indexes follow workloads — every extra structure is write, WAL, and cache cost you pay whether the planner uses it or not.
-
----
-
-# 16. Diagnosing a Slow Production Query Systematically
-
-Let's return to the original production incident. The reservation dashboard takes four seconds. What should a competent engineer do?
-
-Not immediately add an index. Not immediately double the database instance size.
-
-And definitely not start adjusting obscure PostgreSQL configuration parameters like somebody trying to tune a piano with a hammer.
-
-Start by identifying where the time is spent.
-
-### First: Is the database actually slow?
-
-The API takes four seconds. But perhaps the SQL query finishes in 30 milliseconds.
-
-The delay could come from connection-pool contention, authorization lookups, external APIs, serialization, or application-level processing.
-
-Measure the database call separately from the total request duration. If the query itself is slow, continue.
-
-### Second: Capture the real query
-
-Inspect the SQL actually executed by the application. Include relevant parameter values.
-
-An ORM query that looks simple in TypeScript may generate complicated SQL involving joins and nested conditions.
-
-Make sure you're investigating the actual workload.
-
-### Third: Obtain the execution plan
-
-Use `EXPLAIN`, and where operationally safe, `EXPLAIN (ANALYZE, BUFFERS)`. Investigate row estimates, access methods, joins, loops, sorting, and buffer activity. Look for mismatches between estimated and actual rows.
-
-### Fourth: Understand the data distribution
-
-How large are the relevant tables? How selective are the filters? Are certain tenants disproportionately large?
-
-Have data volumes or distributions changed? Are the planner statistics reasonably current?
-
-A query that performs well for a hotel with 200 reservations may behave very differently for a hotel with five million.
-
-### Fifth: Design the smallest useful improvement
-
-Potential interventions include:
-
-1. Adding a workload-aligned index.
-2. Changing an inefficient query.
-3. Avoiding unnecessary columns.
-4. Eliminating N+1 behavior.
-5. Reducing join multiplication.
-6. Switching to keyset pagination.
-7. Updating stale statistics.
-8. Batching work.
-9. Using an appropriate reporting or pre-aggregation strategy.
-
-Choose the improvement supported by evidence.
-
-### Sixth: Verify the effect under realistic conditions
-
-A faster local query isn't automatically a production success. Measure representative data volumes and parameters. Check write overhead, concurrency, memory consumption, and regressions in related queries.
-
-Finally, monitor the change after deployment.
-
-A query optimization that improves one dashboard while significantly slowing critical writes is not necessarily a win.
-
-Production performance is a system-level concern.
-
----
-
-# 17. The Oral Examination
-
-Pause the lecture for each one.
-
-Answer **out loud** — as if an interviewer were across the table — before you listen to or read the solutions.
-
-They're designed to reinforce practical judgment rather than obscure planner trivia.
-
-### Challenge A — The Unused Index
-
-**Suggested time: 8 minutes**
-
-A table contains ten million rows. You create an index on `status`. The query selects every order where `status = 'completed'`. About 92% of rows have this status. PostgreSQL chooses a sequential scan.
-
-Is the optimizer malfunctioning?
-
-What would you investigate?
-
-### Challenge B — Composite Index Order
-
-**Suggested time: 8 minutes**
-
-You frequently execute a parameterized hotel-and-date query: hotel id equals a parameter, check-in on or after a start date and before an end date, ordered by check-in and ID descending, limited to fifty rows:
-
-```sql
-SELECT *
-FROM reservations
-WHERE hotel_id = $1
-  AND check_in >= $2
-  AND check_in < $3
-ORDER BY check_in DESC, id DESC
-LIMIT 50;
-```
-
-Which index would you consider first, and why? Would an index on `(check_in, hotel_id)` be equivalent?
-
-### Challenge C — The Misleading Execution Plan
-
-**Suggested time: 8 minutes**
-
-An `EXPLAIN ANALYZE` result shows estimated rows of 100 and actual rows of 850,000.
-
-What does this tell you? What might cause the mismatch? Why could it affect join algorithms?
-
-### Challenge D — The ORM Dilemma
-
-**Suggested time: 8 minutes**
-
-An endpoint retrieves 100 orders. For every order, it separately fetches the customer, payment, and delivery records. The SQL queries themselves are individually fast.
-
-The endpoint is slow. How would you investigate and redesign this access pattern?
-
-### Challenge E — The Surprisingly Slow LIMIT
-
-**Suggested time: 8 minutes**
-
-A developer selects from `events` ordered by `created_at` descending with `LIMIT 10`. The table contains 100 million rows. The query is slow. The developer argues that retrieving ten rows should never be expensive.
-
-What's wrong with that reasoning?
-
-### Challenge F — Adding Five Indexes
-
-**Suggested time: 8 minutes**
-
-A colleague proposes adding indexes on every frequently used column to improve read performance.
-
-The system already processes thousands of writes per second. What consequences would you consider before approving the change?
-
----
-
-# 18. Solutions and Discussion
-
-*Listen or read only after you have answered each challenge out loud.*
-
-### Solution A — Unused index
-
-If 92% of rows match the filter, an index may provide little benefit. The executor would still need to retrieve almost the entire table. Using the index could add substantial heap-access overhead.
-
-A sequential scan may be cheaper.
-
-I would examine the execution plan, actual data distribution, requested columns, and query frequency before making any change.
-
-If the business frequently needs the minority of orders that are not completed, a targeted index for those operations might be much more valuable.
-
-The existence of an index doesn't create an obligation to use it.
-
-### Solution B — Composite index order
-
-A strong candidate is an index on hotel, then check-in and ID descending:
-
-```sql
-CREATE INDEX ON reservations (
-  hotel_id,
-  check_in DESC,
-  id DESC
-);
-```
-
-The hotel equality condition identifies the relevant group. The date range narrows the search. The ordering aligns with the index's structure.
-
-The limit may allow early termination.
-
-An index beginning with `check_in` is not necessarily equivalent because it organizes rows by date before hotel.
-
-It may be less effective for retrieving one hotel's ordered reservations. The optimal choice still depends on real workload characteristics.
-
-### Solution C — Misleading execution plan
-
-PostgreSQL expected roughly 100 rows but produced 850,000.
-
-This suggests that its statistical model, predicate assumptions, or estimates derived from the query structure were substantially wrong.
-
-Possible causes include stale statistics, correlated columns, skewed data, or difficult expressions.
-
-The planner may have chosen a nested-loop join expecting a small outer result. With 850,000 rows, the inner operation might execute hundreds of thousands of times. A hash join or another strategy could potentially be cheaper.
-
-The correct investigation is to identify where the first large estimation error occurs and why.
-
-### Solution D — ORM dilemma
-
-The endpoint may execute hundreds of queries despite each query being individually fast. I would inspect the generated SQL and count database calls per request.
-
-Potential solutions include batching related data retrieval, using appropriate joins, or fetching IDs first and loading associations in a controlled number of queries.
-
-But one giant join isn't automatically optimal. Multiple one-to-many relationships can multiply result rows.
-
-The goal is a predictable, efficient access pattern with acceptable result size and round-trip count.
-
-### Solution E — Surprisingly slow LIMIT
-
-Without an appropriate index, PostgreSQL may need to examine a huge number of rows to identify the ten most recent events.
-
-It can potentially use a bounded top-N sort, but it still needs to process the candidates. An index on an appropriate ordering key, such as created-at and ID descending, can support efficient retrieval of the latest records:
-
-```sql
-CREATE INDEX ON events (created_at DESC, id DESC);
-```
-
-The ordering must match the query's actual requirements, and the unique tie-breaker helps deterministic pagination.
-
-The important difference is between *returning ten rows* and *finding which ten rows should be returned*.
-
-### Solution F — Adding five indexes
-
-Every additional index consumes storage and may increase insertion, update, deletion, WAL, and maintenance overhead.
-
-Indexes can also interfere with HOT-update opportunities and place additional pressure on memory and storage caches.
-
-I would require concrete query patterns and performance evidence before adding several indexes.
-
-Then I would assess their overlap, size, selectivity, read benefit, and write overhead.
-
-Sometimes one carefully designed composite index replaces several less useful single-column indexes.
-
-More indexes are not automatically better.
-
----
-
-# 19. The Mental Model Worth Keeping
-
-Back to the Monday dashboard: identical SQL, healthy CPU, and a query that is 250 times slower in production — not because the statement changed, but because fourteen million rows and the wrong physical access path made the planner's choice expensive.
-
-That's what makes SQL performance different from ordinary application profiling.
-
-**SQL performance is determined not only by what you ask the database to return, but by the physical work required to find and produce that result.**
-
-Several important consequences follow. A sequential scan isn't automatically bad. An index scan isn't automatically good.
-
-Indexes help when they reduce expensive work enough to justify their own access and maintenance costs.
-
-Composite indexes are particularly valuable when they align with real filters and ordering requirements.
-
-The query planner decides how to execute SQL using estimates derived from available statistics.
-
-Those estimates can be wrong, especially when data distributions are skewed or columns are correlated.
-
-`EXPLAIN ANALYZE` allows us to compare the planner's assumptions with observed execution.
-
-Joins are algorithms with different performance characteristics, not merely SQL syntax connecting tables.
-
-ORMs make database access convenient but cannot eliminate query multiplicity, join multiplication, or expensive access patterns.
-
-Pagination choices determine how much data must be traversed to retrieve a page. And the entire optimization process should begin with evidence rather than folklore.
-
-Remember these durable distinctions:
-
-- **SQL ≠ recipe** — you describe the result; the planner chooses the algorithm.
-- **Seq scan ≠ failure; index ≠ win** — cost depends on how much data you need and how you access it.
-- **Selectivity ≠ column presence** — indexes help when they shrink expensive work.
-- **Composite order ≠ interchangeable** — equality, range, and `ORDER BY` alignment matter.
-- **`EXPLAIN` ≠ reality; `ANALYZE` ≠ free** — estimates can lie; measured plans still execute the statement.
-- **N+1 ≠ fast queries** — multiplicity and row explosion hide behind convenient ORMs.
-- **`LIMIT` ≠ limited work; deep `OFFSET` ≠ teleport** — pagination is an access pattern.
-- **More indexes ≠ faster system** — every index is write, WAL, and maintenance cost.
-
-> **The master sticky note**
->
-> When a query becomes slow, investigate the work PostgreSQL is performing before changing the code or adding infrastructure.
-
-The most useful question isn't "Why is PostgreSQL slow?" It's: **What work did PostgreSQL decide was necessary, and was that decision appropriate for the actual data?**
-
-Once you can answer that question, database performance stops looking like mysterious machinery and becomes an engineering problem you can reason about.
-
----
-
-# 20. Next Lecture — CS330-L03: Transactions — When Correct Operations Produce Incorrect Results
-
-We've spent an entire lecture making databases faster. Now we're going to make them correct.
-
-Or rather, investigate why apparently correct database operations can combine to produce catastrophically incorrect outcomes.
-
-Imagine a hotel with one Deluxe room left for tomorrow night. Two customers attempt to reserve it simultaneously. Both requests check availability.
-
-Both see one room remaining. Both begin database transactions. Both create reservations.
-
-Both commit successfully. And somehow, the hotel has sold its final room twice.
-
-The disturbing part is that neither individual request necessarily contains an obvious programming mistake.
-
-Even placing every operation inside a database transaction doesn't automatically solve every concurrency problem.
-
-Why? What exactly does a transaction guarantee? What is isolation?
-
-How does PostgreSQL let different transactions read and modify data simultaneously? What are MVCC snapshots, row locks, lost updates, write skew, and serialization failures?
-
-And why can two transactions each observe a perfectly reasonable world while collectively creating an impossible one?
-
-In **CS330-L03**, we'll examine **ACID, transaction isolation, MVCC, locking, concurrency anomalies, and optimistic concurrency control**.
-
-We'll construct the double-booking problem, reproduce it, and explore several ways to prevent it.
-
-This will be one of the most important sessions in the course. Because a slow booking system is inconvenient.
-
-A fast booking system that confidently sells rooms it doesn't have is a considerably more expensive form of entertainment.
-
----
-
-## Optional Practical Lab — Watch PostgreSQL Change Its Mind
-
-*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet and technical references.*
-
-Build a small dataset and watch how query planning changes.
-
-The experiment deliberately creates hundreds of thousands of reservations, but it doesn't need a production-scale database.
-
-Use a local PostgreSQL instance or a disposable test database.
-
-**Suggested time: 25–35 minutes.**
-
-> **Gym rules:** predict the plan shape before you run each `EXPLAIN`. Challenge spoilers are in Solutions and Discussion above; lab answers follow the experiments.
-
-### Experiment A — Create the table
-
-Drop any prior demo table and create `demo_reservations` with identity primary key, hotel, customer, check-in, status, and total:
-
-```sql
-DROP TABLE IF EXISTS demo_reservations;
-
-CREATE TABLE demo_reservations (
-  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-
-  hotel_id INTEGER NOT NULL,
-  customer_id INTEGER NOT NULL,
-
-  check_in DATE NOT NULL,
-  status TEXT NOT NULL,
-
-  total_minor INTEGER NOT NULL
-);
-```
-
-### Experiment B — Generate sample data
-
-Insert roughly 300,000 random reservations across about 100 hotels and 50,000 customers, with check-ins over three years and about 70% confirmed:
-
-```sql
-INSERT INTO demo_reservations (
-  hotel_id,
-  customer_id,
-  check_in,
-  status,
-  total_minor
-)
-SELECT
-  1 + floor(random() * 100)::INTEGER,
-
-  1 + floor(random() * 50000)::INTEGER,
-
-  DATE '2025-01-01'
-    + floor(random() * 1095)::INTEGER,
-
-  CASE
-    WHEN random() < 0.7 THEN 'confirmed'
-    ELSE 'cancelled'
-  END,
-
-  10000 + floor(random() * 90000)::INTEGER
-
-FROM generate_series(1, 300000);
-```
-
-Because the data is random, the exact distribution varies from run to run. Refresh planner statistics with `ANALYZE demo_reservations;`.
-
-### Experiment C — Investigate the unindexed query
-
-Run `EXPLAIN (ANALYZE, BUFFERS)` on a selective hotel-and-date dashboard-style query with limit 25:
+Our dashboard query filters by hotel, confirmed status, and October check-in dates, then returns twenty-five rows in descending date and ID order.
 
 ```sql
 EXPLAIN (ANALYZE, BUFFERS)
@@ -1641,9 +1327,10 @@ SELECT
   id,
   customer_id,
   check_in,
-  total_minor
-FROM demo_reservations
-WHERE hotel_id = 42
+  check_out,
+  status
+FROM reservations
+WHERE hotel_id = 482
   AND status = 'confirmed'
   AND check_in >= DATE '2026-10-01'
   AND check_in < DATE '2026-11-01'
@@ -1651,19 +1338,19 @@ ORDER BY check_in DESC, id DESC
 LIMIT 25;
 ```
 
-Inspect the plan. You may see a sequential scan followed by a sort and limit.
+Inspect the plan.
 
-The precise choice and timings depend on the PostgreSQL version, machine, data distribution, and cache state.
+Does it use a sequential scan? Is a sort present? How many rows are filtered out? What does the buffer activity indicate?
 
-Don't assume a particular execution plan is guaranteed. Notice how many rows are examined relative to the final 25.
+Avoid assuming a particular plan will always appear. PostgreSQL selects a plan based on the actual table size, statistics, and environment.
 
-### Experiment D — Introduce a partial composite index
+## Experiment C — Add the targeted partial index
 
-Create a partial index for confirmed rows keyed by hotel, then check-in and ID descending; refresh statistics; re-run the same `EXPLAIN (ANALYZE, BUFFERS)`:
+Create an index aligned with the dashboard's filter and order:
 
 ```sql
-CREATE INDEX idx_demo_confirmed_hotel_date
-ON demo_reservations (
+CREATE INDEX idx_confirmed_dashboard
+ON reservations (
   hotel_id,
   check_in DESC,
   id DESC
@@ -1671,170 +1358,289 @@ ON demo_reservations (
 WHERE status = 'confirmed';
 ```
 
-Then `ANALYZE demo_reservations;` and compare plans. Questions to investigate:
+Repeat the query from Experiment B.
 
-Did PostgreSQL choose an index scan? Did the explicit sort disappear? How many rows were retrieved?
+Compare execution time, row counts, buffer activity, and whether PostgreSQL uses the index.
 
-How much buffer activity occurred? Was the result materially faster?
+**Question:** Did the index reduce actual work? If so, which operation became cheaper or disappeared?
 
-Don't worry if it isn't dramatically faster. This dataset is relatively small, and much of it may already be cached.
+## Experiment D — Test covering-index behavior
 
-The useful observation is the change in access strategy.
-
-### Experiment E — Ask a different question
-
-Try `EXPLAIN (ANALYZE, BUFFERS)` selecting every confirmed reservation with `SELECT *`.
-
-Will the partial index from Experiment D necessarily help? No. This query retrieves a large fraction of the table.
-
-A sequential scan may be cheaper. Furthermore, the index contains only some of the columns needed by `SELECT *`. The query is fundamentally different from the selective dashboard lookup.
-
-### Experiment F — Explore pagination
-
-Compare a large offset against the first page — same filters and ordering, `LIMIT 25 OFFSET 1000` versus `OFFSET 0` — with `EXPLAIN (ANALYZE, BUFFERS)`.
-
-Look at how much work the executor performs.
-
-Then retrieve the last `(check_in, id)` pair from the first page and experiment with keyset pagination.
-
-If the dataset doesn't contain enough matching rows for a large offset, reduce it.
-
-The objective is to understand how the access pattern changes—not to produce impressive benchmark figures.
-
-### Experiment G — Optional: Explore index-only scans
-
-Create a covering partial index that includes customer and total as payload:
+Create a variant that includes additional selected columns:
 
 ```sql
-CREATE INDEX idx_demo_covering
-ON demo_reservations (
+CREATE INDEX idx_confirmed_dashboard_cover
+ON reservations (
   hotel_id,
   check_in DESC,
   id DESC
 )
-INCLUDE (customer_id, total_minor)
+INCLUDE (customer_id, check_out)
 WHERE status = 'confirmed';
 ```
 
-In this disposable test database, you can run `VACUUM (ANALYZE) demo_reservations;`.
+Repeat the query.
 
-Then inspect the selective query again. Look for an `Index Only Scan`, if the planner chooses one, and examine `Heap Fetches`.
+Inspect whether PostgreSQL selects an index-only scan and whether heap fetches remain.
 
-The `VACUUM` operation can help establish all-visible heap pages, making index-only scans more attractive.
+**Question:** Why might an index-only scan still consult heap pages? What trade-off did the included columns introduce?
 
-But the planner still chooses according to estimated cost.
+## Experiment E — Explore planner estimates
 
-**The experiment's real achievement is learning to read the database's reasoning rather than merely measuring one number.**
+Introduce a deliberately skewed dataset or query pattern.
 
-### Lab solutions
+For example, insert substantially more reservations for one particular hotel than for others.
 
-**Experiment C.** An unindexed selective query often shows a sequential scan (or other whole-table-ish path) plus sort/limit; rows examined dwarf the final 25.
+Refresh statistics:
 
-**Experiment D.** A matching partial composite index frequently shifts the plan toward an index (or bitmap) path and may remove an explicit sort when ordering aligns; buffer and timing gains depend on cache and scale.
+```sql
+ANALYZE reservations;
+```
 
-**Experiment E.** A low-selectivity `status = 'confirmed'` scan of most of the table often prefers a sequential scan; the partial index is not obligated to win.
+Compare plans and estimated-versus-actual rows for a large hotel and a small hotel.
 
-**Experiment F.** Large `OFFSET` still walks preceding qualifying rows; keyset predicates with a matching ordered index navigate nearer the resume point.
+If you explore prepared statements, compare parameter-specific plans with generic plan behavior in a controlled environment.
 
-**Experiment G.** Covering indexes enable index-only scans when visibility allows; nonzero `Heap Fetches` means some heap checks remain.
+**Question:** Why might identical SQL produce different sensible plans for different hotels?
+
+## Experiment F — Inspect a correlated predicate
+
+If your experiment table includes suitable correlated columns, create extended statistics:
+
+```sql
+CREATE STATISTICS reservations_hotel_status_stats
+  (dependencies, mcv)
+ON hotel_id, status
+FROM reservations;
+
+ANALYZE reservations;
+```
+
+Compare cardinality estimates where the query's predicates and data distribution can benefit from those statistics.
+
+Do not expect extended statistics to solve every estimation problem.
+
+**Question:** What assumption about independent predicates can become incorrect in a real multitenant database?
+
+## Experiment G — Investigate pagination
+
+Compare an offset query with a keyset continuation.
+
+The offset version skips a large number of rows:
+
+```sql
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT id, check_in
+FROM reservations
+WHERE hotel_id = 482
+ORDER BY check_in DESC, id DESC
+LIMIT 25 OFFSET 10000;
+```
+
+Depending on the number of rows matching the hotel, this offset may exceed the available result set; choose a hotel with sufficient data or adjust the value accordingly.
+
+The keyset version uses the final tuple from a previous page:
+
+```sql
+SELECT id, check_in
+FROM reservations
+WHERE hotel_id = 482
+  AND (check_in, id) < (DATE '2026-10-17', 10842)
+ORDER BY check_in DESC, id DESC
+LIMIT 25;
+```
+
+The cursor values are illustrative. For a meaningful comparison, obtain them from a real preceding page of the same filtered and ordered result.
+
+**Question:** Which query is likely to avoid traversing a large number of earlier entries, assuming an appropriate ordered index?
+
+## Experiment H — Diagnose the ORM response pattern
+
+Imagine a backend that loads one hundred reservations and separately queries the customer for each one.
+
+Compare three approaches:
+
+1. One reservation query plus one hundred customer queries.
+2. A join that retrieves customer information together with reservations.
+3. One reservation-page query followed by a batched customer lookup.
+
+Then add a one-to-many reservation-items relationship and inspect how joining multiple child collections can multiply rows.
+
+**Question:** Why might two or three predictable queries outperform one giant join or one hundred tiny queries?
+
+## Experiment I — Your final query investigation
+
+You receive a report:
+
+> "After moving from development to production, the reservation dashboard became 250 times slower. The SQL hasn't changed."
+
+Write a concise engineering investigation with:
+
+- Three competing explanations.
+- The first measurement you would gather.
+- The most important fields in an `EXPLAIN ANALYZE` plan.
+- A candidate index, if supported by the query pattern.
+- One potential downside of that index.
+- A before-and-after validation plan.
+
+The objective is not to guess the fastest index from memory. It is to establish a defensible relationship between the query, the data distribution, the chosen plan, and the observed work.
 
 ---
 
-## Further Reading
+# Further Reading
 
-These official PostgreSQL references provide authoritative explanations and examples:
+Official PostgreSQL references:
 
 - **Using EXPLAIN:** https://www.postgresql.org/docs/current/using-explain.html
+- **Introduction to Indexes:** https://www.postgresql.org/docs/current/indexes.html
 - **Multicolumn Indexes:** https://www.postgresql.org/docs/current/indexes-multicolumn.html
 - **Partial Indexes:** https://www.postgresql.org/docs/current/indexes-partial.html
 - **Index-Only Scans:** https://www.postgresql.org/docs/current/indexes-index-only-scans.html
-- **Indexes and ORDER BY:** https://www.postgresql.org/docs/current/indexes-ordering.html
 - **Planner Statistics:** https://www.postgresql.org/docs/current/planner-stats.html
+- **Query Planning:** https://www.postgresql.org/docs/current/planner-optimizer.html
 - **LIMIT and OFFSET:** https://www.postgresql.org/docs/current/queries-limit.html
+
+Related programme chapters:
+
+- CS330-L01 — Relational Database Design
+- CS330-L03 — Transactions: When Correct Operations Produce Incorrect Results
+- CS340-L02 — Inside a Storage Engine
+- CS340-L04 — Indexes, Queries, and Aggregation Beyond SQL
 
 ---
 
 ## Dense Cheatsheet — Interview Glance Card
 
-*Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
-
 ```text
-CS330-L02  SQL AND QUERY PERFORMANCE — INTERVIEW GLANCE CARD
+CS330-L02 — SQL AND QUERY PERFORMANCE
 
 CORE MODEL
-  SQL names the RESULT; the planner names the ALGORITHM
-  Identical SQL can be 250× slower when data volume / plan change
-  Pipeline: parse → rewrite → plan (seq / index / bitmap …) → execute
-  Optimizer uses estimates; wrong estimates → wrong plan
+  SQL = declarative result specification
+  Planner = physical execution strategy
+  Fast query = inexpensive physical work, not merely few returned rows
 
-HEAP AND ACCESS METHODS
-  Heap = primary row storage in pages (~8 KiB); not sorted by logical column
-  Seq scan   read pages in order; efficient when much of table needed
-  Index scan navigate B-tree → heap TIDs; may scatter-read many pages
-  Seq ≠ always bad; index ≠ always good — depends on how much data you need
+STORAGE
+  PostgreSQL heap = table row/version storage
+  Default page size commonly 8 KiB
+  Heap not intrinsically ordered by business columns
+  Index = separate searchable data structure
+  Index entries may require heap retrieval
 
 SELECTIVITY
-  Fraction of rows matching a predicate
-  Highly selective → index often wins; ~70–90%+ match → seq scan often cheaper
-  Boolean / low-cardinality indexes rarely help majority filters
-  Partial indexes target the useful minority (e.g. unpaid, confirmed)
+  High selectivity = small fraction of rows match
+  Low selectivity = large fraction match
+  Index helpful when it avoids enough expensive work
+  Seq Scan is not inherently bad
+  Index Scan is not inherently good
 
-COMPOSITE / PARTIAL / COVERING INDEXES
-  Heuristic: equality columns first, then range / ORDER BY keys
-  Leading column often critical (hotel_id then check_in DESC, id DESC)
-  (check_in, hotel_id) ≠ (hotel_id, check_in) for hotel-equality workloads
-  Tie-breaker id in ORDER BY → deterministic pagination
-  Partial: WHERE status = 'confirmed' — smaller; planner must prove predicate
-    (generic $1 plans may miss partial indexes)
-  INCLUDE (cols) → covering / index-only scan payload (not search keys)
-  Index-only still needs visibility map; Heap Fetches may be nonzero
+B-TREE
+  Balanced ordered index
+  Supports point/range and suitable ordering queries
+  Index column order matters
+  Leading equality + following range often effective
+  Sort direction and tie-breaker can matter
+  Modern PostgreSQL may use B-tree skip scan in some cases
 
-EXPLAIN VS EXPLAIN ANALYZE
-  EXPLAIN         expected plan / costs / row estimates (cost ≠ milliseconds)
-  ANALYZE        actually runs; actual time, rows, loops
-  BUFFERS        shared hit vs read (OS cache may still serve "read")
-  Read plans bottom-up; chase large estimated-vs-actual gaps
-  ANALYZE on writes mutates data; even reads cost production resources
-  Loops × rows: cheap inner node × 10k iterations = expensive
+COMPOSITE INDEX EXAMPLE
+  Hotel equality, date range, newest first:
+  (hotel_id, check_in DESC, id DESC)
 
-WHY PLANS GO WRONG
-  Stale statistics → ANALYZE / autovacuum; not a cure for missing indexes
-  Correlated columns → CREATE STATISTICS (dependencies, mcv) + ANALYZE
-  Independence assumption underestimates joined predicates
+PARTIAL INDEX
+  WHERE status = 'confirmed'
+  Smaller/more targeted when workload supports it
+  Query predicate must imply partial-index predicate
+  Generic parameterized status may prevent index eligibility
+
+COVERING INDEX
+  INCLUDE non-key payload columns
+  Potential Index Only Scan
+  Visibility map controls many heap-skip decisions
+  Index Only Scan may still show Heap Fetches
+  Bigger index creates storage/write costs
+
+EXPLAIN
+  Shows planned execution strategy and estimates
+  Seq Scan       examine table pages
+  Index Scan     navigate index + retrieve rows
+  Bitmap Scan    collect heap locations then visit pages
+  Index Only     attempt answer from index + visibility info
+  Sort / Join / Limit nodes compose the plan
+
+EXPLAIN ANALYZE
+  Actually executes query!
+  cost = planner units, NOT milliseconds
+  rows = estimated vs actual cardinality
+  actual time = observed executor timing
+  loops = repeated executions of node
+  Node actual rows/times generally average per loop
+  BUFFERS shared hit = PostgreSQL buffer cache hit
+  BUFFERS shared read != guaranteed physical disk read
+  Temp blocks may indicate sort/hash spill
+  Executor timing != complete API response latency
+
+PLANNER ESTIMATES
+  Row counts, distinct values, histograms, MCVs
+  Data skew and stale statistics affect estimates
+  Correlated predicates may break independence assumptions
+  CREATE STATISTICS supports certain multivariate estimates
+  ANALYZE refreshes statistics; doesn't create missing indexes
 
 JOINS
-  Nested loop  great for small outer + indexed inner; deadly if outer huge
-  Hash join    build hash on equality; may spill if work_mem exceeded
-  Merge join   both inputs ordered by join key
-  Join order matters; cardinality errors poison join choice
+  Nested Loop = repeated inner lookup; good when small/cheap
+  Hash Join = hash one input, probe with the other
+  Merge Join = advance through ordered join inputs
+  Join choice depends on cardinality, access paths, memory
+  Join order can greatly affect intermediate result size
 
 ORM TRAPS
-  N+1: 1 page query + N lookups — multiplicity hurts even if each is "fast"
-  Fix: join, IN-batch, or ID page then batched associations
-  Row explosion: careless multi 1:N joins multiply result rows
-  ORM convenience ≠ free relational algebra
+  N+1 = one primary query + N related lookups
+  Repair via join or batched secondary query
+  Several 1:N joins may multiply result rows
+  Inspect generated SQL, not just ORM method calls
 
-SORTING AND PAGINATION
-  LIMIT 25 ≠ only 25 rows examined without ordered index support
-  Matching composite index can early-stop after LIMIT
-  Deep OFFSET still walks skipped qualifying rows
-  Keyset / cursor: (check_in, id) < (cursor…) + matching index
-  Include unique tie-breaker; mixed NULL/sort dirs need careful predicates
-  Pagination = access pattern, not just UI chrome
+ORDER BY / LIMIT
+  LIMIT 25 doesn't imply only 25 rows inspected
+  Sort may process all qualifying candidates
+  Top-N sorting helps but isn't free
+  Aligned index can avoid sort and enable early stop
+  Sorting may spill to temporary files
+
+PAGINATION
+  OFFSET large => traverse/skip many prior entries
+  Keyset cursor resumes after last ordered tuple
+  DESC(check_in, id) -> tuple comparison for next page
+  Unique tie-breaker prevents ambiguous ordering
+  Cursors don't automatically freeze multi-request snapshots
+  Deep numbered-page jumps are less convenient with keyset
 
 INDEX COSTS
-  Every index: storage, insert/update/delete, WAL, cache pressure
-  HOT updates blocked when indexed columns change
-  Indexes follow measured workloads — not "index every WHERE column"
+  Additional storage
+  Insert/update maintenance
+  WAL and cache overhead
+  Index creation/migration costs
+  More indexes != always better performance
+  Select indexes based on important real queries
 
-DIAGNOSIS SEQUENCE
-  1 Is the DB actually slow? (vs pool / app / external)
-  2 Capture real SQL + params
-  3 EXPLAIN (ANALYZE, BUFFERS) — estimates vs actuals
-  4 Data distribution / selectivity / stats freshness
-  5 Smallest evidence-backed fix (index, rewrite, N+1, keyset, …)
-  6 Verify under realistic volume; watch write regressions
+DIAGNOSIS
+  1. Measure database time separately from API time
+  2. Capture actual SQL and parameters
+  3. Inspect EXPLAIN / ANALYZE safely
+  4. Compare estimates with actual rows
+  5. Understand real data distribution
+  6. Select the smallest justified change
+  7. Verify reads, writes, resource use and regressions
 
-SENIOR LINE: What work did PostgreSQL decide was necessary —
-             and was that decision appropriate for the actual data?
+SENIOR INTERVIEW ANSWER
+  "I'd first establish whether database execution owns the latency.
+   Then I'd capture the actual SQL and parameters, inspect its
+   execution plan and row estimates, relate the chosen access path
+   to the data distribution, and benchmark the smallest justified
+   index or query change under representative workload."
+
+MENTAL MODEL
+  What was requested?
+  Which data was examined?
+  Why did the planner choose that route?
+  Where was the expensive work?
+  What trade-off does the proposed fix introduce?
 ```
