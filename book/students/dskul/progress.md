@@ -1,6 +1,6 @@
 # Study Ledger — dskul
 
-**Student:** `dskul` · **Curriculum:** v2.0 · **Updated:** 2026-10-27 · **Rendered:** 2026-10-27
+**Student:** `dskul` · **Curriculum:** v2.0 · **Updated:** 2026-10-28 · **Rendered:** 2026-10-28
 
 Personal learning tracker (not manuscript status). Design: [`../../STATUS.md`](../../STATUS.md).
 
@@ -8,9 +8,9 @@ Personal learning tracker (not manuscript status). Design: [`../../STATUS.md`](.
 
 | Status | Count |
 | --- | ---: |
-| `unopened` · | 63 |
+| `unopened` · | 61 |
 | `wandering` ~ | 1 |
-| `studying` > | 7 |
+| `studying` > | 9 |
 | `labbing` * | 0 |
 | `settled` ✓ | 0 |
 | `fluent` ★ | 0 |
@@ -38,9 +38,9 @@ _Nothing overdue. Nice._
 | --- | --- | --- |
 | `CS110` | `underway` | `>>>>·` |
 | `CS120` | `unopened` | `·····` |
-| `CS220` | `unopened` | `···` |
-| `CS230` | `underway` | `~>>>·····` |
-| `CS320` | `unopened` | `···` |
+| `CS220` | `unopened` | `·····` |
+| `CS230` | `underway` | `~>>>·>>··` |
+| `CS320` | `unopened` | `········` |
 | `SE240` | `unopened` | `······` |
 | `SE310` | `unopened` | `···` |
 | `SE320` | `unopened` | `···` |
@@ -89,8 +89,8 @@ Glyphs: `·`=unopened, `~`=wandering, `>`=studying, `*`=labbing, `✓`=settled, 
 | `CS230-L03` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.  |
 | `CS230-L04` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.  |
 | `CS230-L05` | `unopened` | 0 | 0 | — | — |  |
-| `CS230-L06` | `unopened` | 0 | 0 | — | — |  |
-| `CS230-L07` | `unopened` | 0 | 0 | — | — |  |
+| `CS230-L06` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.  |
+| `CS230-L07` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.  |
 | `CS230-L08` | `unopened` | 0 | 0 | — | — |  |
 | `CS230-L09` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L01` | `unopened` | 0 | 0 | — | — |  |

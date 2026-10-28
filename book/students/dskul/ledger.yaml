@@ -1,7 +1,7 @@
 student: dskul
 display_name: dskul
 created: '2026-10-26'
-updated: '2026-10-27'
+updated: '2026-10-28'
 curriculum_version: '2.0'
 learning_statuses:
   unopened: Never started
@@ -248,27 +248,27 @@ lectures:
   CS230-L06:
     course: CS230
     title: The Life of a Network Connection
-    status: unopened
-    confidence: 0
-    passes: 0
-    opened_on: null
+    status: studying
+    confidence: 2
+    passes: 1
+    opened_on: '2026-10-27'
     settled_on: null
-    last_touched: null
+    last_touched: '2026-10-27'
     next_encore: null
-    encore_interval_days: null
-    notes: ''
+    encore_interval_days: 14
+    notes: Full voice listen-through; one session. Prose done; labs not started.
   CS230-L07:
     course: CS230
     title: TLS and the Architecture of Trust
-    status: unopened
-    confidence: 0
-    passes: 0
-    opened_on: null
+    status: studying
+    confidence: 2
+    passes: 1
+    opened_on: '2026-10-27'
     settled_on: null
-    last_touched: null
+    last_touched: '2026-10-27'
     next_encore: null
-    encore_interval_days: null
-    notes: ''
+    encore_interval_days: 14
+    notes: Full voice listen-through; one session. Prose done; labs not started.
   CS230-L08:
     course: CS230
     title: Proxies, Load Balancers, and Modern Web Transport
