@@ -26,6 +26,13 @@ WAL/database-health monitoring, and expand–migrate–contract sequencing.
 Prefer a lab worksheet over regenerating migration theory already taught here.
 -->
 
+<!--
+EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE360, CS350-L04
+Keep general CI/CD and Terraform mechanics here. Cross-reference SE360 for Jenkins /
+Actions / GitLab pipeline forensics and broken-release studio; CS350-L04 for Postgres
+migration incident depth. Do not duplicate those studios in this core lecture.
+-->
+
 
 
 

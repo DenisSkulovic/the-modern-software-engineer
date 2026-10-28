@@ -49,3 +49,4 @@ Short form: `unopened` → `wandering` → `studying` → `labbing` → `settled
 - Do not put personal notes in lecture manuscripts or `curriculum.yaml`.
 - Ledgers may be gitignored per preference; the template should stay in repo.
 - Multiple ledgers are fine (`dskul`, `interview-2027`, …).
+- Mock interviews belong in [`../interview-lab/`](../interview-lab/) (protocol + session reports). Do not treat a good mock answer as automatic lecture mastery; optionally log a `note` event if you want interview-practice days on the calendar.

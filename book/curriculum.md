@@ -260,11 +260,33 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `
 | `AI410-L06` | Evaluating Nondeterministic Software | `manuscript` | `2.0.0` | `AI501-S10` |
 | `AI410-L07` | Security, Reliability, and Economics of AI Systems | `manuscript` | `2.0.0` | `AI501-S11` |
 
-## Active electives (5 · 38 lectures)
+## Active electives (10 · 58 lectures)
 
 Active electives have on-disk lecture stubs or manuscripts and are validated like core courses. They remain optional in the study programme.
 
 ### CS — Computer Science
+
+#### CS345 — MongoDB Production Query Engineering
+
+300-level · 4 lectures · course status `in_progress` · `CS/CS345-mongodb-production-query-engineering/`
+
+| ID | Lecture | Manuscript | Edition | Legacy |
+| --- | --- | --- | --- | --- |
+| `CS345-L01` | MongoDB Query Plans and Index Forensics | `stub` | `2.0.0` | `` |
+| `CS345-L02` | Aggregation Pipelines Under Pressure | `stub` | `2.0.0` | `` |
+| `CS345-L03` | Pagination, Derived Fields, and Materialized Data | `stub` | `2.0.0` | `` |
+| `CS345-L04` | The MongoDB Performance Incident Studio | `stub` | `2.0.0` | `` |
+
+#### CS350 — Advanced PostgreSQL Engineering
+
+300-level · 4 lectures · course status `in_progress` · `CS/CS350-advanced-postgresql/`
+
+| ID | Lecture | Manuscript | Edition | Legacy |
+| --- | --- | --- | --- | --- |
+| `CS350-L01` | SQL Fluency for Working Backend Engineers | `stub` | `2.0.0` | `` |
+| `CS350-L02` | PostgreSQL Query Plan Forensics | `stub` | `2.0.0` | `` |
+| `CS350-L03` | PostgreSQL Under Production Pressure | `stub` | `2.0.0` | `` |
+| `CS350-L04` | Online Migrations and the Database Incident Studio | `stub` | `2.0.0` | `` |
 
 #### CS360 — Algorithms and Coding Interview Lab
 
@@ -289,15 +311,28 @@ Active electives have on-disk lecture stubs or manuscripts and are validated lik
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
 | `SE215-L01` | The People and Teams Behind Software | `manuscript` | `2.0.0` | `` |
-| `SE215-L02` | How Engineering Work Gets Planned and Delivered | `stub` | `2.0.0` | `` |
-| `SE215-L03` | Git, Pull Requests, and Collaborative Delivery | `stub` | `2.0.0` | `` |
-| `SE215-L04` | Repositories, Monorepos, and Build Systems | `stub` | `2.0.0` | `` |
-| `SE215-L05` | Cloud Platforms and Service Models | `stub` | `2.0.0` | `` |
-| `SE215-L06` | DevOps, Platform Engineering, and Operational Ownership | `stub` | `2.0.0` | `` |
-| `SE215-L07` | Owning End-to-End Testing | `stub` | `2.0.0` | `` |
+| `SE215-L02` | How Engineering Work Gets Planned and Delivered | `manuscript` | `2.0.0` | `` |
+| `SE215-L03` | Git, Pull Requests, and Collaborative Delivery | `manuscript` | `2.0.0` | `` |
+| `SE215-L04` | Repositories, Monorepos, and Build Systems | `manuscript` | `2.0.0` | `` |
+| `SE215-L05` | Cloud Platforms and Service Models | `manuscript` | `2.0.0` | `` |
+| `SE215-L06` | DevOps, Platform Engineering, and Operational Ownership | `manuscript` | `2.0.0` | `` |
+| `SE215-L07` | Owning End-to-End Testing | `manuscript` | `2.0.0` | `` |
 | `SE215-L08` | Technical SEO and Web Discoverability | `stub` | `2.0.0` | `` |
 | `SE215-L09` | Data Engineering for Application Developers | `stub` | `2.0.0` | `` |
 | `SE215-L10` | Working With Product, Design, and Analytics | `stub` | `2.0.0` | `` |
+
+#### SE250 — React Engineering for Experienced Developers
+
+200-level · 6 lectures · course status `in_progress` · `SE/SE250-react-engineering/`
+
+| ID | Lecture | Manuscript | Edition | Legacy |
+| --- | --- | --- | --- | --- |
+| `SE250-L01` | Thinking in React: A Vue Developer's New Mental Model | `stub` | `2.0.0` | `` |
+| `SE250-L02` | Effects, Closures, and Component Lifecycles | `stub` | `2.0.0` | `` |
+| `SE250-L03` | State, Data Fetching, and Real Application Architecture | `stub` | `2.0.0` | `` |
+| `SE250-L04` | React Performance, Testing, and Debugging | `stub` | `2.0.0` | `` |
+| `SE250-L05` | React in Production: SPAs, Next.js, and Server Rendering | `stub` | `2.0.0` | `` |
+| `SE250-L06` | The React Debugging Interview Studio | `stub` | `2.0.0` | `` |
 
 #### SE325 — Backends in the Wild: Production Field Guide
 
@@ -311,6 +346,16 @@ Active electives have on-disk lecture stubs or manuscripts and are validated lik
 | `SE325-L04` | Production Data Repair, Audit, and Lifecycle | `stub` | `2.0.0` | `` |
 | `SE325-L05` | Surviving Third-Party Integrations | `stub` | `2.0.0` | `` |
 | `SE325-L06` | API Protection and Multi-Tenant Fairness | `stub` | `2.0.0` | `` |
+
+#### SE335 — Queues, Caches, and Worker Production Diagnostics
+
+300-level · 3 lectures · course status `in_progress` · `SE/SE335-queues-caches-production-diagnostics/`
+
+| ID | Lecture | Manuscript | Edition | Legacy |
+| --- | --- | --- | --- | --- |
+| `SE335-L01` | Redis in Production: Memory, Latency, and Cache Failures | `stub` | `2.0.0` | `` |
+| `SE335-L02` | RabbitMQ and Worker Failure Forensics | `stub` | `2.0.0` | `` |
+| `SE335-L03` | The Asynchronous System Incident Studio | `stub` | `2.0.0` | `` |
 
 #### SE450 — Kubernetes and Platform Engineering
 
@@ -341,18 +386,25 @@ Active electives have on-disk lecture stubs or manuscripts and are validated lik
 | `SE460-L06` | Load Testing, Capacity, and Performance Budgets | `stub` | `2.0.0` | `` |
 | `SE460-L07` | The Performance Forensics Studio | `stub` | `2.0.0` | `` |
 
+#### SE360 — Practical Terraform and Cloud Delivery
+
+300-level · 3 lectures · course status `in_progress` · `SE/SE360-practical-terraform/`
+
+| ID | Lecture | Manuscript | Edition | Legacy |
+| --- | --- | --- | --- | --- |
+| `SE360-L01` | CI/CD in the Real World: Jenkins, GitHub Actions, and GitLab CI | `stub` | `2.0.0` | `` |
+| `SE360-L02` | Terraform and Reproducible Infrastructure | `stub` | `2.0.0` | `` |
+| `SE360-L03` | The Broken Release Studio | `stub` | `2.0.0` | `` |
+
 ## Planned electives
 
 Catalogue-only electives — no lecture files yet. Same ID scheme; promote to `type: elective` when stubs are created.
 
 | Code | Title | Status | Builds on | Notes |
 | --- | --- | --- | --- | --- |
-| `CS350` | Advanced PostgreSQL Engineering | `planned` | `CS330` | First lecture candidate: PostgreSQL Internals — MVCC, Vacuum, and Bloat |
 | `CS370` | Game Engines and Simulation Systems | `planned` | `CS220`, `CS320` | Independent exploration — game loops, entities, simulation time |
-| `SE250` | Modern Frontend Frameworks | `planned` | `SE240` | React for Vue Developers as first lecture candidate |
 | `SE350` | Advanced Software Design Patterns | `planned` | `SE330` |  |
 | `AI450` | Advanced Agentic Systems | `planned` | `AI410` | Durable agents, workflow engines, advanced evaluations |
-| `SE360` | Practical Terraform and Cloud Delivery | `planned` | `SE340` |  |
 | `CS240` | Linux Internals for Application Engineers | `planned` | `CS320`, `SE340` |  |
 | `SE370` | Application Security Deep Dive | `planned` | `SE310` |  |
 | `OPEN110` | Mobile Application Architecture | `planned` | — | Independent elective — not forced under a core course |

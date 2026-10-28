@@ -11,6 +11,14 @@ next: CS330-L03
 ---
 
 
+<!--
+EDITORIAL-TODO: P2 / CROSS_REFERENCE / CS350
+Preserve query-planning and indexing concepts here.
+When CS350 exists, point to unaided SQL fluency (L01) and plan forensics studios
+plus production-cases/PG-*. Do not replace this core lecture with a vibecode lab.
+-->
+
+
 # CS330 — Relational Databases and Transactions
 
 ## Lecture 02: SQL and Query Performance

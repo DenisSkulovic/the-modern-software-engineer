@@ -20,6 +20,13 @@ and measurement.
 Cross-reference SE215-L04 where repository/package organization affects frontend architecture.
 -->
 
+<!--
+EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE250
+Keep Vue-flavored architecture examples here. When SE250 manuscripts exist, add a
+concise pointer that React execution model, hooks, and production React debugging
+live in SE250 — do not assume React mastery from SE240 alone.
+-->
+
 
 
 

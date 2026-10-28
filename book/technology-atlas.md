@@ -36,8 +36,8 @@ Catalogue source of truth: [`curriculum.yaml`](curriculum.yaml). Course listings
 | Memory, GC, leaks | Understand allocation and retention failures | Diagnose production memory issues | CS220-L04 | — | working understanding |
 | Compilers and JITs | How source becomes executable work | Reason about language/runtime trade-offs | CS220-L05 | — | working understanding |
 | Managed vs native runtimes | Trade-offs of VM-backed and native execution | Choose languages and debug runtime behavior | CS220-L06, CS220-L07 | — | working understanding |
-| Vue / frontend frameworks (core) | Build interactive browser UIs | Component design, state, delivery | SE240 | SE250 (planned elective) | working understanding |
-| React (planned specialization) | Framework literacy when changing stacks | Port mental models between frameworks | — | SE250 | planned |
+| Vue / frontend frameworks (core) | Build interactive browser UIs | Component design, state, delivery | SE240 | — | working understanding |
+| React engineering (experienced / Vue-background) | Reason about React execution, Effects, data, production | Predict, debug, and fix without vibecode-only intuition | — | SE250 (elective stubs) | planned elective |
 
 ---
 
@@ -80,10 +80,12 @@ Catalogue source of truth: [`curriculum.yaml`](curriculum.yaml). Course listings
 
 | Topic or technology | Purpose | Typical developer interaction | Existing | Planned | Coverage |
 | --- | --- | --- | --- | --- | --- |
-| Relational design / SQL | Model and query OLTP data | Schema design, transactions, performance | CS330 | CS350 (planned) | working understanding / revised |
+| Relational design / SQL | Model and query OLTP data | Schema design, transactions, performance | CS330 | CS350 (elective stubs) | working understanding / revised |
+| PostgreSQL production forensics | Diagnose plans, bloat, migrations under pressure | Read EXPLAIN; operate vacuum/locks/migrations | CS330 | CS350 | planned elective |
+| MongoDB production query engineering | Fix correct-but-absurd aggregations and pagination | explain, cardinality, materialization | CS340-L04 | CS345 | planned elective |
 | Transactions and isolation | Correct concurrent updates | Choose isolation levels; debug anomalies | CS330-L03 | — | working understanding |
 | Storage engines | How data is persisted and retrieved | Reason about indexes, WAL, compaction | CS340-L02 | — | working understanding |
-| Document databases / MongoDB | Flexible document storage trade-offs | Choose when documents fit the domain | CS340-L03 | — | working understanding |
+| Document databases / MongoDB | Flexible document storage trade-offs | Choose when documents fit the domain | CS340-L03 | CS345 (ops studios) | working understanding + planned elective |
 | Specialized stores (Redis, DynamoDB, search, analytics) | Fit specialized access patterns | Select and operate non-relational systems | CS340-L06 | — | working understanding |
 | Elasticsearch / OpenSearch | Full-text and structured search infrastructure | Index documents; query relevance | CS340-L06 | — | working understanding |
 | Data architecture / source of truth | Decide where truth lives and how it syncs | Workshop analytics and synchronization decisions | CS340-L07 | SE215-L09 | working understanding + planned orientation |
@@ -107,7 +109,9 @@ Catalogue source of truth: [`curriculum.yaml`](curriculum.yaml). Course listings
 | Azure | Microsoft Azure service categories | Same SaaS pattern on Azure | — | SE215-L05 | planned orientation |
 | Cloud service models (IaaS/PaaS/serverless) | Choose shared-responsibility boundaries | Decide what the team still owns | SE340 | SE215-L05 | working understanding + planned orientation |
 | Containers / Kubernetes | Schedule and reconcile containerized workloads | Deploy, configure, observe clusters | SE450 | SE215-L06 (org context) | practical / manuscript + planned orientation |
-| Terraform / IaC | Declare and version infrastructure | Manage state, modules, and delivery pipelines | SE340-L04 | SE215-L06 (context), SE360 (planned) | working understanding / planned specialization |
+| Terraform / IaC | Declare and version infrastructure | Manage state, modules, and delivery pipelines | SE340-L04 | SE215-L06 (context), SE360 (elective stubs) | working understanding / planned specialization |
+| CI/CD pipeline forensics | Investigate green builds that ship the wrong thing | Jenkins / Actions / GitLab mental model | SE340-L04 | SE360 | planned elective |
+| Redis / RabbitMQ production diagnostics | Debug cache and worker failures under load | Eviction, prefetch, retry amplification | SE320-L02/L03 | SE335 | planned elective |
 
 ---
 

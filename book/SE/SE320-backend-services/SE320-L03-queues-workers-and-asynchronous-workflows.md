@@ -18,6 +18,13 @@ When SE325 exists, cross-reference distributed scheduling / cron failure modes
 and resumable bulk import-export jobs. Do not repeat those operational topics here.
 -->
 
+<!--
+EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE335-L02, SE335-L03
+When SE335 exists, cross-reference RabbitMQ-class worker forensics and the async
+incident studio (QUEUE-01). Keep BullMQ-centric teaching here; do not regenerate
+as a broker lab.
+-->
+
 
 
 

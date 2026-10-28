@@ -11,6 +11,15 @@ next: CS340-L05
 ---
 
 
+<!--
+EDITORIAL-TODO: P2 / CROSS_REFERENCE / CS345
+Preserve conceptual coverage of aggregation cost, deep pagination, $lookup/$unwind,
+and explain literacy here. When CS345 exists, point to its diagnostic studios and
+production-cases/MONGO-* for hands-on plan forensics. Do not regenerate this lecture
+as a lab course.
+-->
+
+
 
 
 

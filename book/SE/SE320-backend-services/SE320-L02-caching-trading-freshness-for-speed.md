@@ -11,6 +11,14 @@ next: SE320-L03
 ---
 
 
+<!--
+EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE335-L01
+Preserve cache concepts (invalidation, stampedes, TTLs, keys) here.
+When SE335 exists, cross-reference Redis production forensics and REDIS-01.
+Do not turn this lecture into a Redis ops lab.
+-->
+
+
 
 
 

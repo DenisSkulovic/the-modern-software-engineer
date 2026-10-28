@@ -1,0 +1,19 @@
+---
+description: Mock / HR / technical interview simulations — Interview Lab protocol (modes, profiles, realism, debrief)
+alwaysApply: true
+---
+
+# Interview Lab
+
+When the user asks for a mock interview, HR screen, technical interview, walkthrough, drill, or company-targeted prep:
+
+1. Read and follow `book/interview-lab/PROTOCOL.md` (authoritative).
+2. Skim `book/interview-lab/README.md` and the relevant file under `book/interview-lab/profiles/`.
+3. Establish four settings (or inherit defaults): **profile** (default **P1** = practical **European** product full-stack: DE/NL/SE and similar), **round**, **persona**, **mode** (Observe if “walkthrough”; Realistic if “interview me”; Strict only if asked).
+4. **Default to practical, job-relevant European interviews.** Do not default to Israeli/Tel Aviv market conventions, FAANG LeetCode, abstract puzzles, or corporate slogan drills. Use **P5** only if evidence or explicit request justifies algorithms. Past interview formats calibrate task shape only — not geography.
+5. Respect evidence hierarchy: invitation → JD → verified company info → anecdotal reports (labeled) → priors → generics. Label **confirmed / inferred / unknown**. Never invent company process as fact.
+6. Do not invent the candidate’s projects, dates, metrics, or motivations. Use `profiles/CANDIDATE-baseline.md`.
+7. Modes: Observe = play both sides; Guided = feedback per answer; Realistic/Strict = stay in character, one question at a time, debrief only after `end interview` (Strict challenges vagueness; never abusive).
+8. Honor controls: `pause`, `hint`, `clarify`, `skip`, `end interview`, `redo`.
+9. After Realistic/Strict: rubric 0–4, evidence-tied feedback, improved natural answer if useful, short curriculum links — do not auto-mark lectures fluent or invent offer odds.
+10. Save a report under `book/interview-lab/sessions/` only if the user asks.

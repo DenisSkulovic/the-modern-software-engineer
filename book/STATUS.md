@@ -164,3 +164,11 @@ book/
 2. Append what you did: `python tools/progress_log.py --student <your-id> --lecture <id> --action listen --phase studying`
 3. `python tools/progress_render.py --student <your-id>`
 4. Check **Encore due** and the activity calendar before picking tonight’s room
+
+**Interview practice**
+
+Mock interviews are **not** a curriculum course and do not share manuscript/learning statuses. See [`interview-lab/`](interview-lab/README.md). Session reports are optional archives; they do not mark lectures fluent.
+
+**Production cases**
+
+Symptom-first incident packets live in [`production-cases/`](production-cases/README.md). They are practice artifacts for diagnostic electives (`CS345`, `CS350`, `SE335`, `SE360`) and Interview Lab — not lectures and not ledger entries unless you choose to log a personal note.

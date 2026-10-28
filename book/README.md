@@ -20,6 +20,8 @@ book/
 ├── curriculum.yaml        ← source of truth (edit this to reshuffle)
 ├── curriculum.md          ← human-readable course catalogue
 ├── technology-atlas.md    ← searchable topic / technology index
+├── interview-lab/         ← mock interviews (protocol, profiles, sessions)
+├── production-cases/      ← diagnostic incident packets (not a course)
 ├── students/              ← personal Study Ledgers (per student)
 ├── tools/                 ← migrate / validate / render / progress
 ├── CS/                    ← Computer Science courses
@@ -73,10 +75,13 @@ An elective is a **course you choose to take**, not a separate numbering scheme.
 Three shapes appear in the catalogue:
 
 - **Core education** — mandatory study programme (`type: core`).
-- **Specialist electives** — deeper optional courses (for example `CS360`, `SE325`, `SE450`, `SE460`).
+- **Specialist electives** — deeper optional courses (for example `CS360`, `SE250`, `CS345`, `CS350`, `SE325`, `SE335`, `SE360`, `SE450`, `SE460`).
 - **Short orientation electives** — survey lectures for professional fluency without another full semester (`SE215`; ordinarily ~18–25 minutes spoken per lecture).
+- **Production Case Library** — [`production-cases/`](production-cases/README.md): symptom-first incident packets (Mongo, Postgres, Redis, queues, CI/CD) used by studios and Interview Lab — not a numbered course.
 
-Active electives today include `SE215`, `CS360`, `SE325`, `SE450`, and `SE460`. Others (for example `CS350`, `CS370`, `SE250`, `SE360`) remain planned.
+Active electives today include `SE215`, `CS360`, `SE250`, `CS345`, `CS350`, `SE325`, `SE335`, `SE360`, `SE450`, and `SE460`. Others (for example `CS370`, `SE350`) remain planned.
+
+**Manuscript priority (stubs first, generate selectively):** `SE250` → `CS345` → `CS350` → `SE335` → `SE360`. Keep foundations; add diagnostic-first electives above them. Do not duplicate `SE325` / `SE460` scopes.
 
 ---
 
@@ -99,9 +104,15 @@ If Part II starts to blur, return to Part I’s opening picture and narrate one 
 
 ## Interview preparation (alongside the catalogue)
 
-- **Technical recall** (10–15 min): explain concepts without notes.
-- **Coding** (20–30 min, a few times weekly): practical problems without AI assistance.
-- **Senior discussion** (periodic): design systems, diagnose incidents, defend trade-offs out loud.
+Knowledge lives in the courses. **Retrieval under hiring pressure** lives in the [Interview Lab](interview-lab/README.md) — a separate system with profiles, modes (observe / guided / realistic / strict / drill), and an evidence hierarchy so simulations track real invitations rather than generic FAANG question banks.
+
+- **Protocol:** [`interview-lab/PROTOCOL.md`](interview-lab/PROTOCOL.md)
+- **Defaults:** practical European product-company full-stack (P1: Germany / Netherlands / Sweden and similar); algorithm-heavy (P5) only when evidence or you opt in
+- **Technical recall** (10–15 min): explain concepts without notes
+- **Coding** (20–30 min, a few times weekly): practical problems; use CS360 when a role truly needs DSA
+- **Senior discussion / mocks:** run sessions via the Interview Lab; save reports under `interview-lab/sessions/` when useful
+
+Interview practice does **not** automatically update Study Ledger fluency.
 
 ---
 
