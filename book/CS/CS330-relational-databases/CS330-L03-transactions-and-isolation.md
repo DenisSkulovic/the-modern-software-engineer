@@ -604,13 +604,7 @@ Two processes want to reserve one room. Both read the value.
 
 Both receive 5. Both calculate `const newValue = remainingRooms - 1` in application memory.
 
-Both issue the same absolute assignment:
-
-```sql
-UPDATE inventory
-SET remaining_rooms = 4
-WHERE id = 1;
-```
+Both issue the same absolute assignment: `UPDATE inventory SET remaining_rooms = 4 WHERE id = 1`.
 
 What happens? Both updates can eventually succeed under Read Committed.
 
@@ -624,13 +618,7 @@ The problem is that the application calculated a new state using information tha
 
 ### Not all updates have this problem
 
-Now compare a database-side decrement:
-
-```sql
-UPDATE inventory
-SET remaining_rooms = remaining_rooms - 1
-WHERE id = 1;
-```
+Now compare a database-side decrement: `UPDATE inventory SET remaining_rooms = remaining_rooms - 1 WHERE id = 1`.
 
 This is different. The arithmetic happens inside the database statement.
 
@@ -938,15 +926,7 @@ Pessimistic locking coordinates access before a contested modification. Optimist
 
 It allows operations to proceed based on an observed version, then rejects the write if that version is no longer current. Suppose a reservation has `id = 10842`, `status = pending`, `version = 7`.
 
-The application reads it and prepares a change. Instead of updating by id alone:
-
-```sql
-UPDATE reservations
-SET status = 'confirmed'
-WHERE id = 10842;
-```
-
-we execute a version-checked update that also bumps the version:
+The application reads it and prepares a change. Instead of updating by id alone — `UPDATE reservations SET status = 'confirmed' WHERE id = 10842` — we require both the id and the read version (seven here) in the where clause, increment version in the same statement, and return the new row so the app can tell success from zero rows updated:
 
 ```sql
 UPDATE reservations

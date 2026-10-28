@@ -278,7 +278,7 @@ A relational model expresses information through relations—implemented in SQL 
 
 We already know how to create tables, so let's concentrate on the design questions beneath them.
 
-Suppose our system contains hotels, room types, customers, and reservations. We might begin with four core tables — hotels, room types, customers, and reservations:
+Suppose our system contains hotels, room types, customers, and reservations. We might begin with four core tables: hotels carry identity, name, and timezone; room types carry hotel ownership, name, and guest capacity; customers carry identity, email, and name; reservations carry hotel, customer, stay dates, and status:
 
 ```text
 HOTELS
@@ -629,7 +629,7 @@ Whether email must be unique depends on whether this table represents login acco
 
 Real hotels may receive multiple bookings using the same email address. A contact email isn't necessarily a reliable personal identity.
 
-If this were an authentication-account table, we would examine email uniqueness and case handling more carefully. Now reservations — hotel, customer, half-open stay dates, status, and a composite key for hotel-scoped references:
+If this were an authentication-account table, we would examine email uniqueness and case handling more carefully. Now reservations — hotel, customer, half-open stay dates, a status restricted to pending, confirmed, or cancelled (defaulting to pending), a check that checkout is after check-in, and a composite key for hotel-scoped references:
 
 ```sql
 CREATE TABLE reservations (
@@ -652,7 +652,7 @@ CREATE TABLE reservations (
 );
 ```
 
-Finally, reservation items — quantity, quoted money, and composite foreign keys that keep hotel ownership consistent:
+Finally, reservation items — quantity, a non-negative quoted total in minor currency units with a three-letter currency code, and composite foreign keys that keep hotel ownership consistent:
 
 ```sql
 CREATE TABLE reservation_items (
@@ -709,13 +709,7 @@ A schema is one part of the correctness model, not the entire application.
 
 # 8. Constraints: Make Invalid States Difficult to Represent
 
-Suppose our reservation service contains this validation — reject stays where checkout is not after check-in:
-
-```typescript
-if (checkOut <= checkIn) {
-  throw new Error("Invalid dates");
-}
-```
+Suppose our reservation service rejects stays where checkout is not after check-in with a TypeScript guard such as `if (checkOut <= checkIn) throw new Error("Invalid dates")`.
 
 Good. Now imagine another application writes to the same database. Or a background migration contains a bug.
 

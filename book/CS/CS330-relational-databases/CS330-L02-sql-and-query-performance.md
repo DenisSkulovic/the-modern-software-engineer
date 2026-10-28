@@ -387,12 +387,7 @@ Of course not. The directory is alphabetically organized.
 
 You can jump toward the end, narrow the relevant region, and find Zimmerman without examining the entire directory.
 
-A database B-tree index exploits a similar idea. Create a single-column index on hotel identity:
-
-```sql
-CREATE INDEX idx_reservations_hotel
-ON reservations (hotel_id);
-```
+A database B-tree index exploits a similar idea. Create a single-column index on hotel identity with `CREATE INDEX idx_reservations_hotel ON reservations (hotel_id)`.
 
 PostgreSQL constructs a separate index structure containing hotel identifiers associated with references to table rows.
 
@@ -511,12 +506,7 @@ An index is beneficial when it allows the executor to avoid enough expensive wor
 
 ### The deceptive boolean index
 
-Imagine a table containing 50 million orders. You create an index on the boolean paid flag:
-
-```sql
-CREATE INDEX idx_orders_paid
-ON orders (is_paid);
-```
+Imagine a table containing 50 million orders. You create an index on the boolean paid flag with `CREATE INDEX idx_orders_paid ON orders (is_paid)`.
 
 But 95% of orders have `is_paid = true`. A query asking for paid orders still potentially needs 47.5 million rows. The index doesn't make that huge result small.
 
@@ -598,12 +588,7 @@ That's a much more powerful optimization than merely indexing each filter column
 
 ### Why the column order matters
 
-Suppose we instead create an index that leads with check-in, then hotel:
-
-```sql
-CREATE INDEX idx_date_hotel
-ON reservations (check_in, hotel_id);
-```
+Suppose we instead create an index that leads with check-in, then hotel — `CREATE INDEX idx_date_hotel ON reservations (check_in, hotel_id)`.
 
 This organizes the entries primarily by date.
 
@@ -866,12 +851,7 @@ And the planner cannot know every possible relationship among columns.
 
 ### The correlation trap
 
-Imagine a multinational hotel platform. Nearly every reservation for Hotel 482 belongs to Lithuania. Your query asks for that hotel and country code `LT`:
-
-```sql
-WHERE hotel_id = 482
-  AND country_code = 'LT'
-```
+Imagine a multinational hotel platform. Nearly every reservation for Hotel 482 belongs to Lithuania. Your query asks for that hotel and country code `LT` — `WHERE hotel_id = 482 AND country_code = 'LT'`.
 
 Suppose Hotel 482 accounts for 1% of reservations, and Lithuania accounts for 5%. If the planner naively treats these conditions as independent, it might estimate one percent times five percent — five hundredths of one percent of the table, or 0.0005 as a fraction.
 
@@ -1052,15 +1032,7 @@ What's wrong? Nothing functionally. Every reservation receives the correct custo
 
 But the backend executes one query to retrieve reservations, followed by 100 customer queries.
 
-That's the classic **N+1 query problem** — one query for the page, then one hundred for each customer, totaling 101 round trips:
-
-```text
-1 query  -> Fetch reservations
-
-100 queries -> Fetch each customer separately
-
-Total: 101 queries
-```
+That's the classic **N+1 query problem** — one query for the page, then one hundred for each customer, totaling 101 round trips.
 
 If each query incurs network, database scheduling, and execution overhead, the accumulated cost becomes substantial.
 
@@ -1068,15 +1040,7 @@ Even worse, the database might be fast enough that individual queries look harml
 
 ### The obvious repair
 
-We could retrieve the related customers in one query with an `IN` list of IDs:
-
-```sql
-SELECT *
-FROM customers
-WHERE id IN (...);
-```
-
-Then associate customers with reservations in application memory. Or we could use a join that returns reservation and customer fields together for the hotel page:
+We could retrieve the related customers in one query with an `IN` list of IDs — `SELECT * FROM customers WHERE id IN (...)` — then associate customers with reservations in application memory. Or we could use a join that returns reservation and customer fields together for the hotel page:
 
 ```sql
 SELECT
@@ -1153,19 +1117,7 @@ ON reservations (hotel_id, check_in DESC, id DESC);
 
 Now PostgreSQL may be able to navigate to the hotel's records in the desired order and stop after retrieving the first 25.
 
-Instead of reading tens of thousands of rows, evaluating candidates, and finding the latest twenty-five, we may get: find the hotel's ordered index range, read the first twenty-five suitable entries, and return:
-
-```text
-Find hotel's ordered index range
-      |
-      v
-Read first 25 suitable entries
-      |
-      v
-Return
-```
-
-That's a substantial reduction in work.
+Instead of reading tens of thousands of rows, evaluating candidates, and finding the latest twenty-five, we may get: find the hotel's ordered index range, read the first twenty-five suitable entries, and return. That's a substantial reduction in work.
 
 But it depends on whether the index and query conditions genuinely permit early termination.
 
@@ -1215,7 +1167,7 @@ The rows skipped by `OFFSET` are still computed. As the offset grows, the amount
 
 Suppose the first page ends with check-in `2026-10-17` and ID `10842`.
 
-Instead of requesting page 2 through an offset, we can ask for records after that position in our descending order — keyset comparison on the sort columns:
+Instead of requesting page 2 through an offset, keep the same hotel filter and descending order, but replace the offset with a **row comparison**: treat check-in and id as a pair and require that pair to be *less than* October 17 2026 and id 10842 — then limit twenty-five. For descending “next page” semantics, that less-than on the sort tuple is the keyset predicate:
 
 ```sql
 SELECT id, check_in
@@ -1395,7 +1347,7 @@ What would you investigate?
 
 **Suggested time: 8 minutes**
 
-You frequently execute a parameterized hotel-and-date query ordered by check-in and ID descending, limited to fifty rows:
+You frequently execute a parameterized hotel-and-date query: hotel id equals a parameter, check-in on or after a start date and before an end date, ordered by check-in and ID descending, limited to fifty rows:
 
 ```sql
 SELECT *

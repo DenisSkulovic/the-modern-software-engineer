@@ -5,7 +5,7 @@ Two different questions. Keep them apart.
 | Track | Asks | Lives in | Shared? |
 | --- | --- | --- | --- |
 | **Manuscript** | Is this lecture written? How mature is the text? Which edition? | `curriculum.yaml` + lecture frontmatter | Yes — part of the library |
-| **Learning** | Have *I* studied it? How solid is it? When should I revisit? | `students/<you>/ledger.yaml` | No — personal per student |
+| **Learning** | Have *I* studied it? How solid is it? When should I revisit? | `students/<you>/activity.yaml` | No — personal per student |
 
 ---
 
@@ -68,22 +68,44 @@ Metaphor: the lectures are museum rooms. Your ledger records how you walked them
 | `fading` | Confidence dropping; details blurring | Promote to `encore` soon |
 | `encore` | Scheduled revisit (spaced refresh) | Re-read hot spots → back to `settled`/`fluent` |
 
-### Ledger fields (per lecture)
+### Activity log (source of truth)
+
+Each thing you do is one event in `activity.yaml`. A later session is a new event. It does not overwrite the earlier one, and nothing is stored as a running counter.
 
 ```yaml
-CS110-L01:
-  status: studying
-  confidence: 2          # 0–5 gut check
-  passes: 1              # full serious passes completed
-  opened_on: 2026-10-26
-  settled_on: null
-  last_touched: 2026-10-26
-  next_encore: null      # ISO date when a refresh is due
-  encore_interval_days: 30
-  notes: "Heap vs BST trade-off still fuzzy"
+- at: 2026-10-27          # calendar day; do not invent a clock time
+  lecture: CS230-L06
+  action: listen          # listen | read | skim | lab | oral | review | note
+  phase: studying         # judgment after this session; vocabulary above
+  confidence: 2           # optional 0–5
+  note: "Full voice listen-through; one session."
 ```
 
-### Suggested encore intervals (defaults; override per lecture)
+`source: backfill` appears only on rows copied out of the old per-lecture snapshot.
+
+```bash
+python tools/progress_log.py --student dskul \
+  --lecture CS230-L08 --action listen --phase studying --confidence 2 \
+  --note "Full voice listen-through; one session."
+```
+
+`--at YYYY-MM-DD` records a past day. Unknown lecture ids are rejected. The tool appends; it has no edit or delete. A correction is a new event.
+
+`ledger.yaml` is the profile only: who the student is, the status vocabulary, and the encore intervals. It has no per-lecture map.
+
+### What the dashboard folds
+
+`progress_render.py` queries the log. It does not read a snapshot you maintain by hand.
+
+- no events → `unopened`
+- phase and confidence → the latest event that set them
+- passes → count of `listen`, `read`, `skim`, `lab`, `oral`, and `review` (`note` is kept and not counted)
+- opened / last touched → earliest and latest `at`
+- next encore → only for `settled`, `fluent`, `fading`, or `encore`: the date of the event that set that phase, plus the interval below
+
+The **course status strip** is that current phase, one glyph per lecture. The **activity calendar** and **course by week** table count the events over time. **Recent events** lists the log, newest day first, notes included.
+
+### Suggested encore intervals (defaults; applied when rendering)
 
 | After reaching | First encore | Then |
 | --- | --- | --- |
@@ -111,13 +133,17 @@ book/
 ├── students/
 │   ├── README.md             ← how to use ledgers
 │   ├── _template/
-│   │   └── ledger.yaml       ← copy me
+│   │   ├── ledger.yaml       ← profile only
+│   │   └── activity.yaml     ← empty log
 │   └── dskul/                ← example / primary student
-│       ├── ledger.yaml       ← source of truth for learning
+│       ├── ledger.yaml       ← profile (not a snapshot of lectures)
+│       ├── activity.yaml     ← append-only learning history
 │       └── progress.md       ← rendered dashboard (optional commit)
 └── tools/
     ├── sync_manuscript_meta.py
+    ├── progress_lib.py
     ├── progress_init.py
+    ├── progress_log.py
     └── progress_render.py
 ```
 
@@ -134,7 +160,7 @@ book/
 
 **Studying**
 
-1. Copy `students/_template` → `students/<your-id>/` if needed
-2. Edit `ledger.yaml` statuses as you go (or bump with notes)
+1. `python tools/progress_init.py --student <your-id>` if the folder does not exist yet
+2. Append what you did: `python tools/progress_log.py --student <your-id> --lecture <id> --action listen --phase studying`
 3. `python tools/progress_render.py --student <your-id>`
-4. Check **Encore due** on the dashboard before picking tonight’s room
+4. Check **Encore due** and the activity calendar before picking tonight’s room

@@ -1,29 +1,37 @@
 #!/usr/bin/env python3
-"""Render a personal Study Ledger dashboard to students/<id>/progress.md."""
+"""Render a study dashboard from the activity log.
+
+Current status is a fold of activity.yaml. The course strip is that fold.
+The calendar and course-by-week tables are counts over the same events.
+"""
 
 from __future__ import annotations
 
 import argparse
-from collections import Counter
-from datetime import date, datetime
-from pathlib import Path
-
-import yaml
+from collections import Counter, defaultdict
+from datetime import date, timedelta
 
 from curriculum_lib import BOOK_ROOT, load_manifest
+from progress_lib import (
+    PASS_ACTIONS,
+    PHASES,
+    STUDENTS,
+    activity_path,
+    course_of,
+    fold_core,
+    heat_cell,
+    intervals_from,
+    iso_week_label,
+    lecture_index,
+    ledger_path,
+    load_events,
+    load_yaml,
+    md_cell,
+    parse_day,
+    week_start,
+)
 
-STUDENTS = BOOK_ROOT / "students"
-
-STATUS_ORDER = [
-    "unopened",
-    "wandering",
-    "studying",
-    "labbing",
-    "settled",
-    "fluent",
-    "fading",
-    "encore",
-]
+STATUS_ORDER = list(PHASES)
 
 STATUS_GLYPH = {
     "unopened": "·",
@@ -36,13 +44,7 @@ STATUS_GLYPH = {
     "encore": "↻",
 }
 
-
-def parse_day(value) -> date | None:
-    if not value:
-        return None
-    if isinstance(value, date) and not isinstance(value, datetime):
-        return value
-    return date.fromisoformat(str(value)[:10])
+WEEKDAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
 
 def course_rollup(statuses: list[str]) -> str:
@@ -59,35 +61,52 @@ def course_rollup(statuses: list[str]) -> str:
     return "underway"
 
 
+def show_day(value) -> str:
+    day = parse_day(value)
+    return day.isoformat() if day else "—"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--student", required=True)
     args = parser.parse_args()
 
-    ledger_path = STUDENTS / args.student / "ledger.yaml"
-    if not ledger_path.is_file():
-        raise SystemExit(f"Missing {ledger_path} — run progress_init.py first")
+    ledger_file = ledger_path(args.student)
+    if not ledger_file.is_file():
+        raise SystemExit(f"Missing {ledger_file} — run progress_init.py first")
+    activity_file = activity_path(args.student)
+    if not activity_file.is_file():
+        raise SystemExit(
+            f"Missing {activity_file} — run progress_log.py --migrate-ledger "
+            "or progress_init.py"
+        )
 
-    with ledger_path.open(encoding="utf-8") as f:
-        ledger = yaml.safe_load(f)
+    ledger = load_yaml(ledger_file)
+    events = load_events(activity_file)
+    if ledger.get("lectures") and not events:
+        raise SystemExit(
+            "ledger.yaml still has a lectures snapshot and the activity log is empty. "
+            f"Run: python tools/progress_log.py --student {args.student} --migrate-ledger"
+        )
+    if ledger.get("lectures"):
+        print(
+            "warning: ledger.yaml lectures map is ignored; activity.yaml is the source of truth"
+        )
 
     manifest = load_manifest()
     today = date.today()
-    lectures = ledger.get("lectures") or {}
+    intervals = intervals_from(ledger)
+    lectures = fold_core(events, manifest, intervals)
+    catalog = lecture_index(manifest)
     counts = Counter(e.get("status", "unopened") for e in lectures.values())
 
     encore_due: list[tuple[str, dict]] = []
     for lid, entry in lectures.items():
         st = entry.get("status")
         due = parse_day(entry.get("next_encore"))
-        if st == "fading":
-            encore_due.append((lid, entry))
-        elif st == "encore":
-            encore_due.append((lid, entry))
-        elif due and due <= today:
+        if st == "fading" or st == "encore" or (due and due <= today):
             encore_due.append((lid, entry))
 
-    # Suggested next: first unopened/wandering/studying/labbing in study_order
     suggested: list[str] = []
     code_to_lectures: dict[str, list[str]] = {}
     for course in manifest["courses"]:
@@ -109,6 +128,11 @@ def main() -> None:
         if len(suggested) >= 5:
             break
 
+    latest_event = max((e["at"] for e in events), default=None)
+    updated = parse_day(ledger.get("updated"))
+    if latest_event and (updated is None or latest_event > updated):
+        updated = latest_event
+
     lines: list[str] = []
     name = ledger.get("display_name") or ledger.get("student") or args.student
     lines.append(f"# Study Ledger — {name}")
@@ -116,13 +140,14 @@ def main() -> None:
     lines.append(
         f"**Student:** `{ledger.get('student')}` · "
         f"**Curriculum:** v{ledger.get('curriculum_version')} · "
-        f"**Updated:** {ledger.get('updated', today.isoformat())} · "
+        f"**Updated:** {show_day(updated)} · "
         f"**Rendered:** {today.isoformat()}"
     )
     lines.append("")
     lines.append(
         "Personal learning tracker (not manuscript status). "
-        "Design: [`../../STATUS.md`](../../STATUS.md)."
+        "History is the append-only [`activity.yaml`](activity.yaml); "
+        "this page folds it. Design: [`../../STATUS.md`](../../STATUS.md)."
     )
     lines.append("")
     lines.append("## At a glance")
@@ -141,6 +166,11 @@ def main() -> None:
         f"**{settled_ish}/{total}** ({100 * settled_ish // total}%)."
     )
     lines.append("")
+    lines.append(
+        "Counts cover every core lecture currently in the catalogue. "
+        "A lecture with no events is `unopened`."
+    )
+    lines.append("")
 
     lines.append("## Encore due")
     lines.append("")
@@ -155,8 +185,8 @@ def main() -> None:
         ):
             lines.append(
                 f"| `{lid}` | `{entry.get('status')}` | "
-                f"{entry.get('next_encore') or '—'} | "
-                f"{(entry.get('notes') or '')[:60]} |"
+                f"{show_day(entry.get('next_encore'))} | "
+                f"{md_cell(entry.get('notes') or '', 60)} |"
             )
     lines.append("")
 
@@ -173,7 +203,12 @@ def main() -> None:
             )
     lines.append("")
 
-    lines.append("## Course heat map")
+    lines.append("## Course status strip")
+    lines.append("")
+    lines.append(
+        "Current phase of each lecture, in catalogue order. "
+        "This is not a timeline — the calendar below is."
+    )
     lines.append("")
     lines.append("| Course | Rollup | Pattern |")
     lines.append("| --- | --- | --- |")
@@ -194,7 +229,16 @@ def main() -> None:
     )
     lines.append("")
 
+    append_calendar(lines, events, today)
+    append_course_weeks(lines, events, catalog, manifest)
+    append_recent(lines, events, catalog)
+
     lines.append("## Full ledger")
+    lines.append("")
+    lines.append(
+        "Folded snapshot. Passes count listen, read, skim, lab, oral, and review events. "
+        "The note is the latest one; earlier notes stay in the log."
+    )
     lines.append("")
     lines.append("| ID | Status | Conf | Passes | Last | Next encore | Notes |")
     lines.append("| --- | --- | ---: | ---: | --- | --- | --- |")
@@ -202,20 +246,136 @@ def main() -> None:
         e = lectures[lid]
         lines.append(
             f"| `{lid}` | `{e.get('status')}` | {e.get('confidence', 0)} | "
-            f"{e.get('passes', 0)} | {e.get('last_touched') or '—'} | "
-            f"{e.get('next_encore') or '—'} | {(e.get('notes') or '')[:40]} |"
+            f"{e.get('passes', 0)} | {show_day(e.get('last_touched'))} | "
+            f"{show_day(e.get('next_encore'))} | {md_cell(e.get('notes') or '', 40)} |"
         )
     lines.append("")
     lines.append("---")
     lines.append("")
     lines.append(
-        f"_Source: [`ledger.yaml`](ledger.yaml). "
+        "_Source: [`activity.yaml`](activity.yaml), profile [`ledger.yaml`](ledger.yaml). "
         f"Regenerate: `python tools/progress_render.py --student {args.student}`._"
     )
 
     out = STUDENTS / args.student / "progress.md"
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"Wrote {out.relative_to(BOOK_ROOT)}")
+
+
+def append_calendar(lines: list[str], events: list[dict], today: date) -> None:
+    lines.append("## Activity calendar")
+    lines.append("")
+    if not events:
+        lines.append("_No events yet._")
+        lines.append("")
+        return
+
+    per_day: Counter[date] = Counter(e["at"] for e in events)
+    first = min(per_day)
+    last = max(max(per_day), today)
+    lines.append(
+        "Each cell is how many events fell on that day. "
+        "The glyph is intensity; the digit is the count."
+    )
+    lines.append("")
+    lines.append("| Week of | " + " | ".join(WEEKDAYS) + " |")
+    lines.append("| --- | " + " | ".join("---" for _ in WEEKDAYS) + " |")
+    monday = week_start(first)
+    end_monday = week_start(last)
+    while monday <= end_monday:
+        cells = []
+        for offset in range(7):
+            cells.append(heat_cell(per_day.get(monday + timedelta(days=offset), 0)))
+        lines.append(f"| {monday.isoformat()} | " + " | ".join(cells) + " |")
+        monday += timedelta(days=7)
+    lines.append("")
+    lines.append(
+        "Intensity: `·` 0, `░` 1, `▒` 2, `▓` 3–4, `█` 5+."
+    )
+    active_days = sum(1 for n in per_day.values() if n)
+    lines.append("")
+    lines.append(
+        f"{len(events)} events across {active_days} days, "
+        f"from {first.isoformat()}."
+    )
+    lines.append("")
+
+
+def append_course_weeks(lines: list[str], events: list[dict], catalog: dict, manifest: dict) -> None:
+    lines.append("## Course by week")
+    lines.append("")
+    sessions = [e for e in events if e["action"] in PASS_ACTIONS]
+    if not events:
+        lines.append("_No events yet._")
+        lines.append("")
+        return
+
+    weeks = sorted({week_start(e["at"]) for e in events})
+    counts: dict[str, Counter] = defaultdict(Counter)
+    for event in sessions:
+        counts[course_of(event["lecture"], catalog)][week_start(event["at"])] += 1
+
+    order: list[str] = []
+    seen: set[str] = set()
+    for block in manifest.get("study_order") or []:
+        for code in block.get("courses") or []:
+            if code in counts and code not in seen:
+                order.append(code)
+                seen.add(code)
+    for code in sorted(counts):
+        if code not in seen:
+            order.append(code)
+
+    if not order:
+        lines.append("_Events so far are notes only — no listen, read, lab, or review sessions._")
+        lines.append("")
+        return
+
+    headers = [iso_week_label(w) for w in weeks]
+    lines.append(
+        "Session counts per course (listen, read, skim, lab, oral, review). "
+        "`note` events stay in the log and are omitted here."
+    )
+    lines.append("")
+    lines.append("| Course | " + " | ".join(headers) + " |")
+    lines.append("| --- | " + " | ".join("---:" for _ in headers) + " |")
+    for code in order:
+        cells = [str(counts[code].get(w, 0)) for w in weeks]
+        lines.append(f"| `{code}` | " + " | ".join(cells) + " |")
+    lines.append("")
+    lines.append(
+        "Week labels are ISO weeks. "
+        + ", ".join(f"{iso_week_label(w)} starts {w.isoformat()}" for w in weeks)
+        + "."
+    )
+    lines.append("")
+
+
+def append_recent(lines: list[str], events: list[dict], catalog: dict) -> None:
+    lines.append("## Recent events")
+    lines.append("")
+    if not events:
+        lines.append("_No events yet._")
+        lines.append("")
+        return
+    lines.append(
+        "Newest day first. A later session does not replace an earlier one."
+    )
+    lines.append("")
+    lines.append("| When | Lecture | Action | Phase | Conf | Note |")
+    lines.append("| --- | --- | --- | --- | ---: | --- |")
+    ordered = sorted(events, key=lambda e: (e["at"], e.get("_i", 0)), reverse=True)
+    for event in ordered:
+        title = (catalog.get(event["lecture"]) or {}).get("title")
+        lecture = f"`{event['lecture']}`"
+        if title:
+            lecture += f" {md_cell(title)}"
+        conf = event["confidence"] if event.get("confidence") is not None else "—"
+        lines.append(
+            f"| {event['at'].isoformat()} | {lecture} | `{event['action']}` | "
+            f"{event.get('phase') or '—'} | {conf} | {md_cell(event.get('note') or '')} |"
+        )
+    lines.append("")
 
 
 if __name__ == "__main__":

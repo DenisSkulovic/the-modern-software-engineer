@@ -2,13 +2,13 @@
 
 **Student:** `dskul` · **Curriculum:** v2.0 · **Updated:** 2026-10-28 · **Rendered:** 2026-10-28
 
-Personal learning tracker (not manuscript status). Design: [`../../STATUS.md`](../../STATUS.md).
+Personal learning tracker (not manuscript status). History is the append-only [`activity.yaml`](activity.yaml); this page folds it. Design: [`../../STATUS.md`](../../STATUS.md).
 
 ## At a glance
 
 | Status | Count |
 | --- | ---: |
-| `unopened` · | 61 |
+| `unopened` · | 75 |
 | `wandering` ~ | 1 |
 | `studying` > | 9 |
 | `labbing` * | 0 |
@@ -16,9 +16,11 @@ Personal learning tracker (not manuscript status). Design: [`../../STATUS.md`](.
 | `fluent` ★ | 0 |
 | `fading` ? | 0 |
 | `encore` ↻ | 0 |
-| **Total** | **71** |
+| **Total** | **85** |
 
-Progress through core lectures (settled+fluent): **0/71** (0%).
+Progress through core lectures (settled+fluent): **0/85** (0%).
+
+Counts cover every core lecture currently in the catalogue. A lecture with no events is `unopened`.
 
 ## Encore due
 
@@ -32,7 +34,9 @@ _Nothing overdue. Nice._
 - `CS110-L04` — Data Structures: Choosing How to Remember Things (`studying`, confidence 2)
 - `CS110-L05` — Searching, Sorting, and Finding Shortcuts (`unopened`, confidence 0)
 
-## Course heat map
+## Course status strip
+
+Current phase of each lecture, in catalogue order. This is not a timeline — the calendar below is.
 
 | Course | Rollup | Pattern |
 | --- | --- | --- |
@@ -56,7 +60,49 @@ _Nothing overdue. Nice._
 
 Glyphs: `·`=unopened, `~`=wandering, `>`=studying, `*`=labbing, `✓`=settled, `★`=fluent, `?`=fading, `↻`=encore
 
+## Activity calendar
+
+Each cell is how many events fell on that day. The glyph is intensity; the digit is the count.
+
+| Week of | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-26 | █5 | █5 | · | · | · | · | · |
+
+Intensity: `·` 0, `░` 1, `▒` 2, `▓` 3–4, `█` 5+.
+
+10 events across 2 days, from 2026-10-26.
+
+## Course by week
+
+Session counts per course (listen, read, skim, lab, oral, review). `note` events stay in the log and are omitted here.
+
+| Course | 2026-W44 |
+| --- | ---: |
+| `CS110` | 4 |
+| `CS230` | 6 |
+
+Week labels are ISO weeks. 2026-W44 starts 2026-10-26.
+
+## Recent events
+
+Newest day first. A later session does not replace an earlier one.
+
+| When | Lecture | Action | Phase | Conf | Note |
+| --- | --- | --- | --- | ---: | --- |
+| 2026-10-27 | `CS230-L07` TLS and the Architecture of Trust | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
+| 2026-10-27 | `CS230-L06` The Life of a Network Connection | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
+| 2026-10-27 | `CS230-L04` DNS: The Internet's Distributed Naming System | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
+| 2026-10-27 | `CS230-L03` HTTP: The Protocol That Runs the Web | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
+| 2026-10-27 | `CS230-L02` Networking for Software Engineers | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
+| 2026-10-26 | `CS230-L01` The Journey of a Web Request | `listen` | wandering | 1 | Voice listen-through once — attentive but dense/networky; useful as shallow map-of-existence refresher, not grasp. Skipped CS110-L05 to diversify. Candidate: keep L01 as tour + deepen via L02/L03 (or new zoom-ins) rather than inflate L01. |
+| 2026-10-26 | `CS110-L04` Data Structures: Choosing How to Remember Things | `listen` | studying | 2 | Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not started. |
+| 2026-10-26 | `CS110-L03` Algorithms and the Cost of Computation | `listen` | studying | 2 | Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not started. |
+| 2026-10-26 | `CS110-L02` Everything Is Numbers — Until It Isn't | `listen` | studying | 2 | Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not started. |
+| 2026-10-26 | `CS110-L01` What Is Computation, Really? | `listen` | studying | 2 | Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not started. |
+
 ## Full ledger
+
+Folded snapshot. Passes count listen, read, skim, lab, oral, and review events. The note is the latest one; earlier notes stay in the log.
 
 | ID | Status | Conf | Passes | Last | Next encore | Notes |
 | --- | --- | ---: | ---: | --- | --- | --- |
@@ -71,10 +117,10 @@ Glyphs: `·`=unopened, `~`=wandering, `>`=studying, `*`=labbing, `✓`=settled, 
 | `AI410-L05` | `unopened` | 0 | 0 | — | — |  |
 | `AI410-L06` | `unopened` | 0 | 0 | — | — |  |
 | `AI410-L07` | `unopened` | 0 | 0 | — | — |  |
-| `CS110-L01` | `studying` | 2 | 1 | 2026-10-26 | — | Full voice listen-through (Markdown Read |
-| `CS110-L02` | `studying` | 2 | 1 | 2026-10-26 | — | Full voice listen-through (Markdown Read |
-| `CS110-L03` | `studying` | 2 | 1 | 2026-10-26 | — | Full voice listen-through (Markdown Read |
-| `CS110-L04` | `studying` | 2 | 1 | 2026-10-26 | — | Full voice listen-through (Markdown Read |
+| `CS110-L01` | `studying` | 2 | 1 | 2026-10-26 | — | Full voice listen-through (Markdown Rea… |
+| `CS110-L02` | `studying` | 2 | 1 | 2026-10-26 | — | Full voice listen-through (Markdown Rea… |
+| `CS110-L03` | `studying` | 2 | 1 | 2026-10-26 | — | Full voice listen-through (Markdown Rea… |
+| `CS110-L04` | `studying` | 2 | 1 | 2026-10-26 | — | Full voice listen-through (Markdown Rea… |
 | `CS110-L05` | `unopened` | 0 | 0 | — | — |  |
 | `CS120-L01` | `unopened` | 0 | 0 | — | — |  |
 | `CS120-L02` | `unopened` | 0 | 0 | — | — |  |
@@ -84,21 +130,35 @@ Glyphs: `·`=unopened, `~`=wandering, `>`=studying, `*`=labbing, `✓`=settled, 
 | `CS220-L01` | `unopened` | 0 | 0 | — | — |  |
 | `CS220-L02` | `unopened` | 0 | 0 | — | — |  |
 | `CS220-L03` | `unopened` | 0 | 0 | — | — |  |
-| `CS230-L01` | `wandering` | 1 | 1 | 2026-10-26 | — | Voice listen-through once — attentive bu |
-| `CS230-L02` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.  |
-| `CS230-L03` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.  |
-| `CS230-L04` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.  |
+| `CS220-L04` | `unopened` | 0 | 0 | — | — |  |
+| `CS220-L05` | `unopened` | 0 | 0 | — | — |  |
+| `CS230-L01` | `wandering` | 1 | 1 | 2026-10-26 | — | Voice listen-through once — attentive b… |
+| `CS230-L02` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.… |
+| `CS230-L03` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.… |
+| `CS230-L04` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.… |
 | `CS230-L05` | `unopened` | 0 | 0 | — | — |  |
-| `CS230-L06` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.  |
-| `CS230-L07` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.  |
+| `CS230-L06` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.… |
+| `CS230-L07` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.… |
 | `CS230-L08` | `unopened` | 0 | 0 | — | — |  |
 | `CS230-L09` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L01` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L02` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L03` | `unopened` | 0 | 0 | — | — |  |
+| `CS320-L04` | `unopened` | 0 | 0 | — | — |  |
+| `CS320-L05` | `unopened` | 0 | 0 | — | — |  |
+| `CS320-L06` | `unopened` | 0 | 0 | — | — |  |
+| `CS320-L07` | `unopened` | 0 | 0 | — | — |  |
+| `CS320-L08` | `unopened` | 0 | 0 | — | — |  |
 | `CS330-L01` | `unopened` | 0 | 0 | — | — |  |
 | `CS330-L02` | `unopened` | 0 | 0 | — | — |  |
 | `CS330-L03` | `unopened` | 0 | 0 | — | — |  |
+| `CS340-L01` | `unopened` | 0 | 0 | — | — |  |
+| `CS340-L02` | `unopened` | 0 | 0 | — | — |  |
+| `CS340-L03` | `unopened` | 0 | 0 | — | — |  |
+| `CS340-L04` | `unopened` | 0 | 0 | — | — |  |
+| `CS340-L05` | `unopened` | 0 | 0 | — | — |  |
+| `CS340-L06` | `unopened` | 0 | 0 | — | — |  |
+| `CS340-L07` | `unopened` | 0 | 0 | — | — |  |
 | `CS430-L01` | `unopened` | 0 | 0 | — | — |  |
 | `CS430-L02` | `unopened` | 0 | 0 | — | — |  |
 | `CS430-L03` | `unopened` | 0 | 0 | — | — |  |
@@ -134,4 +194,4 @@ Glyphs: `·`=unopened, `~`=wandering, `>`=studying, `*`=labbing, `✓`=settled, 
 
 ---
 
-_Source: [`ledger.yaml`](ledger.yaml). Regenerate: `python tools/progress_render.py --student dskul`._
+_Source: [`activity.yaml`](activity.yaml), profile [`ledger.yaml`](ledger.yaml). Regenerate: `python tools/progress_render.py --student dskul`._

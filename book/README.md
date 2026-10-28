@@ -101,11 +101,11 @@ Cross-references in prose should use lecture IDs (`CS110-L04`), never bare “Se
 
 ```bash
 python tools/progress_init.py --student dskul
-# edit students/dskul/ledger.yaml as you study
+python tools/progress_log.py --student dskul --lecture CS230-L08 --action listen --phase studying
 python tools/progress_render.py --student dskul
 ```
 
-Dashboard: `students/dskul/progress.md` (encore due, heat map, suggested next rooms).
+History is `students/dskul/activity.yaml` (append events; do not overwrite them). Dashboard: `students/dskul/progress.md` (encore due, activity calendar, status strip, suggested next rooms).
 
 ---
 

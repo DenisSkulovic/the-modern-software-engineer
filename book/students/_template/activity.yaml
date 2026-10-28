@@ -1,0 +1,7 @@
+# Append-only study activity. Source of truth for learning history.
+# Append with: python tools/progress_log.py --student <id> --lecture CS230-L08 --action listen --phase studying
+# Do not edit past events. A correction is a new event.
+#
+# Fields: at (YYYY-MM-DD), lecture, action (listen|read|skim|lab|oral|review|note),
+# optional phase, confidence (0-5), note. source: backfill is only for migrated rows.
+events: []

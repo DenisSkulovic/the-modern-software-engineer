@@ -1,0 +1,79 @@
+# Append-only study activity. Source of truth for learning history.
+# Append with: python tools/progress_log.py --student <id> --lecture CS230-L08 --action listen --phase studying
+# Do not edit past events. A correction is a new event.
+#
+# Fields: at (YYYY-MM-DD), lecture, action (listen|read|skim|lab|oral|review|note),
+# optional phase, confidence (0-5), note. source: backfill is only for migrated rows.
+events:
+- at: '2026-10-26'
+  lecture: CS110-L01
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not started.
+  source: backfill
+- at: '2026-10-26'
+  lecture: CS110-L02
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not started.
+  source: backfill
+- at: '2026-10-26'
+  lecture: CS110-L03
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not started.
+  source: backfill
+- at: '2026-10-26'
+  lecture: CS110-L04
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through (Markdown Read Aloud); one dedicated session. Prose done; labs not started.
+  source: backfill
+- at: '2026-10-26'
+  lecture: CS230-L01
+  action: listen
+  phase: wandering
+  confidence: 1
+  note: 'Voice listen-through once — attentive but dense/networky; useful as shallow map-of-existence
+    refresher, not grasp. Skipped CS110-L05 to diversify. Candidate: keep L01 as tour + deepen via L02/L03
+    (or new zoom-ins) rather than inflate L01.'
+  source: backfill
+- at: '2026-10-27'
+  lecture: CS230-L02
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through; one session. Prose done; labs not started.
+  source: backfill
+- at: '2026-10-27'
+  lecture: CS230-L03
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through; one session. Prose done; labs not started.
+  source: backfill
+- at: '2026-10-27'
+  lecture: CS230-L04
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through; one session. Prose done; labs not started.
+  source: backfill
+- at: '2026-10-27'
+  lecture: CS230-L06
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through; one session. Prose done; labs not started.
+  source: backfill
+- at: '2026-10-27'
+  lecture: CS230-L07
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through; one session. Prose done; labs not started.
+  source: backfill

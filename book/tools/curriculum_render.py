@@ -146,8 +146,8 @@ def main() -> None:
         "3. Run `python tools/curriculum_migrate.py --dry-run` then `--apply` or `--rewrite-only` for reshuffles.\n"
         "4. Run `python tools/curriculum_validate.py`.\n"
         "5. Re-render this file: `python tools/curriculum_render.py`.\n"
-        "6. Personal learning: `python tools/progress_init.py --student <id>` then "
-        "`progress_render.py`.\n"
+        "6. Personal learning: `python tools/progress_log.py --student <id> --lecture <id> "
+        "--action listen` then `progress_render.py`. History is `students/<id>/activity.yaml`.\n"
     )
     OUT.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
     print(f"Wrote {OUT.relative_to(BOOK_ROOT)}")

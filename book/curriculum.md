@@ -328,5 +328,5 @@ Catalogue-only electives — no lecture files yet. Same ID scheme; promote to `t
 3. Run `python tools/curriculum_migrate.py --dry-run` then `--apply` or `--rewrite-only` for reshuffles.
 4. Run `python tools/curriculum_validate.py`.
 5. Re-render this file: `python tools/curriculum_render.py`.
-6. Personal learning: `python tools/progress_init.py --student <id>` then `progress_render.py`.
+6. Personal learning: `python tools/progress_log.py --student <id> --lecture <id> --action listen` then `progress_render.py`. History is `students/<id>/activity.yaml`.
 
