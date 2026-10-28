@@ -11,6 +11,18 @@ next: CS430-L05
 ---
 
 
+<!--
+EDITORIAL-TODO: P2 / CLARIFY_BOUNDARY / SE215-L04
+This manuscript should remain the primary treatment of microservice architecture,
+service autonomy, data ownership, distributed communication, outbox patterns, sagas,
+and distributed-monolith failure modes.
+Cross-reference SE330-L02 for in-process modular architecture and SE215-L04 for
+repository topology.
+Do not create a second introductory microservices lecture in SE215.
+-->
+
+
+
 
 
 

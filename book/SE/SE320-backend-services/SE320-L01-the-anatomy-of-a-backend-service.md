@@ -11,6 +11,16 @@ next: SE320-L02
 ---
 
 
+<!--
+EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE325-L01, SE325-L02, SE325-L06
+Preserve this lecture’s service-anatomy focus (layers, middleware, DI, request context).
+When SE325 manuscripts exist, add concise cross-references to files/object storage,
+bulk data operations, and API protection / multi-tenant fairness.
+Do not expand this lecture into those operational deep-dives.
+-->
+
+
+
 
 
 

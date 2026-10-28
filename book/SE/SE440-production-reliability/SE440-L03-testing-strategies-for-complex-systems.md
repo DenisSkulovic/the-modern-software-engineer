@@ -11,6 +11,16 @@ next: null
 ---
 
 
+<!--
+EDITORIAL-TODO: P2 / SCOPE_AND_CROSS_REFERENCE / SE215-L07
+Preserve broad testing strategy: contracts, integration boundaries, concurrency,
+asynchronous workflows, property-based tests, and resilience.
+Cross-reference SE215-L07 for practical browser E2E ownership.
+Avoid duplicating a full Playwright tutorial inside this general testing-strategy lecture.
+-->
+
+
+
 
 
 

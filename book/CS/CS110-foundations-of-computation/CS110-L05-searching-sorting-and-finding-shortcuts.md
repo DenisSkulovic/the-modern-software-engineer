@@ -11,6 +11,19 @@ next: null
 ---
 
 
+<!--
+EDITORIAL-TODO: P3 / AUDIT_DENSITY
+Previously measured at approximately 53 spoken minutes.
+Future TODO: Review for unnecessary introductory repetition after CS360 is complete.
+Keep CS110 focused on algorithmic understanding; CS360 should focus on active
+interview problem solving.
+Do not strip foundational algorithms from CS110 simply because CS360 contains
+related exercises.
+Do not apply automatic word-count reductions.
+-->
+
+
+
 
 
 

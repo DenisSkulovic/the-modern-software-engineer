@@ -11,6 +11,18 @@ next: SE450-L05
 ---
 
 
+<!--
+EDITORIAL-TODO: P3 / AUDIT_DENSITY
+Previously measured at approximately 52 spoken minutes.
+Future TODO: Review overlap with CS320-L02 on CPU quotas and contention, and with
+CS320-L04 on memory pressure and cgroups.
+Keep the Kubernetes scheduler, placement, resource-request, and autoscaling details here.
+Consider replacing repeated OS explanations with concise reminders and cross-references.
+Do not apply automatic word-count reductions.
+-->
+
+
+
 
 
 # SE450 — Kubernetes and Platform Engineering

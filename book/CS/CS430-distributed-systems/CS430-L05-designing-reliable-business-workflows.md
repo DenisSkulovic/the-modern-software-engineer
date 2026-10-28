@@ -11,6 +11,16 @@ next: null
 ---
 
 
+<!--
+EDITORIAL-TODO: P2 / PRESERVE_PRIMARY / SE325-L05
+Keep this as the primary payment and durable business-workflow lecture
+(authorization vs capture, webhooks, reconciliation, compensation).
+SE325-L05 may generalize vendor-integration maintenance; do not duplicate
+payment-state-machine depth there or dilute this manuscript.
+-->
+
+
+
 
 
 

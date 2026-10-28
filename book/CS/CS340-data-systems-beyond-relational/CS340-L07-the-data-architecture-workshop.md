@@ -11,6 +11,17 @@ next: null
 ---
 
 
+<!--
+EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE215-L09
+Retain the architectural workshop and its source-of-truth, data synchronization,
+and analytics decisions.
+Cross-reference SE215-L09 once that lecture introduces the complete
+operational-to-analytical data pipeline.
+Do not move the advanced data-architecture decisions into the survey lecture.
+-->
+
+
+
 
 
 

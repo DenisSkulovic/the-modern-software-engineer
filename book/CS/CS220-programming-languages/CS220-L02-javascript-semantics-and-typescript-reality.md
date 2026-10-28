@@ -12,6 +12,7 @@ next: CS220-L03
 
 
 
+
 # CS220 — Languages, Types, Memory, and Runtimes
 
 ## Lecture 02: JavaScript Semantics and TypeScript Reality

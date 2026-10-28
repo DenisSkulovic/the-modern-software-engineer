@@ -1,6 +1,6 @@
 # The Modern Software Engineer — Course Catalogue
 
-**Version:** 2.0 — 2026-10-27  
+**Version:** 2.0 — 2026-10-28  
 **Default manuscript edition:** `2.0.0`  
 **Machine-readable source of truth:** [`curriculum.yaml`](curriculum.yaml)  
 **Programme guide / study order:** [`README.md`](README.md)  
@@ -42,7 +42,7 @@ Library/content state — not whether you have studied the lecture. See [`STATUS
 
 Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `type: elective` or still-`planned`, not a separate numbering universe).
 
-## Core courses (17 · 90 lectures)
+## Core courses (17 · 91 lectures)
 
 ### CS — Computer Science
 
@@ -158,7 +158,7 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `
 
 #### SE240 — Browser and Frontend Engineering
 
-200-level · 6 lectures · course status `complete` · `SE/SE240-frontend-engineering/`
+200-level · 7 lectures · course status `in_progress` · `SE/SE240-frontend-engineering/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
@@ -168,6 +168,7 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `
 | `SE240-L04` | Delivering Modern Web Applications | `manuscript` | `2.0.0` | `WEB201-S09` |
 | `SE240-L05` | Performance: Why Fast Code Can Feel Slow | `manuscript` | `2.0.0` | `WEB201-S10` |
 | `SE240-L06` | Testing and Reliability in the Frontend | `manuscript` | `2.0.0` | `WEB201-S11` |
+| `SE240-L07` | Anatomy of a Production Web Page: Resource Loading, Third-Party Scripts, and Browser Forensics | `stub` | `2.0.0` | `` |
 
 #### SE310 — Web APIs, Identity, and Security
 
@@ -259,7 +260,7 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `
 | `AI410-L06` | Evaluating Nondeterministic Software | `manuscript` | `2.0.0` | `AI501-S10` |
 | `AI410-L07` | Security, Reliability, and Economics of AI Systems | `manuscript` | `2.0.0` | `AI501-S11` |
 
-## Active electives (3 · 22 lectures)
+## Active electives (5 · 38 lectures)
 
 Active electives have on-disk lecture stubs or manuscripts and are validated like core courses. They remain optional in the study programme.
 
@@ -271,8 +272,8 @@ Active electives have on-disk lecture stubs or manuscripts and are validated lik
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
-| `CS360-L01` | The Art of Solving an Unfamiliar Problem | `stub` | `2.0.0` | `` |
-| `CS360-L02` | Arrays, Strings, Hashing, and Sliding Windows | `stub` | `2.0.0` | `` |
+| `CS360-L01` | The Art of Solving an Unfamiliar Problem | `revised` | `2.1.0` | `` |
+| `CS360-L02` | Arrays, Strings, Hashing, and Sliding Windows | `revised` | `2.1.0` | `` |
 | `CS360-L03` | Binary Search, Sorting, and Greedy Decisions | `stub` | `2.0.0` | `` |
 | `CS360-L04` | Stacks, Queues, Heaps, and Ordered Processing | `stub` | `2.0.0` | `` |
 | `CS360-L05` | Trees, Graphs, and Traversal Strategies | `stub` | `2.0.0` | `` |
@@ -280,6 +281,36 @@ Active electives have on-disk lecture stubs or manuscripts and are validated lik
 | `CS360-L07` | The Senior Coding Interview Studio | `stub` | `2.0.0` | `` |
 
 ### SE — Software Engineering
+
+#### SE215 — The Software Engineering Ecosystem
+
+200-level · 10 lectures · course status `in_progress` · `SE/SE215-software-engineering-ecosystem/`
+
+| ID | Lecture | Manuscript | Edition | Legacy |
+| --- | --- | --- | --- | --- |
+| `SE215-L01` | The People and Teams Behind Software | `manuscript` | `2.0.0` | `` |
+| `SE215-L02` | How Engineering Work Gets Planned and Delivered | `stub` | `2.0.0` | `` |
+| `SE215-L03` | Git, Pull Requests, and Collaborative Delivery | `stub` | `2.0.0` | `` |
+| `SE215-L04` | Repositories, Monorepos, and Build Systems | `stub` | `2.0.0` | `` |
+| `SE215-L05` | Cloud Platforms and Service Models | `stub` | `2.0.0` | `` |
+| `SE215-L06` | DevOps, Platform Engineering, and Operational Ownership | `stub` | `2.0.0` | `` |
+| `SE215-L07` | Owning End-to-End Testing | `stub` | `2.0.0` | `` |
+| `SE215-L08` | Technical SEO and Web Discoverability | `stub` | `2.0.0` | `` |
+| `SE215-L09` | Data Engineering for Application Developers | `stub` | `2.0.0` | `` |
+| `SE215-L10` | Working With Product, Design, and Analytics | `stub` | `2.0.0` | `` |
+
+#### SE325 — Backends in the Wild: Production Field Guide
+
+300-level · 6 lectures · course status `in_progress` · `SE/SE325-backends-in-the-wild/`
+
+| ID | Lecture | Manuscript | Edition | Legacy |
+| --- | --- | --- | --- | --- |
+| `SE325-L01` | Files, Uploads, and Object Storage | `stub` | `2.0.0` | `` |
+| `SE325-L02` | Bulk Imports, Exports, and Background Data Operations | `stub` | `2.0.0` | `` |
+| `SE325-L03` | Scheduled Jobs, Time, and Distributed Execution | `stub` | `2.0.0` | `` |
+| `SE325-L04` | Production Data Repair, Audit, and Lifecycle | `stub` | `2.0.0` | `` |
+| `SE325-L05` | Surviving Third-Party Integrations | `stub` | `2.0.0` | `` |
+| `SE325-L06` | API Protection and Multi-Tenant Fairness | `stub` | `2.0.0` | `` |
 
 #### SE450 — Kubernetes and Platform Engineering
 

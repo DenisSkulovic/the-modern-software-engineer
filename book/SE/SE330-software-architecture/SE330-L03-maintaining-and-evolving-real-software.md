@@ -11,6 +11,16 @@ next: null
 ---
 
 
+<!--
+EDITORIAL-TODO: P3 / CROSS_REFERENCE / SE215-L02, SE215-L03
+Keep architectural evolution, technical debt, refactoring economics, and team incentives.
+Cross-reference SE215-L02 for planning and delivery processes and SE215-L03 for
+collaborative code-change practices.
+Avoid turning this architectural-maintenance chapter into an Agile-process manual.
+-->
+
+
+
 
 
 

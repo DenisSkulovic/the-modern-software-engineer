@@ -11,6 +11,18 @@ next: SE330-L03
 ---
 
 
+<!--
+EDITORIAL-TODO: P2 / CLARIFY_BOUNDARY / SE215-L04
+This manuscript should remain the primary treatment of modular monoliths, internal
+module boundaries, layered architecture, vertical slices, hexagonal architecture, and DDD.
+When SE215-L04 exists, add an explicit distinction between codebase/repository
+organization and runtime/deployment architecture.
+A monorepo is not synonymous with a monolith.
+Cross-reference CS430-L04 for distributed service boundaries and microservices.
+-->
+
+
+
 
 
 

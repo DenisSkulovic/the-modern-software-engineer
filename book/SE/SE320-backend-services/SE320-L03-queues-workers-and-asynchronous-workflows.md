@@ -11,6 +11,15 @@ next: null
 ---
 
 
+<!--
+EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE325-L02, SE325-L03
+Keep queue fundamentals, retries, duplicate delivery, and DLQs here.
+When SE325 exists, cross-reference distributed scheduling / cron failure modes
+and resumable bulk import-export jobs. Do not repeat those operational topics here.
+-->
+
+
+
 
 
 

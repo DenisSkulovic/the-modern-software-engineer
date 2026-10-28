@@ -11,6 +11,17 @@ next: SE240-L03
 ---
 
 
+<!--
+EDITORIAL-TODO: P3 / CROSS_REFERENCE / SE215-L10, SE215-L04
+Preserve feature organization, dependency direction, composables, stores, services,
+and frontend module boundaries.
+Cross-reference SE215-L10 for design systems, Figma handoff, product collaboration,
+and measurement.
+Cross-reference SE215-L04 where repository/package organization affects frontend architecture.
+-->
+
+
+
 
 
 

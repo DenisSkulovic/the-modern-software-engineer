@@ -18,6 +18,7 @@ next: SE310-L03
 
 
 
+
 # SE310 — Web APIs, Identity, and Security
 
 ## Lecture 02: Authentication and Browser Security

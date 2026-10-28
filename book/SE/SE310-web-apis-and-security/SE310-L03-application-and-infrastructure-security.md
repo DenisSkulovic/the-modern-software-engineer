@@ -11,6 +11,16 @@ next: null
 ---
 
 
+<!--
+EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE325-L01, SE325-L04
+Preserve application and infrastructure security coverage here.
+When SE325 exists, link to secure document / object-storage handling and to
+production data-repair / lifecycle / erasure material. Do not move those
+operational deep-dives into this lecture.
+-->
+
+
+
 
 
 

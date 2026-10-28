@@ -4,7 +4,7 @@
 
 version: '2.0'
 title: The Modern Software Engineer
-updated: '2026-10-27'
+updated: '2026-10-28'
 manuscript_statuses:
   planned: Catalogue only — no file yet
   stub: File exists; outline / placeholder
@@ -530,7 +530,7 @@ courses:
   discipline: SE
   level: 200
   type: core
-  status: complete
+  status: in_progress
   slug: frontend-engineering
   dir: SE/SE240-frontend-engineering
   lectures:
@@ -581,6 +581,13 @@ courses:
     - WEB201-S11
     source: SE/SE240-frontend-engineering/SE240-L06-testing-and-reliability-in-the-frontend.md
     manuscript: manuscript
+    edition: 2.0.0
+  - id: SE240-L07
+    title: 'Anatomy of a Production Web Page: Resource Loading, Third-Party Scripts, and Browser Forensics'
+    slug: anatomy-of-a-production-web-page
+    legacy_ids: []
+    source: SE/SE240-frontend-engineering/SE240-L07-anatomy-of-a-production-web-page.md
+    manuscript: stub
     edition: 2.0.0
 - code: SE310
   title: Web APIs, Identity, and Security
@@ -938,15 +945,15 @@ courses:
     slug: the-art-of-solving-an-unfamiliar-problem
     legacy_ids: []
     source: CS/CS360-algorithms-interview-lab/CS360-L01-the-art-of-solving-an-unfamiliar-problem.md
-    manuscript: stub
-    edition: 2.0.0
+    manuscript: revised
+    edition: 2.1.0
   - id: CS360-L02
     title: Arrays, Strings, Hashing, and Sliding Windows
     slug: arrays-strings-hashing-and-sliding-windows
     legacy_ids: []
     source: CS/CS360-algorithms-interview-lab/CS360-L02-arrays-strings-hashing-and-sliding-windows.md
-    manuscript: stub
-    edition: 2.0.0
+    manuscript: revised
+    edition: 2.1.0
   - id: CS360-L03
     title: Binary Search, Sorting, and Greedy Decisions
     slug: binary-search-sorting-and-greedy-decisions
@@ -997,6 +1004,89 @@ courses:
   - CS320
   lectures: []
   notes: Independent exploration — game loops, entities, simulation time
+- code: SE215
+  title: The Software Engineering Ecosystem
+  discipline: SE
+  level: 200
+  type: elective
+  status: in_progress
+  slug: software-engineering-ecosystem
+  dir: SE/SE215-software-engineering-ecosystem
+  builds_on: []
+  lectures:
+  - id: SE215-L01
+    title: The People and Teams Behind Software
+    slug: the-people-and-teams-behind-software
+    legacy_ids: []
+    source: SE/SE215-software-engineering-ecosystem/SE215-L01-the-people-and-teams-behind-software.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE215-L02
+    title: How Engineering Work Gets Planned and Delivered
+    slug: how-engineering-work-gets-planned-and-delivered
+    legacy_ids: []
+    source: SE/SE215-software-engineering-ecosystem/SE215-L02-how-engineering-work-gets-planned-and-delivered.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE215-L03
+    title: Git, Pull Requests, and Collaborative Delivery
+    slug: git-pull-requests-and-collaborative-delivery
+    legacy_ids: []
+    source: SE/SE215-software-engineering-ecosystem/SE215-L03-git-pull-requests-and-collaborative-delivery.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE215-L04
+    title: Repositories, Monorepos, and Build Systems
+    slug: repositories-monorepos-and-build-systems
+    legacy_ids: []
+    source: SE/SE215-software-engineering-ecosystem/SE215-L04-repositories-monorepos-and-build-systems.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE215-L05
+    title: Cloud Platforms and Service Models
+    slug: cloud-platforms-and-service-models
+    legacy_ids: []
+    source: SE/SE215-software-engineering-ecosystem/SE215-L05-cloud-platforms-and-service-models.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE215-L06
+    title: DevOps, Platform Engineering, and Operational Ownership
+    slug: devops-platform-engineering-and-operational-ownership
+    legacy_ids: []
+    source: SE/SE215-software-engineering-ecosystem/SE215-L06-devops-platform-engineering-and-operational-ownership.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE215-L07
+    title: Owning End-to-End Testing
+    slug: owning-end-to-end-testing
+    legacy_ids: []
+    source: SE/SE215-software-engineering-ecosystem/SE215-L07-owning-end-to-end-testing.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE215-L08
+    title: Technical SEO and Web Discoverability
+    slug: technical-seo-and-web-discoverability
+    legacy_ids: []
+    source: SE/SE215-software-engineering-ecosystem/SE215-L08-technical-seo-and-web-discoverability.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE215-L09
+    title: Data Engineering for Application Developers
+    slug: data-engineering-for-application-developers
+    legacy_ids: []
+    source: SE/SE215-software-engineering-ecosystem/SE215-L09-data-engineering-for-application-developers.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE215-L10
+    title: Working With Product, Design, and Analytics
+    slug: working-with-product-design-and-analytics
+    legacy_ids: []
+    source: SE/SE215-software-engineering-ecosystem/SE215-L10-working-with-product-design-and-analytics.md
+    manuscript: stub
+    edition: 2.0.0
+  notes: 'Short orientation elective (~18–25 min lectures) on adjacent disciplines and professional
+    workflows. Not a mandatory core prerequisite. Gateway into deeper SE/CS coverage rather than a
+    specialist qualification.'
 - code: SE250
   title: Modern Frontend Frameworks
   discipline: SE
@@ -1009,6 +1099,66 @@ courses:
   - SE240
   lectures: []
   notes: React for Vue Developers as first lecture candidate
+- code: SE325
+  title: 'Backends in the Wild: Production Field Guide'
+  discipline: SE
+  level: 300
+  type: elective
+  status: in_progress
+  slug: backends-in-the-wild
+  dir: SE/SE325-backends-in-the-wild
+  builds_on:
+  - SE320
+  - SE310
+  - CS430
+  lectures:
+  - id: SE325-L01
+    title: Files, Uploads, and Object Storage
+    slug: files-uploads-and-object-storage
+    legacy_ids: []
+    source: SE/SE325-backends-in-the-wild/SE325-L01-files-uploads-and-object-storage.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE325-L02
+    title: Bulk Imports, Exports, and Background Data Operations
+    slug: bulk-imports-exports-and-background-data-operations
+    legacy_ids: []
+    source: SE/SE325-backends-in-the-wild/SE325-L02-bulk-imports-exports-and-background-data-operations.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE325-L03
+    title: Scheduled Jobs, Time, and Distributed Execution
+    slug: scheduled-jobs-time-and-distributed-execution
+    legacy_ids: []
+    source: SE/SE325-backends-in-the-wild/SE325-L03-scheduled-jobs-time-and-distributed-execution.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE325-L04
+    title: Production Data Repair, Audit, and Lifecycle
+    slug: production-data-repair-audit-and-lifecycle
+    legacy_ids: []
+    source: SE/SE325-backends-in-the-wild/SE325-L04-production-data-repair-audit-and-lifecycle.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE325-L05
+    title: Surviving Third-Party Integrations
+    slug: surviving-third-party-integrations
+    legacy_ids: []
+    source: SE/SE325-backends-in-the-wild/SE325-L05-surviving-third-party-integrations.md
+    manuscript: stub
+    edition: 2.0.0
+  - id: SE325-L06
+    title: API Protection and Multi-Tenant Fairness
+    slug: api-protection-and-multi-tenant-fairness
+    legacy_ids: []
+    source: SE/SE325-backends-in-the-wild/SE325-L06-api-protection-and-multi-tenant-fairness.md
+    manuscript: stub
+    edition: 2.0.0
+  notes: 'Optional production field guide (~25–35 min lectures) on operational blind spots
+    after SE320: files, bulk data ops, distributed scheduling, data repair/lifecycle,
+    vendor integrations, and multi-tenant API fairness. Does not duplicate CS430 payment
+    or distributed-systems theory. Capstone is an incident-studio lab after L06, not a
+    seventh lecture ID. Familiarity with SE310 and CS430 is useful.'
 - code: SE350
   title: Advanced Software Design Patterns
   discipline: SE

@@ -10,6 +10,7 @@ prev: null
 next: CS330-L02
 ---
 
+
 # CS330 — Relational Databases and Transactions
 
 ## Lecture 01: Relational Database Design

@@ -11,6 +11,16 @@ next: SE240-L05
 ---
 
 
+<!--
+EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE215-L08
+Existing section teaches rendering strategy and introductory SEO.
+After SE215-L08 exists, add a concise cross-reference to its broader
+technical SEO coverage. Preserve the current rendering explanation.
+Do not duplicate or move the entire section.
+-->
+
+
+
 
 
 

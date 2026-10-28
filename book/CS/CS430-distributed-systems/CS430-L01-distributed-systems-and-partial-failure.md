@@ -11,6 +11,16 @@ next: CS430-L02
 ---
 
 
+<!--
+EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE325-L05
+Preserve timeout, retry, retry amplification, and idempotency theory here.
+When SE325-L05 exists, add a concise cross-reference for ongoing vendor-integration
+maintenance (contract drift, sync corruption, token refresh). Do not rewrite this
+lecture as a vendor field guide.
+-->
+
+
+
 
 
 

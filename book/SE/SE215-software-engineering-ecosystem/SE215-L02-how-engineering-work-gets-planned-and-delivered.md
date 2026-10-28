@@ -1,0 +1,68 @@
+---
+id: SE215-L02
+course: SE215
+title: "How Engineering Work Gets Planned and Delivered"
+type: elective
+manuscript: stub
+edition: "2.0.0"
+legacy_ids: []
+prev: SE215-L01
+next: SE215-L03
+---
+
+
+# SE215 — The Software Engineering Ecosystem
+## Lecture 02: How Engineering Work Gets Planned and Delivered
+
+*A team completes every sprint but repeatedly misses its product commitments. Engineers are busy, tickets are being closed, and yet important features remain unfinished.*
+
+---
+
+### Status — Planning Stub
+
+Full voice-first manuscript not yet authored.
+
+**Pedagogical model:** short orientation elective. Target spoken duration ordinarily 18–25 minutes (~2,800–4,000 spoken words). Conceptual and practically informed; not a specialist qualification. Structure: Part I — Intuition, Part II — Deep Dive, oral examination, solutions, one Mental Model, Next Lecture hook; practical material after the spoken-end marker; Dense Cheatsheet at the end.
+
+### Learning Objective
+
+Understand how engineering organizations plan, coordinate, measure, and improve software delivery.
+
+### Opening Problem
+
+A team completes every sprint but repeatedly misses its product commitments. Engineers are busy, tickets are being closed, and yet important features remain unfinished.
+
+### Planned Coverage
+
+Agile principles versus Agile ceremonies; Scrum, Kanban, and hybrid workflows; backlogs, stories, epics, tasks, acceptance criteria, sprint planning, estimation, story points, work in progress, cycle time, lead time, blockers, dependencies, priorities, roadmaps, and retrospectives. Why estimation is uncertain, why activity is not the same as delivery, and why reducing work in progress can improve throughput. Introduce Jira and similar tools as implementations of workflows rather than as the workflows themselves.
+
+### Scope Boundaries
+
+Avoid Scrum certification trivia and lengthy descriptions of ceremonies. Focus on practical engineering decisions and common interview questions about team processes.
+
+### Expected Understanding
+
+Explain Scrum versus Kanban, defend a task breakdown, identify delivery bottlenecks, and discuss changing priorities professionally.
+
+### Suggested Exercise / Lab
+
+Convert a vague feature request into an incrementally deliverable backlog.
+
+### Planned Manuscript Structure
+
+1. Narrative hook and sustained engineering case study.
+2. Technical development of the underlying mechanisms.
+3. Practical trade-offs and realistic failure scenarios.
+4. Oral examination.
+5. Solutions and discussion.
+6. The Mental Model Worth Keeping.
+7. Next Lecture or course-completion transition.
+8. Optional Practical Lab, after the spoken lecture ends.
+9. Further Reading.
+10. Dense Cheatsheet — Interview Glance Card, last, inside one fenced text block.
+
+### Cross-references (for future authorship)
+
+Refer to deeper curriculum coverage by lecture ID rather than duplicating technical depth. SE215 is a gateway into the existing library, not a replacement for it.
+
+<!-- Full manuscript to be generated later. -->

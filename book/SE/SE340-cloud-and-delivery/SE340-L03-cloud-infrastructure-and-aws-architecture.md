@@ -11,6 +11,15 @@ next: SE340-L04
 ---
 
 
+<!--
+EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE215-L05
+Keep this as the detailed AWS architecture chapter.
+After SE215-L05 is authored, cross-reference it for the AWS/GCP/Azure conceptual comparison.
+Do not duplicate the AWS-specific service explanations in the new survey lecture.
+-->
+
+
+
 
 
 

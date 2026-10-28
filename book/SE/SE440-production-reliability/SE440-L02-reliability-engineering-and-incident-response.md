@@ -11,6 +11,16 @@ next: SE440-L03
 ---
 
 
+<!--
+EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE325-L04
+Preserve incident response, SLOs, runbooks, and backup/recovery theory here.
+When SE325-L04 exists, connect backup/recovery concepts to the operational
+data-repair and lifecycle workflow (approvals, audit, multi-store consistency).
+Do not turn this lecture into a data-repair handbook.
+-->
+
+
+
 
 
 

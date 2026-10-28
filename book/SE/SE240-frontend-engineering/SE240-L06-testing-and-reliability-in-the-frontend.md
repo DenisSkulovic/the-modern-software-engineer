@@ -7,8 +7,21 @@ manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: [WEB201-S11]
 prev: SE240-L05
-next: null
+next: SE240-L07
 ---
+
+
+<!--
+EDITORIAL-TODO: P2 / SCOPE_AND_DEDUPLICATE / SE215-L07
+Keep the conceptual treatment of unit, component, integration, and E2E testing,
+including test confidence, flakiness, and accessibility.
+When SE215-L07 exists, compare the practical Playwright examples and remove
+only unnecessary repetition if appropriate.
+SE215-L07 should own hands-on browser-test infrastructure, fixtures, test data,
+and CI practices.
+Do not weaken the existing explanation of testing strategy.
+-->
+
 
 
 
@@ -1202,17 +1215,21 @@ A thousand tests of isolated implementation details may be less valuable than a 
 
 ---
 
-# 15. Closing — Beyond SE240
+# 15. Closing — Toward the Production Page
 
-We've studied the major pieces of modern web engineering in isolation. The real challenge is making them work together under real constraints—limited time, limited money, and a product that must stay correct as it grows.
+We've studied the major pieces of modern web engineering in isolation: the browser pipeline, architecture, state, delivery, perceived performance, and testing. The remaining challenge inside this course is putting them together under the messy constraints of a real commercial page—third-party scripts, fonts, resource scheduling, caches, and browser forensics.
 
-A natural next step outside this course is **SE490-L02 — Architecture Workshop: Design a Modern Web Product**: design a realistic hotel-booking SaaS and defend its architecture as though you were in a senior engineering interview. The objective isn't the most sophisticated diagram possible—it is the simplest architecture that convincingly meets the product's actual requirements.
+In **SE240-L07 — Anatomy of a Production Web Page**, we'll investigate how a mature site actually loads and operates: resource hints and priorities, web fonts and visual stability, tag managers and vendor risk, consent and CSP constraints, service workers and BFCache, and DevTools Network/Performance investigation.
+
+The central mystery:
+
+**How can a production page look “finished” in first-party code and still become unreliable because of everything else the browser is asked to load?**
 
 ---
 
-## End of SE240
+## Next Lecture — SE240-L07: Anatomy of a Production Web Page
 
-**SE240 — Browser and Frontend Engineering** is complete. See the recommended study order in `README.md` for natural next courses.
+Continue in **SE240 — Browser and Frontend Engineering**.
 
 ---
 

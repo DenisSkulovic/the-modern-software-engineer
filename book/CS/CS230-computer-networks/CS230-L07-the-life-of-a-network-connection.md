@@ -11,6 +11,20 @@ next: CS230-L08
 ---
 
 
+<!--
+EDITORIAL-TODO: P3 / AUDIT_DENSITY
+Original spoken length previously measured at approximately 69 minutes.
+Future TODO: Review whether the lecture can be shortened or divided into clearer
+conceptual segments without losing TCP state, socket behavior, failure ambiguity,
+and important connection-lifecycle details.
+Avoid duplicating material now handled by CS320-L05.
+Do not automatically remove technical depth. Do not apply automatic word-count reductions.
+First identify repeated claims, overlapping examples, and unnecessary restatements.
+Measure spoken length before and after any revision and verify subject coverage.
+-->
+
+
+
 
 
 

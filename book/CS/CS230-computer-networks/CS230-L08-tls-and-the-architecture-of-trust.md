@@ -11,6 +11,18 @@ next: CS230-L09
 ---
 
 
+<!--
+EDITORIAL-TODO: P3 / AUDIT_DENSITY
+Previously measured at approximately 64 spoken minutes.
+Future TODO: Examine repetitive introductions to cryptographic primitives versus
+necessary explanations of handshake mechanics, identity verification, certificate
+chains, trust, and termination boundaries.
+Maintain a coherent cryptographic mental model.
+Do not apply automatic word-count reductions.
+-->
+
+
+
 
 
 

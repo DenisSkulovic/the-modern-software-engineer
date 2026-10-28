@@ -11,6 +11,23 @@ next: null
 ---
 
 
+<!--
+EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE215-L06, SE215-L03
+Keep detailed CI/CD, Terraform, infrastructure state, and deployment mechanics here.
+Cross-reference SE215-L06 for DevOps and platform-team responsibilities, and SE215-L03
+for collaborative Git/release workflows.
+Do not move Terraform's technical content into the survey course.
+-->
+
+<!--
+EDITORIAL-TODO: P3 / OPTIONAL_LAB / SE325-L02, CS330
+Consider an optional production migration lab based on throttled backfills,
+WAL/database-health monitoring, and expand–migrate–contract sequencing.
+Prefer a lab worksheet over regenerating migration theory already taught here.
+-->
+
+
+
 
 
 

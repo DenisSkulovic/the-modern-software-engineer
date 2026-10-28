@@ -11,6 +11,16 @@ next: SE450-L08
 ---
 
 
+<!--
+EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE215-L06
+Preserve Kubernetes-specific deployment controllers, Helm, GitOps reconciliation,
+and progressive-delivery mechanics.
+Cross-reference SE215-L06 for the wider DevOps/platform engineering organizational context.
+Do not expand the SE215 lecture into another Kubernetes course.
+-->
+
+
+
 
 
 # SE450 — Kubernetes and Platform Engineering

@@ -19,6 +19,7 @@ book/
 ├── STATUS.md              ← manuscript vs learning status model
 ├── curriculum.yaml        ← source of truth (edit this to reshuffle)
 ├── curriculum.md          ← human-readable course catalogue
+├── technology-atlas.md    ← searchable topic / technology index
 ├── students/              ← personal Study Ledgers (per student)
 ├── tools/                 ← migrate / validate / render / progress
 ├── CS/                    ← Computer Science courses
@@ -26,7 +27,7 @@ book/
 └── AI/                    ← Artificial Intelligence courses
 ```
 
-**3 disciplines · 16 core courses · 73 lectures** (most at manuscript status; `CS340` L01–L03 manuscript, L04–L07 still stubbed; edition `2.0.0`).
+**3 disciplines · 17 core courses · 91 core lectures** (edition `2.0.0`; most core manuscripts complete, including `CS340`; `SE240-L07` is a planning stub). Active electives add further lecture stubs and manuscripts outside the mandatory core.
 
 Lecture identity: `CS330-L03`. Frontmatter carries `id`, `manuscript`, `edition`, `legacy_ids`, `prev`/`next`.
 
@@ -35,7 +36,7 @@ Lecture identity: `CS330-L03`. Frontmatter carries `id`, `manuscript`, `edition`
 1. **Manuscript** — is the text written? (`planned` → `stub` → `draft` → `manuscript` → `revised` → `polished`) + `edition`
 2. **Learning** — have *you* studied it? Personal ledger under [`students/`](students/) (`unopened` → … → `fluent`, with `fading` / `encore` for revisits)
 
-Details: [`STATUS.md`](STATUS.md).
+Details: [`STATUS.md`](STATUS.md). Topic lookup across the library: [`technology-atlas.md`](technology-atlas.md).
 
 ---
 
@@ -55,9 +56,27 @@ Full course and lecture listings: [`curriculum.md`](curriculum.md).
 
 ---
 
+## Educational goals
+
+The catalogue distinguishes three goals:
+
+1. **Foundations** — how software and computing systems work (mostly CS core).
+2. **Engineering proficiency** — build, debug, operate, and improve real systems (mostly SE/AI core and deep electives).
+3. **Professional literacy** — adjacent disciplines, organizational responsibilities, and how modern software work is coordinated (short orientation electives such as `SE215`).
+
+Breadth should make the learner more capable — not make the curriculum impossible to finish.
+
 ## Electives
 
-An elective is a **course you choose to take**, not a separate numbering scheme. Catalogue-only electives stay `type: planned` until stubs exist. Once lecture files are registered they become `type: elective` (still optional). Active electives today include `CS360`, `SE450`, and `SE460`; others (for example `CS350`, `CS370`) remain planned.
+An elective is a **course you choose to take**, not a separate numbering scheme. Catalogue-only electives stay `type: planned` until stubs exist. Once lecture files are registered they become `type: elective` (still optional).
+
+Three shapes appear in the catalogue:
+
+- **Core education** — mandatory study programme (`type: core`).
+- **Specialist electives** — deeper optional courses (for example `CS360`, `SE325`, `SE450`, `SE460`).
+- **Short orientation electives** — survey lectures for professional fluency without another full semester (`SE215`; ordinarily ~18–25 minutes spoken per lecture).
+
+Active electives today include `SE215`, `CS360`, `SE325`, `SE450`, and `SE460`. Others (for example `CS350`, `CS370`, `SE250`, `SE360`) remain planned.
 
 ---
 

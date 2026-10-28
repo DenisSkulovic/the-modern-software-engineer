@@ -11,6 +11,17 @@ next: null
 ---
 
 
+<!--
+EDITORIAL-TODO: P3 / AUDIT_DENSITY
+Previously measured at approximately 60 spoken minutes.
+Future TODO: Preserve its distinct diagnostic cases but review whether repeated
+investigative principles can be consolidated.
+A capstone can legitimately be longer than an ordinary lecture.
+Do not apply automatic word-count reductions.
+-->
+
+
+
 
 
 
