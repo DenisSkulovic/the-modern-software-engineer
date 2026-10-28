@@ -36,7 +36,7 @@ Search works. Hotel details work. Checkout works. Then customer support reports 
 
 Their search pages work normally, but clicking the Reservations tab produces an error.
 
-In Chrome DevTools, you discover:
+In Chrome DevTools, you discover a `GET` for `/assets/ReservationsView.a81c2f.js` that returns `404 Not Found`:
 
 ```text id="fdny4l"
 GET /assets/ReservationsView.a81c2f.js
@@ -46,13 +46,13 @@ GET /assets/ReservationsView.a81c2f.js
 
 Interesting. You inspect the current S3 deployment.
 
-There's no file named:
+There's no file named `ReservationsView.a81c2f.js`:
 
 ```text id="hgbki8"
 ReservationsView.a81c2f.js
 ```
 
-There is, however:
+There is, however, `ReservationsView.f73d91.js`:
 
 ```text id="nttxmc"
 ReservationsView.f73d91.js
@@ -78,7 +78,7 @@ But the JavaScript already loaded into a customer's browser doesn't disappear me
 
 # 2. Your Source Code Isn't What the Browser Executes
 
-Imagine a Vue application containing:
+Imagine a Vue application whose `src/` tree holds `main.ts`, `App.vue`, a `router/`, `components/`, feature folders for search, reservations, and payments, plus `services/`:
 
 ```text id="kldd4a"
 src/
@@ -97,7 +97,7 @@ You write TypeScript. You write Vue single-file components. You import libraries
 
 You use environment variables, CSS preprocessors, and perhaps several build-time plugins. But a production browser doesn't directly understand all these development abstractions.
 
-Consider:
+Consider a tiny `<script setup lang="ts">` component that imports `ref` from Vue, holds `guests` as `ref<number>(2)`, and templates `Guests: {{ guests }}`:
 
 ```vue id="mo9v1w"
 <script setup lang="ts">
@@ -113,13 +113,13 @@ const guests = ref<number>(2);
 
 This is convenient source code. But the browser doesn't natively interpret `.vue` files.
 
-And TypeScript type annotations such as:
+And TypeScript type annotations such as `ref<number>(2)` are not part of ordinary JavaScript execution.
 
 ```typescript id="6ovrkc"
 ref<number>(2)
 ```
 
-are not part of ordinary JavaScript execution. Some transformation must happen. The Vue template must become executable rendering logic.
+Some transformation must happen. The Vue template must become executable rendering logic.
 
 TypeScript-specific syntax must be removed. Imports must be resolved. Styles and assets must be incorporated into something the browser can load.
 
@@ -141,7 +141,7 @@ These objectives are related, but not identical.
 
 ## 3.1 During development: Serve modules on demand
 
-You run:
+You run `npm run dev`.
 
 ```bash id="g1ncku"
 npm run dev
@@ -149,7 +149,7 @@ npm run dev
 
 Vite starts a development server. In its conventional development mode, Vite takes advantage of native browser ES modules.
 
-Consider:
+Consider an entry that imports `createApp` from Vue and `App` from `./App.vue`, then mounts with `createApp(App).mount("#app")`:
 
 ```typescript id="6xla6w"
 import { createApp } from "vue";
@@ -172,7 +172,7 @@ You might ask:
 
 "If browsers support ES modules, why bother bundling anything?" It's a reasonable question.
 
-Imagine your application imports:
+Imagine your application imports a fan-out from `main.ts` into `App.vue`, `router.ts`, `searchStore.ts`, `HotelCard.vue`, `PriceDisplay.vue`, and hundreds of additional modules:
 
 ```text id="qq76wx"
 main.ts
@@ -194,7 +194,7 @@ In current Vite releases, the production build uses **Rolldown**, a Rust-based b
 
 ## 3.3 The production build
 
-You execute:
+You execute `npm run build`.
 
 ```bash id="xdgnbt"
 npm run build
@@ -202,7 +202,7 @@ npm run build
 
 In a conventional Vite project, that invokes `vite build`, potentially along with other project-specific checks.
 
-The resulting `dist/` directory might resemble:
+The resulting `dist/` directory might resemble an `index.html`, a favicon, and an `assets/` folder of hashed files such as `index.c481a2.js`, `index.72f391.css`, `vendor.18e992.js`, `HotelSearch.90ac13.js`, and `ReservationsView.a81c2f.js`:
 
 ```text id="lg8n8r"
 dist/
@@ -230,13 +230,13 @@ A successful transformation alone doesn't establish that all TypeScript expectat
 
 # 4. Tree Shaking: Shipping Less Code Than You Wrote
 
-Suppose your application imports a library:
+Suppose your application imports only `calculateTotal` from `./pricing`:
 
 ```typescript id="rkl522"
 import { calculateTotal } from "./pricing";
 ```
 
-And `pricing.ts` contains:
+And `pricing.ts` exports both `calculateTotal` and an unused `generateHugeFinancialReport`:
 
 ```typescript id="uh1cqz"
 export function calculateTotal() {
@@ -252,7 +252,7 @@ If the reporting function is never used by any reachable part of the application
 
 But tree shaking has limits.
 
-Consider:
+Consider a side-effect import of `./analytics-setup` with no named binding:
 
 ```typescript id="57x8w3"
 import "./analytics-setup";
@@ -276,7 +276,7 @@ It can also be a CPU and responsiveness optimization.
 
 Now we reach the mechanism behind our deployment mystery.
 
-Imagine a large SaaS application with several substantial features:
+Imagine a large SaaS application with several substantial features—Hotel Search, Reservations, Payments, Analytics, and Administration:
 
 ```text id="7e5vss"
 Application
@@ -293,7 +293,7 @@ Delivering it during initial page load would waste bandwidth and browser process
 
 **Code splitting** allows the build process to produce separately loadable JavaScript chunks.
 
-Consider a Vue Router configuration:
+Consider a Vue Router configuration where `/search` and `/reservations` each load their views through dynamic `import()` of `SearchView.vue` and `ReservationsView.vue`:
 
 ```typescript id="3r0zj6"
 const routes = [
@@ -318,7 +318,7 @@ When the customer first opens Search, the browser doesn't necessarily download t
 
 ## 5.1 Why lazy loading helps
 
-Suppose your application contains:
+Suppose your application contains roughly 180 KB for the core, 90 KB for Hotel Search, 120 KB for Reservations, and 350 KB for Administration.
 
 ```text id="dq6mae"
 Core application:       180 KB
@@ -335,7 +335,7 @@ Exactly what happened in our opening incident.
 
 ## 5.2 The dependency waterfall
 
-Imagine the browser loads:
+Imagine the browser loads in sequence: the application entry, then the Reservations chunk, then a shared date-picker chunk discovered only after parsing Reservations:
 
 ```text id="nhw7ma"
 Application entry
@@ -359,7 +359,7 @@ Too little code splitting can make initial loading expensive. Too much fragmenta
 
 Let's reconstruct the original incident.
 
-At 13:00, version A is deployed:
+At 13:00, version A is deployed with `index.html`, `index.c481a2.js`, and `ReservationsView.a81c2f.js`:
 
 ```text id="zdj9wt"
 index.html
@@ -369,7 +369,7 @@ ReservationsView.a81c2f.js
 
 A customer opens the application.
 
-The browser downloads:
+The browser downloads `index.c481a2.js`:
 
 ```text id="o4zyxz"
 index.c481a2.js
@@ -377,7 +377,7 @@ index.c481a2.js
 
 But the customer hasn't opened Reservations yet. The Reservations chunk remains unloaded.
 
-At 14:00, version B is deployed:
+At 14:00, version B is deployed with a new `index.html`, `index.f9d172.js`, and `ReservationsView.f73d91.js`:
 
 ```text id="fqd2nl"
 index.html
@@ -387,7 +387,7 @@ ReservationsView.f73d91.js
 
 The deployment process deletes the old files. At 14:05, the customer clicks Reservations.
 
-The already-running JavaScript from version A still references:
+The already-running JavaScript from version A still references `ReservationsView.a81c2f.js`:
 
 ```text id="vugci4"
 ReservationsView.a81c2f.js
@@ -401,7 +401,7 @@ And so the application crashes. This is not a Vue bug. It's a failure to account
 
 # 6. Deployment Is a Consistency Problem
 
-A deployment is often described as:
+A deployment is often described as a three-step slogan—Build, Upload, Done:
 
 ```text id="3hmspv"
 Build → Upload → Done
@@ -409,7 +409,7 @@ Build → Upload → Done
 
 That description is dangerously incomplete. A running web application may involve multiple resources that must be mutually compatible.
 
-For example:
+For example, `index.html` can point at a main JS chunk that itself depends on shared JS and lazy route chunks, plus CSS and other assets:
 
 ```text id="e4yn65"
 index.html
@@ -448,7 +448,7 @@ For a conventional static SPA with content-hashed assets, a better approach is:
 
 Now the HTML should not reference assets that haven't been published. And older browser sessions can continue loading chunks from their original release. For more demanding environments, release-specific asset directories and atomic promotion of a release pointer can provide stronger coordination.
 
-For example:
+For example, release-specific directories such as `/releases/2026-10-25-a/assets/...` and `/releases/2026-10-25-b/assets/...`:
 
 ```text id="ggfplh"
 /releases/2026-10-25-a/assets/...
@@ -465,7 +465,7 @@ But the principle is general:
 
 Modern applications can detect certain dynamic-import failures. Vite provides a `vite:preloadError` event for relevant preload failures.
 
-A simplified handler might look like:
+A simplified handler might listen for `vite:preloadError` and call `window.location.reload()`:
 
 ```typescript id="moxwi4"
 window.addEventListener("vite:preloadError", () => {
@@ -485,13 +485,13 @@ The first line of defense should be deploying compatible assets correctly. Error
 
 We studied HTTP caching in CS230-L03. Now let's apply it to production deployment.
 
-Suppose the browser requests:
+Suppose the browser requests `/index.html`:
 
 ```text id="wkzduz"
 /index.html
 ```
 
-That document references:
+That document references a content-hashed script at `/assets/index.f9d172.js`:
 
 ```text id="1a2x14"
 /assets/index.f9d172.js
@@ -501,7 +501,7 @@ The JavaScript filename is content-hashed. If the JavaScript contents change, th
 
 ## 7.1 Immutable static assets
 
-For a correctly versioned asset:
+For a correctly versioned asset, a typical header is `Cache-Control: public, max-age=31536000, immutable`—about a year, marked immutable:
 
 ```http id="d96kam"
 Cache-Control: public, max-age=31536000, immutable
@@ -515,7 +515,7 @@ It shouldn't change.
 
 ## 7.2 HTML requires a different strategy
 
-Now consider:
+Now consider `/index.html` again:
 
 ```text id="97sgwp"
 /index.html
@@ -523,7 +523,7 @@ Now consider:
 
 The HTML entry document commonly retains the same URL across releases. Its contents change to reference the new assets. Caching it for a full year could leave customers loading an outdated application shell.
 
-A common policy is:
+A common policy is `Cache-Control: no-cache`:
 
 ```http id="h54ebz"
 Cache-Control: no-cache
@@ -531,7 +531,7 @@ Cache-Control: no-cache
 
 As we learned earlier, this doesn't mean that HTTP caches cannot store the HTML. It means they must successfully validate it before reuse. A suitable validation response can still avoid retransmitting an unchanged document.
 
-The important distinction is:
+The important distinction is: versioned JS and CSS are long-lived and immutable; versioned images and fonts likewise; the HTML entry document should revalidate before reuse; and personalized API responses need an explicit policy based on sensitivity and freshness.
 
 | Resource | Typical caching strategy |
 |---|---|
@@ -544,7 +544,7 @@ This division is one of the most useful deployment patterns for modern SPAs.
 
 ## 7.3 Why CDN invalidation isn't enough
 
-Suppose you update CloudFront and invalidate:
+Suppose you update CloudFront and invalidate `/index.html`:
 
 ```text id="a7rp4e"
 /index.html
@@ -570,7 +570,7 @@ You execute a Node-based build command. Does that mean your production frontend 
 
 For an ordinary client-side-rendered Vue SPA, the production output can consist entirely of static files.
 
-For example:
+For example, production may be just `index.html` plus `assets/*.js`, `assets/*.css`, and `assets/*.svg`:
 
 ```text id="nmb25p"
 index.html
@@ -591,7 +591,7 @@ The browser executes the frontend JavaScript. Your backend API may still use Nod
 
 ## 8.1 The client-side routing trap
 
-Suppose the customer visits:
+Suppose the customer visits `https://stays.example.com/reservations`:
 
 ```text id="kj6kb5"
 https://stays.example.com/reservations
@@ -599,7 +599,7 @@ https://stays.example.com/reservations
 
 Inside the running Vue application, Vue Router recognizes `/reservations`. But what happens when the customer refreshes the page?
 
-The browser makes a new document request:
+The browser makes a new document request—`GET /reservations`:
 
 ```http id="o7gqo3"
 GET /reservations
@@ -607,7 +607,7 @@ GET /reservations
 
 The static server looks for a resource at that path.
 
-If it isn't configured to support SPA routing, it may return:
+If it isn't configured to support SPA routing, it may return `404 Not Found`:
 
 ```http id="m6lfxk"
 404 Not Found
@@ -617,7 +617,7 @@ The route worked through client-side navigation, but fails on refresh. A convent
 
 Vue Router then interprets the path in the browser. However, blindly rewriting every missing request to `index.html` is also dangerous.
 
-Imagine:
+Imagine a missing or misconfigured API call such as `GET /api/reservations/9821`:
 
 ```http id="dmz00p"
 GET /api/reservations/9821
@@ -640,7 +640,7 @@ SPA fallback is a routing policy, not a universal answer to every 404.
 
 So far we've primarily discussed **Client-Side Rendering**, or CSR. Consider a basic Vue application.
 
-The browser receives:
+The browser receives a near-empty shell: a module script pointing at `/assets/index.f9d172.js` and a bare `<div id="app"></div>`:
 
 ```html id="ibkp9u"
 <!doctype html>
@@ -662,7 +662,7 @@ The HTML contains very little actual page content. The JavaScript initializes Vu
 
 The application fetches any required data.
 
-Conceptually:
+Conceptually the CSR path is: receive the HTML shell, download JavaScript, execute the application, fetch necessary data, then render a useful interface:
 
 ```text id="awdlzc"
 Receive HTML shell
@@ -694,7 +694,7 @@ And on slower devices, parsing and executing the application can take substantia
 
 Imagine opening a hotel details page.
 
-With CSR, the initial HTML might contain:
+With CSR, the initial HTML might contain only `<div id="app"></div>`:
 
 ```html id="4w3th2"
 <div id="app"></div>
@@ -702,7 +702,7 @@ With CSR, the initial HTML might contain:
 
 The browser must execute JavaScript before the hotel content appears. With **Server-Side Rendering**, or SSR, the server generates HTML containing the page's initial content.
 
-For example:
+For example, the same `#app` root might already hold a main heading "Hotel Alexander," "Berlin, Germany," and "From €149 per night":
 
 ```html id="hy11sm"
 <div id="app">
@@ -720,7 +720,7 @@ Something must render the Vue components on the server. For Vue, frameworks such
 
 ## 10.1 SSR changes where work happens
 
-With CSR:
+With CSR, the server returns an HTML shell, the browser executes Vue, and the browser builds the initial UI:
 
 ```text id="doyqfr"
 Server returns HTML shell
@@ -732,7 +732,7 @@ Browser executes Vue
 Browser builds initial UI
 ```
 
-With SSR:
+With SSR, the server executes rendering logic and returns populated HTML; the browser displays that content, loads JavaScript, and hydration enables interactivity:
 
 ```text id="iiie46"
 Server executes rendering logic
@@ -758,7 +758,7 @@ That can improve early presentation, but it also introduces server-side computat
 
 Here's the fascinating part.
 
-Suppose the server sends this:
+Suppose the server sends a bare `<button>Reserve Room</button>`:
 
 ```html id="c0f3ps"
 <button>Reserve Room</button>
@@ -781,7 +781,7 @@ This is what turns server-rendered markup into an interactive application. And i
 
 # 11. The Hydration Mismatch: Two Computers, Two Different Realities
 
-Imagine a Vue component:
+Imagine a Vue component whose script picks `greeting` with `Math.random()`—either `"Welcome!"` or `"Hello!"`—and templates that into an `h1`:
 
 ```vue id="ebk9kw"
 <script setup lang="ts">
@@ -797,13 +797,13 @@ const greeting = Math.random() > 0.5
 
 With CSR, this is mostly harmless. The browser calculates a value and renders it. With SSR, the code may execute once on the server and again on the client.
 
-The server might produce:
+The server might produce `<h1>Welcome!</h1>`:
 
 ```html id="lnvukj"
 <h1>Welcome!</h1>
 ```
 
-But the browser calculates:
+But the browser calculates `Hello!`:
 
 ```text id="d4hvpm"
 Hello!
@@ -833,7 +833,7 @@ The real difficulty emerges when developers assume their code only runs in a bro
 
 ## 11.2 `window` doesn't exist everywhere
 
-Consider:
+Consider reading `window.innerWidth` at module or setup time:
 
 ```typescript id="aqg1q0"
 const width = window.innerWidth;
@@ -843,7 +843,7 @@ Perfectly ordinary browser code. But if executed during Node.js server rendering
 
 Vue's `onMounted()` hook is useful for browser-only work because it doesn't execute during SSR.
 
-For example:
+For example, keep `width` as `ref<number | null>(null)` and assign `window.innerWidth` only inside `onMounted`:
 
 ```typescript id="i9q72z"
 const width = ref<number | null>(null);
@@ -859,7 +859,7 @@ This avoids accessing `window` on the server. Of course, the UI must sensibly ha
 
 Imagine a server-rendered application storing authenticated user information in module-level mutable state.
 
-A request from Customer A sets:
+A request from Customer A sets module-level `currentUser = Customer A`:
 
 ```text id="j9y7wc"
 currentUser = Customer A
@@ -893,7 +893,7 @@ Much of this content changes relatively infrequently. Why execute a server-side 
 
 This is **Static Site Generation**, or SSG.
 
-Conceptually:
+Conceptually SSG runs source content plus components through a build step into generated HTML, then static hosting, then the browser:
 
 ```text id="n2m5dx"
 Source content + Components
@@ -916,6 +916,8 @@ The output is ordinary HTML that can be distributed through a CDN. This can prov
 If hotel prices change every second, prebuilding every hotel's current availability into static HTML becomes problematic. You need a strategy for refreshing the generated content or retrieving dynamic data separately.
 
 ## 12.1 Comparing rendering approaches
+
+In short: **CSR** produces initial HTML in the browser and suits interactive authenticated applications; **SSR** produces it on the server at request time and suits dynamic, content-rich pages that need early HTML; **SSG** produces it at build time and suits stable public content, documentation, and marketing.
 
 | Strategy | Where initial HTML is produced | Particularly useful for |
 |---|---|---|
@@ -953,7 +955,7 @@ A CDN is often discussed as though it only caches photographs and JavaScript fil
 
 Without useful edge caching, requests for static resources may repeatedly travel to the origin region.
 
-With CloudFront:
+With CloudFront, the customer hits an edge that either returns a cache hit or, on a miss, fetches from the origin:
 
 ```text id="kx90jh"
 Customer
@@ -972,7 +974,7 @@ CloudFront Edge
 
 For content-hashed JavaScript bundles, this is straightforward. The same bytes can be served to many customers. For personalized server-rendered pages, caching becomes more complicated.
 
-Suppose the HTML contains:
+Suppose the HTML contains a personalized greeting such as `Welcome back, Customer 901!`:
 
 ```text id="rcb8bb"
 Welcome back, Customer 901!
@@ -990,13 +992,13 @@ It's another participant in the system's caching and consistency model.
 
 Let's examine one more practical deployment trap. Your Vue application needs to know where its API is hosted.
 
-You configure Vite:
+You configure Vite with `VITE_API_BASE_URL=https://api.example.com`:
 
 ```text id="493r0n"
 VITE_API_BASE_URL=https://api.example.com
 ```
 
-Then access it:
+Then access it via `import.meta.env.VITE_API_BASE_URL`:
 
 ```typescript id="ug8ksa"
 const apiBaseUrl =
@@ -1005,7 +1007,7 @@ const apiBaseUrl =
 
 This is a normal pattern.
 
-But what if someone configures:
+But what if someone configures `VITE_STRIPE_SECRET_KEY=...`:
 
 ```text id="02neio"
 VITE_STRIPE_SECRET_KEY=...
@@ -1019,7 +1021,7 @@ Their values can become part of publicly delivered JavaScript. Anyone who receiv
 
 A conventional static frontend build often embeds configuration values during compilation.
 
-For example:
+For example, a build environment with `API_BASE_URL = api.example.com` can bake that hostname into the production bundle:
 
 ```text id="40auqv"
 Build environment:
@@ -1031,7 +1033,7 @@ Production bundle contains configured URL
 
 If the API hostname changes, you may need to rebuild the frontend. An alternative is runtime configuration.
 
-For example, the application might fetch a public configuration document:
+For example, the application might fetch a public configuration document at `/config.json`:
 
 ```text id="najugq"
 /config.json
@@ -1060,7 +1062,7 @@ Assume:
 - CloudFront for delivery.
 - CI/CD for releases.
 
-A plausible architecture:
+A plausible architecture runs from the Git repository through a CI pipeline of type checks and tests, into a Vite build of static assets, onto S3, out through CloudFront to the browser, which then calls the backend API:
 
 ```text id="nf4z9l"
              Git Repository
@@ -1115,7 +1117,7 @@ A reasonable release strategy would include:
 
 This last point connects to SE310-L01. Frontend deployment compatibility is not only about JavaScript assets.
 
-Suppose version A expects:
+Suppose version A expects a flat `"price": 149.99`:
 
 ```json id="uc7zkq"
 {
@@ -1123,7 +1125,7 @@ Suppose version A expects:
 }
 ```
 
-Version B expects:
+Version B expects a nested `"price": { "amountMinor": 14999 }`:
 
 ```json id="uu4x7z"
 {
@@ -1139,105 +1141,7 @@ Two different problems. One production rollout.
 
 ---
 
-# 16. Practical Investigation: Inspect Your Own Build
-
-Let's conduct a small investigation.
-
-You can use an existing Vue/Vite project.
-
-## Experiment A — Examine the output
-
-Run:
-
-```bash id="50m365"
-npm run build
-```
-
-Open the generated `dist/` directory.
-
-Inspect the filenames.
-
-Find the generated `index.html`.
-
-Look at its script and stylesheet references.
-
-Ask yourself:
-
-Which code is loaded immediately?
-
-Which files have content hashes?
-
-Are there separate chunks for lazily loaded routes?
-
-Is the output organized the way you expected?
-
-## Experiment B — Watch lazy loading
-
-Open your built application using an appropriate local preview server:
-
-```bash id="spkdoc"
-npm run preview
-```
-
-In a conventional Vite project, this invokes `vite preview`.
-
-It's useful for local inspection, but not intended as a full production hosting solution.
-
-Open DevTools → Network.
-
-Load the application's starting page.
-
-Then navigate to a lazily loaded route.
-
-Look for JavaScript chunks requested only after navigation.
-
-Now you can see the connection between `import()` in your source code and actual runtime network behavior.
-
-## Experiment C — Inspect cache headers
-
-Against a deployed application, use:
-
-```bash id="dbt69a"
-curl -I https://example.com/
-```
-
-Then inspect a versioned asset:
-
-```bash id="41hasd"
-curl -I https://example.com/assets/index.abc123.js
-```
-
-Compare their `Cache-Control` headers.
-
-Does the HTML require validation before reuse?
-
-Is the asset eligible for long-lived caching?
-
-Remember that cache behavior may be affected by intermediary configuration, not merely headers set by the origin.
-
-## Experiment D — Simulate the broken deployment
-
-In a local test environment, perform two builds that produce different lazy-loaded chunk filenames.
-
-Load version A in the browser.
-
-Keep the page open.
-
-Replace the served assets with version B, removing the old chunks.
-
-Then navigate to a lazy route that wasn't previously loaded.
-
-Observe the failed chunk request.
-
-Repeat the experiment while retaining the older assets.
-
-You should now understand exactly why deployment retention policies matter.
-
-Do this only in your development environment, not against a live customer application.
-
----
-
-# 17. Engineering and Interview Challenges
+# 16. Engineering and Interview Challenges
 
 ### Challenge 1 — The Broken Lazy Route
 
@@ -1261,7 +1165,7 @@ What should the hosting infrastructure do, and what should it avoid doing?
 
 ### Challenge 3 — The Build-Time Secret
 
-A developer places an API secret in:
+A developer places an API secret in `VITE_PAYMENT_SECRET=...`:
 
 ```text id="hrks37"
 VITE_PAYMENT_SECRET=...
@@ -1295,7 +1199,7 @@ What design changes could prevent the mismatch?
 
 ---
 
-# 18. Solutions and Discussion
+# 17. Solutions and Discussion
 
 **Challenge 1**
 
@@ -1347,11 +1251,11 @@ The application should ensure deterministic initial rendering, serialize appropr
 
 ---
 
-# 19. The Mental Model Worth Keeping
+# 18. The Mental Model Worth Keeping
 
 A modern frontend doesn't travel directly from source code to the user's screen.
 
-It passes through a chain of transformations and infrastructure:
+It passes through a chain of transformations and infrastructure: source code, build and transformation, JavaScript/CSS/HTML assets, hosting, CDN and browser caches, browser execution, and finally the rendered application:
 
 ```text id="3mhy4y"
 Source Code
@@ -1403,7 +1307,7 @@ That changes how we should think about asset retention, cache invalidation, API 
 
 ---
 
-# 20. Next Session — Performance: Why Fast Code Can Feel Slow
+# 19. Next Session — Performance: Why Fast Code Can Feel Slow
 
 Our application is now built, deployed, cached, and delivered. The servers are fast. The CDN is working.
 
@@ -1427,12 +1331,109 @@ It will be:
 
 ---
 
-
----
-
 ## Next Lecture — SE240-L05: Performance: Why Fast Code Can Feel Slow
 
 Continue in **SE240 — Browser and Frontend Engineering**.
+
+---
+
+*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet and technical references — skip if you are listening; revisit when you can look at the screen.*
+
+## Optional Practical Lab — Inspect Your Own Build
+
+These experiments need a screen and a terminal. You can use an existing Vue/Vite project; each fence is copy-paste for the shell, and the surrounding steps say what to look for in `dist/` and DevTools.
+
+## Experiment A — Examine the output
+
+Run `npm run build`:
+
+```bash id="50m365"
+npm run build
+```
+
+Open the generated `dist/` directory.
+
+Inspect the filenames.
+
+Find the generated `index.html`.
+
+Look at its script and stylesheet references.
+
+Ask yourself:
+
+Which code is loaded immediately?
+
+Which files have content hashes?
+
+Are there separate chunks for lazily loaded routes?
+
+Is the output organized the way you expected?
+
+## Experiment B — Watch lazy loading
+
+Open your built application using an appropriate local preview server—`npm run preview`:
+
+```bash id="spkdoc"
+npm run preview
+```
+
+In a conventional Vite project, this invokes `vite preview`.
+
+It's useful for local inspection, but not intended as a full production hosting solution.
+
+Open DevTools → Network.
+
+Load the application's starting page.
+
+Then navigate to a lazily loaded route.
+
+Look for JavaScript chunks requested only after navigation.
+
+Now you can see the connection between `import()` in your source code and actual runtime network behavior.
+
+## Experiment C — Inspect cache headers
+
+Against a deployed application, use `curl -I` on the document URL, for example `https://example.com/`:
+
+```bash id="dbt69a"
+curl -I https://example.com/
+```
+
+Then inspect a versioned asset such as `/assets/index.abc123.js` the same way:
+
+```bash id="41hasd"
+curl -I https://example.com/assets/index.abc123.js
+```
+
+Compare their `Cache-Control` headers.
+
+Does the HTML require validation before reuse?
+
+Is the asset eligible for long-lived caching?
+
+Remember that cache behavior may be affected by intermediary configuration, not merely headers set by the origin.
+
+## Experiment D — Simulate the broken deployment
+
+In a local test environment, perform two builds that produce different lazy-loaded chunk filenames.
+
+Load version A in the browser.
+
+Keep the page open.
+
+Replace the served assets with version B, removing the old chunks.
+
+Then navigate to a lazy route that wasn't previously loaded.
+
+Observe the failed chunk request.
+
+Repeat the experiment while retaining the older assets.
+
+You should now understand exactly why deployment retention policies matter.
+
+Do this only in your development environment, not against a live customer application.
+
+---
 
 ## Further Reading — Optional References
 

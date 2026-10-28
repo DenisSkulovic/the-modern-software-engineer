@@ -102,7 +102,7 @@ Let's trace how the browser arrives at the point where JavaScript can cause such
 
 # 3. HTML: From a String to a Living Document
 
-Suppose the browser receives this HTML:
+Suppose the browser receives a small hotel page: a document titled "Berlin Hotels," a stylesheet link, a main heading "Hotels in Berlin," and one result article for Hotel Alexander at €140 per night.
 
 ```html
 <!doctype html>
@@ -128,7 +128,7 @@ Suppose the browser receives this HTML:
 
 The browser doesn't display this string directly. It parses the document according to HTML's rules and constructs a **Document Object Model**, or DOM.
 
-Conceptually:
+Conceptually, that becomes a tree: `Document` → `html` → `head` (with `title` and `link`) and `body` → `main` → heading plus `section#results` → one `article.hotel` with an `h2` and a `p`.
 
 ```text
 Document
@@ -148,7 +148,7 @@ Document
                     └── p
 ```
 
-The DOM consists of objects representing nodes and their relationships. JavaScript can inspect and modify these objects:
+The DOM consists of objects representing nodes and their relationships. JavaScript can inspect and modify these objects — for example selecting the page's `h1` and setting its `textContent` to "Hotels in Copenhagen":
 
 ```javascript
 const heading = document.querySelector("h1");
@@ -166,7 +166,7 @@ The browser must still determine how the updated document should look and produc
 
 A browser doesn't normally need to receive the entire HTML document before beginning to process it. It can parse incoming content progressively.
 
-When it discovers resources such as:
+When it discovers resources — a stylesheet link to `/styles.css`, an image `/hotel.jpg`, a script `/application.js` — it may initiate additional network requests.
 
 ```html
 <link rel="stylesheet" href="/styles.css">
@@ -174,9 +174,9 @@ When it discovers resources such as:
 <script src="/application.js"></script>
 ```
 
-it may initiate additional network requests. Browsers also use resource-discovery optimizations, commonly called preload scanners or speculative parsers, that can find resource references ahead of the main parser. That lets certain downloads overlap.
+Browsers also use resource-discovery optimizations, commonly called preload scanners or speculative parsers, that can find resource references ahead of the main parser. That lets certain downloads overlap.
 
-Rather than:
+Rather than a strict waterfall — finish HTML, then discover CSS, download CSS, discover JavaScript, download JavaScript — the browser can often arrange overlapping work.
 
 ```text
 Download HTML completely
@@ -190,11 +190,11 @@ Discover JavaScript
 Download JavaScript
 ```
 
-the browser can often arrange overlapping work. This is one reason the structure of an HTML document and the discoverability of its critical resources affect loading performance.
+This is one reason the structure of an HTML document and the discoverability of its critical resources affect loading performance.
 
 ## 3.2 JavaScript can interrupt the parser
 
-Consider:
+Imagine markup that places an `h1` "Hotels," then a synchronous external `<script src="/application.js">`, then a paragraph "Find your perfect stay":
 
 ```html
 <h1>Hotels</h1>
@@ -208,7 +208,7 @@ A conventional synchronous external script can pause HTML parsing until the scri
 
 Why? Because JavaScript can modify the document while the browser is constructing it. For example, historically, scripts could use `document.write()` to inject additional HTML into the parser's input stream. The browser cannot always safely continue constructing the document as though the script didn't exist.
 
-Modern script-loading options help control this behavior.
+Modern script-loading options help control this behavior. In short: a plain `<script src="a.js">` can block HTML parsing while it is fetched and executed; `async` downloads in parallel and runs when ready without preserving relative order; `defer` downloads without blocking parsing and runs after parse, before `DOMContentLoaded`, in document order; `type="module"` is deferred by default, with dependency-aware loading and execution.
 
 | Script declaration | General behavior |
 |---|---|
@@ -219,7 +219,7 @@ Modern script-loading options help control this behavior.
 
 These are simplified rules for ordinary document scripts. Features such as top-level `await` add further details.
 
-For a modern Vite application, you might encounter:
+For a modern Vite application, you might encounter a module entry such as `<script type="module" src="/src/main.ts"></script>`:
 
 ```html
 <script type="module" src="/src/main.ts"></script>
@@ -235,7 +235,7 @@ CSS.
 
 # 4. CSS: From Rules to Geometry
 
-Let's imagine our hotel card uses:
+Let's imagine our hotel card uses flex layout, a fixed 600-pixel width, padding, a white background, rounded corners, and a 24-pixel heading inside `.hotel h2`:
 
 ```css
 .hotel {
@@ -255,7 +255,7 @@ The browser parses CSS and builds an internal representation of stylesheet rules
 
 But the final visual result isn't produced simply by attaching one CSS rule to one DOM node. The browser needs to resolve the combined effect of all applicable rules.
 
-Consider:
+Suppose three competing color rules exist: bare `h2` is black, `.hotel h2` is blue, and `.featured h2` is red.
 
 ```css
 h2 {
@@ -279,7 +279,7 @@ That depends on the cascade, including rule origins, importance, specificity, an
 
 This distinction is extremely useful. The DOM represents document structure. The structures used for layout and rendering represent the boxes and visual relationships needed to display that document. They are not identical.
 
-For example:
+For example, a `div` with `display: none` still exists in the DOM, and JavaScript can find it — but it does not generate an ordinary layout box:
 
 ```html
 <div style="display: none">
@@ -287,9 +287,7 @@ For example:
 </div>
 ```
 
-The element exists in the DOM, and JavaScript can find it. But it does not generate an ordinary layout box.
-
-Meanwhile:
+Meanwhile, a `div` with `visibility: hidden` still participates in layout, even though its content is not visibly painted:
 
 ```html
 <div style="visibility: hidden">
@@ -297,13 +295,13 @@ Meanwhile:
 </div>
 ```
 
-still participates in layout, even though its content is not visibly painted. This explains why hiding elements can have different performance and layout consequences depending on how you hide them.
+This explains why hiding elements can have different performance and layout consequences depending on how you hide them.
 
 A DOM node is a document concept. A layout box is a rendering concept. They frequently correspond, but not one-to-one.
 
 ## 4.2 Layout: Solving the geometry problem
 
-Suppose your page contains:
+Suppose your page contains a `.container` with an aside for Filters and a main area for Hotel results:
 
 ```html
 <div class="container">
@@ -312,7 +310,7 @@ Suppose your page contains:
 </div>
 ```
 
-with:
+styled as a two-column grid — 250 pixels for the sidebar, one flexible fraction for the rest, with a 24-pixel gap:
 
 ```css
 .container {
@@ -349,7 +347,7 @@ It's solving a set of interacting geometrical constraints.
 
 # 5. The Rendering Pipeline: How Pixels Finally Appear
 
-We can now assemble the major stages. A simplified browser rendering pipeline looks like this:
+We can now assemble the major stages. Speak the chain aloud: HTML builds the DOM, CSS contributes styles, then style calculation, layout, paint, compositing, and finally the screen.
 
 ```text
 HTML ─────► DOM
@@ -409,29 +407,29 @@ Let's compare three animations.
 
 ### Animation A — Changing width
 
+Setting `element.style.width = "400px"` may affect geometry. The browser may need to recalculate layout, then paint and composite the affected content.
+
 ```javascript
 element.style.width = "400px";
 ```
 
-Changing width may affect geometry. The browser may need to recalculate layout, then paint and composite the affected content.
-
 ### Animation B — Changing background color
+
+Setting `element.style.backgroundColor = "red"` usually leaves geometry alone, so layout may be unnecessary. Appearance still changes, so painting work is generally required.
 
 ```javascript
 element.style.backgroundColor = "red";
 ```
 
-The element's geometry may remain unchanged, so layout may be unnecessary. But the element's appearance changes, so painting work is generally required.
-
 ### Animation C — Changing transform
+
+Setting `element.style.transform = "translateX(100px)"` can, under suitable conditions, be a compositor-only update — avoiding layout and repainting the element's contents. That is one reason `transform` and `opacity` are frequently recommended for smooth animations.
 
 ```javascript
 element.style.transform = "translateX(100px)";
 ```
 
-Under suitable conditions, the browser can perform this as a compositor-only update, avoiding layout and repainting the element's contents. This is one reason `transform` and `opacity` are frequently recommended for smooth animations.
-
-A useful simplified comparison:
+A useful simplified comparison — width usually costs layout, paint, and composite; background-color usually skips layout but still paints; transform and opacity often skip layout and can avoid content paint when the compositor can handle the change:
 
 | Change | Layout? | Paint? | Composite? |
 |---|---|---|---|
@@ -458,7 +456,7 @@ Let's return to our hotel-search application. The user selects a sorting option,
 
 Why does the number 16.7 milliseconds appear so often in frontend performance discussions?
 
-Because a display refreshing at 60 Hz presents approximately 60 frames per second. The interval between refreshes is:
+Because a display refreshing at 60 Hz presents approximately 60 frames per second. The interval between refreshes is about 1000 ÷ 60 ≈ 16.67 milliseconds:
 
 \[
 \frac{1000\text{ ms}}{60} \approx 16.67\text{ ms}
@@ -486,7 +484,7 @@ And this brings us to the browser's event loop.
 
 You encountered event loops in the computer science foundations courses (CS110, CS220, CS320), so we won't revisit all the foundations. Instead, let's focus on what makes the browser's event loop especially interesting: it must coordinate JavaScript execution with user input and opportunities to update the rendered page.
 
-Consider:
+A click listener that merely logs "Clicked" still runs as a scheduled task when the browser dispatches the event:
 
 ```javascript
 button.addEventListener("click", () => {
@@ -496,7 +494,7 @@ button.addEventListener("click", () => {
 
 When the user clicks the button, the browser eventually dispatches the event. The listener executes as part of a task.
 
-But what if the main thread is already executing this?
+But what if the main thread is already running a busy-wait that occupies it for a full second — a loop that keeps calling `performance.now()` until a thousand milliseconds have elapsed?
 
 ```javascript
 function blockMainThread() {
@@ -520,7 +518,7 @@ This is why interfaces sometimes stop responding even though the network connect
 
 ## 8.1 Tasks and microtasks
 
-A useful simplified event-loop cycle is:
+A useful simplified event-loop cycle is: run a task, then drain pending microtasks, then take an opportunity to update rendering, then continue with later work.
 
 ```text
 Run a task
@@ -537,7 +535,7 @@ Continue with subsequent work
 
 Real scheduling is more nuanced, and the browser doesn't necessarily render after every task. But the relationship between tasks, microtasks, and rendering is crucial.
 
-Consider:
+Log `A` synchronously, schedule a zero-delay `setTimeout` that logs `B`, schedule a resolved promise that logs `C`, then log `D` synchronously:
 
 ```javascript
 console.log("A");
@@ -553,7 +551,7 @@ Promise.resolve().then(() => {
 console.log("D");
 ```
 
-The expected order is:
+The expected order is A, then D, then C, then B — synchronous work first, the promise reaction as a microtask, the timer as a later task:
 
 ```text
 A
@@ -572,7 +570,7 @@ That means microtasks can delay painting.
 
 ## 8.2 How promises can starve rendering
 
-Imagine this pathological code:
+Imagine pathological code where each microtask immediately queues another copy of itself via `queueMicrotask`, so the queue never empties:
 
 ```javascript
 function endlessMicrotasks() {
@@ -594,7 +592,7 @@ For expensive work, yielding to a later task or using another scheduling strateg
 
 ## 8.3 `await` doesn't automatically free the browser
 
-Consider:
+An `async` function that merely calls `calculateHugeDataset()` and returns the result still runs that calculation synchronously on the main thread when you await it:
 
 ```javascript
 async function expensiveWork() {
@@ -607,13 +605,12 @@ await expensiveWork();
 
 Despite the use of `async` and `await`, `calculateHugeDataset()` executes synchronously. If it blocks the main thread for 300 milliseconds, the browser still suffers that delay. The function returning a promise does not magically move its computation to another thread.
 
-Now compare:
+Now compare awaiting `fetch("/api/hotels")`: the network operation can proceed without JavaScript continuously occupying the main thread. The function suspends while the promise is pending, and when the request completes, the continuation is scheduled. That's an entirely different situation.
 
 ```javascript
 const response = await fetch("/api/hotels");
 ```
 
-The network operation can proceed without JavaScript continuously occupying the main thread. The function suspends while the promise is pending, and when the request completes, the continuation is scheduled. That's an entirely different situation.
 
 **Asynchrony is not the same as parallel CPU execution.**
 
@@ -623,7 +620,7 @@ This distinction matters constantly in frontend engineering.
 
 # 9. When Does the Browser Actually Paint?
 
-Suppose you write:
+Suppose you set a status element's text to "Loading...", run `performVeryExpensiveCalculation()`, then set the text to "Done!" — all in one synchronous stretch:
 
 ```javascript
 const status = document.querySelector("#status");
@@ -635,29 +632,17 @@ performVeryExpensiveCalculation();
 status.textContent = "Done!";
 ```
 
-You might expect the user to briefly see:
-
-```text
-Loading...
-```
-
-before the calculation begins. But often they won't.
+You might expect the user to briefly see the word Loading before the calculation begins. But often they won't.
 
 Why?
 
 Because JavaScript runs synchronously through the entire callback.
 
-The browser doesn't ordinarily paint between those statements. By the time it gets the opportunity to update the screen, the text has already changed to:
-
-```text
-Done!
-```
-
-The intermediate DOM state existed, but it never became a visible frame. This distinction explains a surprising number of frontend bugs. A DOM mutation isn't necessarily a rendered pixel update.
+The browser doesn't ordinarily paint between those statements. By the time it gets the opportunity to update the screen, the text has already changed to Done. The intermediate DOM state existed, but it never became a visible frame. This distinction explains a surprising number of frontend bugs. A DOM mutation isn't necessarily a rendered pixel update.
 
 ## 9.1 `requestAnimationFrame`
 
-Browsers provide `requestAnimationFrame()` for coordinating callbacks with rendering opportunities. For example:
+Browsers provide `requestAnimationFrame()` for coordinating callbacks with rendering opportunities. A typical pattern: each frame sets `transform` to a `translateX` based on the timestamp, then schedules the next frame with another `requestAnimationFrame` call — better aligned than an arbitrary `setInterval(..., 16)` loop.
 
 ```javascript
 function animate(timestamp) {
@@ -670,13 +655,13 @@ function animate(timestamp) {
 requestAnimationFrame(animate);
 ```
 
-The browser invokes the callback before an upcoming repaint, subject to its scheduling rules. This is useful for visual animations because the callback cadence can align with display updates. It is generally preferable to attempting animation using an arbitrary `setInterval(..., 16)` loop.
+The browser invokes the callback before an upcoming repaint, subject to its scheduling rules. This is useful for visual animations because the callback cadence can align with display updates.
 
 But a `requestAnimationFrame` callback is not a license to run expensive computations. If the callback occupies the main thread for 100 milliseconds, it can still delay the frame. The goal is to prepare visual changes efficiently, not monopolize the rendering opportunity.
 
 ## 9.2 Vue's `nextTick()` is not a paint guarantee
 
-Here's an especially relevant example.
+Here's an especially relevant example. A Vue search sets `loading` to true, awaits `nextTick()`, runs `performExpensiveCalculation()`, then clears loading — hoping the spinner appears before the heavy work:
 
 ```typescript
 import { nextTick, ref } from "vue";
@@ -700,7 +685,7 @@ A common misunderstanding is:
 
 Not necessarily. Vue's `nextTick()` waits for Vue's pending DOM update flush. That doesn't guarantee that the browser has completed a paint. The expensive calculation can still run before the screen displays the loading state.
 
-This is an important distinction:
+This is an important distinction — reactive state updated is not the same as DOM updated, and DOM updated is not the same as frame painted:
 
 ```text
 Reactive state updated
@@ -716,7 +701,7 @@ Vue decides when to batch and apply reactive DOM updates. The browser decides wh
 
 # 10. Forced Synchronous Layout: Accidentally Making the Browser Work Twice
 
-Here's a particularly nasty performance bug. Imagine a function that resizes 1,000 elements.
+Here's a particularly nasty performance bug. Imagine a loop over 1,000 elements that sets each `style.width` to `"300px"`, then immediately reads `offsetHeight` and logs it:
 
 ```javascript
 for (const element of elements) {
@@ -738,7 +723,7 @@ This pattern is called **layout thrashing**.
 
 The browser may repeatedly perform expensive geometry calculations that could otherwise have been combined.
 
-Conceptually:
+Conceptually the loop is write style → force layout → write style → force layout, over and over:
 
 ```text
 Write style
@@ -758,7 +743,7 @@ The problem isn't that reading an element's dimensions is inherently wrong. The 
 
 ## 10.1 A better approach
 
-When the operation permits it, group reads and writes separately.
+When the operation permits it, group reads and writes separately — for example map all `offsetHeight` values first, then set every width to `"300px"`:
 
 ```javascript
 const heights = elements.map(
@@ -772,7 +757,7 @@ for (const element of elements) {
 
 This example measures the old heights before changing widths. If you need the new heights, you may still require a layout calculation after applying the changes. But you can arrange the work so that the browser performs fewer unnecessary recalculations.
 
-For example:
+Or flip it: apply all width writes first, then read geometry once the writes are grouped:
 
 ```javascript
 for (const element of elements) {
@@ -795,7 +780,7 @@ The broader principle:
 
 # 11. Returning to Vue: Why 5,000 Hotels Freeze the Interface
 
-Now we can solve our original mystery. Suppose the application contains:
+Now we can solve our original mystery. Suppose the template renders a `HotelCard` for every hotel in `sortedHotels`, keyed by `hotel.id`:
 
 ```vue
 <template>
@@ -838,7 +823,7 @@ This is why blaming "Vue reactivity" without profiling is premature.
 
 Instead of rendering all 5,000 hotels, suppose the interface renders only the visible portion plus a small buffer.
 
-Conceptually:
+Conceptually: keep all 5,000 hotels in application data, show about 20 cards in the viewport, and keep only roughly 30–40 cards in the rendered DOM:
 
 ```text
 Application data:
@@ -865,7 +850,7 @@ And virtualization won't automatically fix expensive computations performed over
 
 ## 11.2 Not every optimization belongs in the framework
 
-Suppose profiling shows:
+Suppose profiling shows sorting at 12 ms, Vue updates at 45 ms, layout at 180 ms, and painting at 90 ms:
 
 ```text
 Sorting computation:     12 ms
@@ -878,7 +863,7 @@ These are hypothetical measurements. Would replacing the sorting algorithm be th
 
 No. The browser's visual processing is responsible for most of the delay.
 
-Now imagine:
+Now imagine the opposite shape: sorting 350 ms, Vue 30 ms, layout 20 ms, painting 10 ms:
 
 ```text
 Sorting computation:    350 ms
@@ -899,13 +884,13 @@ JavaScript execution in a webpage commonly happens on its main thread. But brows
 
 A worker executes JavaScript in a separate execution environment, typically backed by another thread. That makes it useful for CPU-intensive work.
 
-Imagine processing a large dataset. Instead of:
+Imagine processing a large dataset. The naive approach calls `expensiveAnalysis(data)` on the main thread:
 
 ```javascript
 const result = expensiveAnalysis(data);
 ```
 
-on the main thread, you might send the data to a worker:
+Instead, construct a module worker from `./analysis-worker.js`, `postMessage` the data, and render when the worker replies:
 
 ```javascript
 const worker = new Worker(
@@ -920,7 +905,7 @@ worker.onmessage = event => {
 };
 ```
 
-And inside the worker:
+Inside the worker, `onmessage` runs `expensiveAnalysis` on the event data and `postMessage`s the result back:
 
 ```javascript
 self.onmessage = event => {
@@ -950,13 +935,155 @@ Web Workers are particularly valuable when the bottleneck is substantial CPU com
 
 ---
 
-# 13. Practical Investigation: Catch the Browser in the Act
+# 13. Engineering and Interview Challenges
 
-Let's perform a compact investigation using Chrome DevTools.
+Try answering these independently before reading the solutions.
+
+### Challenge 1 — The Invisible Loading Indicator
+
+A developer sets status text to Loading, runs a 500-millisecond calculation, then sets status to Done — users never see Loading:
+
+```javascript
+status.textContent = "Loading...";
+
+calculateFor500Milliseconds();
+
+status.textContent = "Done";
+```
+
+Users never see the loading message.
+
+Why?
+
+Would adding `await Promise.resolve()` between the first two statements guarantee that the message appears?
+
+### Challenge 2 — The Slow Animation
+
+A modal animates its position by changing its `left` property sixty times per second. The animation stutters.
+
+What browser work might this trigger?
+
+What alternative would you consider?
+
+### Challenge 3 — The Misleading Vue Diagnosis
+
+A Vue application renders 10,000 table rows. Changing the sort order freezes the interface. The team proposes replacing Vue with React.
+
+Is that a reasonable first step?
+
+What evidence would you collect?
+
+### Challenge 4 — The Worker Question
+
+A frontend performs an expensive image-analysis algorithm that consumes 700 milliseconds of CPU time. The calculation does not need DOM access.
+
+Would a Web Worker help?
+
+What additional costs or limitations must be considered?
+
+### Challenge 5 — The Promise Trap
+
+A developer moves an expensive synchronous function into an `async` function and awaits it. The interface still freezes.
+
+Explain why.
+
+---
+
+# 14. Solutions and Discussion
+
+**Challenge 1**
+
+The browser ordinarily doesn't paint the intermediate DOM state while the synchronous JavaScript callback continues executing. By the time the browser gets an opportunity to render, the text has already changed to "Done."
+
+Adding `await Promise.resolve()` doesn't guarantee a paint because the continuation runs through the microtask mechanism, typically before the next rendering opportunity.
+
+The application needs to structure its work so the browser can actually update the screen, potentially by yielding appropriately, separating expensive work into tasks, or moving computation into a worker.
+
+**Challenge 2**
+
+Changing `left` may invalidate layout geometry and require subsequent painting and compositing. If the same visual effect can be produced with `transform`, the browser may be able to animate it primarily through the compositor.
+
+I would test the change and inspect the Performance panel rather than assuming the improvement is guaranteed.
+
+**Challenge 3**
+
+No. Switching frameworks before identifying the bottleneck is an expensive guess. Ten thousand table rows can create substantial DOM and rendering work regardless of framework.
+
+I would profile JavaScript execution, component updates, DOM operations, layout, and painting. Virtualization, pagination, or reducing rendering complexity may be more effective than a framework migration.
+
+**Challenge 4**
+
+Yes, a Web Worker is a strong candidate because the computation is CPU-intensive and independent of the DOM.
+
+But sending and returning data has overhead. Large inputs may require transferable buffers or other data-transfer strategies. The worker also cannot directly update DOM elements, so the main thread must receive the result and update the interface.
+
+**Challenge 5**
+
+Declaring a function `async` doesn't move its synchronous computation to another thread. The expensive function still runs on the main JavaScript thread until it completes.
+
+`await` suspends execution when awaiting a pending promise, but it doesn't parallelize arbitrary CPU work. The developer needs to change how the computation is scheduled or where it executes.
+
+---
+
+# 15. The Mental Model Worth Keeping
+
+A browser is not merely a JavaScript interpreter with a screen attached. It's a sophisticated rendering and execution environment.
+
+The essential chain is HTML and CSS to DOM and style information, then style calculation, layout, paint, compositing, and visible pixels:
+
+```text
+HTML + CSS
+     ↓
+DOM + Style Information
+     ↓
+Style Calculation
+     ↓
+Layout
+     ↓
+Paint
+     ↓
+Compositing
+     ↓
+Visible Pixels
+```
+
+JavaScript can modify the inputs to that pipeline. Those modifications may require very different amounts of work. Some changes affect geometry. Others affect only appearance. Some can be handled largely by compositing already-rendered content.
+
+Meanwhile, the browser's main thread must coordinate JavaScript execution, events, and rendering opportunities. Long synchronous computations can therefore delay user interactions and prevent timely visual updates.
+
+Microtasks, promises, and reactive frameworks do not automatically eliminate that problem. Vue can batch DOM updates intelligently, but it cannot make the browser's rendering costs disappear. Web Workers can move suitable computations away from the main thread, but they do not directly solve excessive DOM or layout work.
+
+And perhaps the most important lesson from our hotel-search mystery:
+
+**A slow frontend isn't necessarily caused by slow JavaScript calculations. Sometimes the real bottleneck is the work the browser must perform after JavaScript finishes.**
+
+Understanding that distinction is the foundation of serious frontend performance engineering.
+
+---
+
+# 16. Next Session — Frontend Architecture Beyond Components
+
+The browser can render beautifully and the architecture can still become hostile to change: six months in, a hotel-booking rule touches seven unrelated files, and a "reusable" component knows about auth, pricing, and currency.
+
+In **SE240-L02 — Frontend Architecture Beyond Components**, we'll explore boundaries, state ownership, composables, feature modules, dependency direction, and the principles that distinguish maintainable frontend systems from collections of components that merely happen to work.
+
+---
+
+## Next Lecture — SE240-L02: Frontend Architecture Beyond Components
+
+Continue in **SE240 — Browser and Frontend Engineering**.
+
+---
+
+*The spoken lecture ends here. The remaining material is a screen-first DevTools investigation worksheet and technical references — skip if you are listening; revisit when you can look at the Performance panel.*
+
+## Optional Practical Lab — Catch the Browser in the Act
+
+These experiments need a browser window. Each fence is copy-paste for the console; the surrounding steps say what to look for in the Performance panel.
 
 ## Experiment A — Observe a long task
 
-Open an ordinary webpage and execute this in the console:
+Open an ordinary webpage and run a console snippet that appends a button whose click handler busy-waits for about 300 milliseconds:
 
 ```javascript
 const button = document.createElement("button");
@@ -994,7 +1121,7 @@ This demonstrates how a single callback can delay unrelated interactions.
 
 Create a collection of elements, then compare these two approaches.
 
-First:
+First, the interleaved pattern — set width then immediately read `offsetHeight` inside the same loop:
 
 ```javascript
 console.time("interleaved");
@@ -1007,7 +1134,7 @@ for (const element of elements) {
 console.timeEnd("interleaved");
 ```
 
-Then try grouping writes and reads:
+Then group all width writes, then all `offsetHeight` reads:
 
 ```javascript
 console.time("grouped");
@@ -1058,146 +1185,7 @@ This diagnostic habit is more valuable than memorizing a hundred generic fronten
 
 ---
 
-# 14. Engineering and Interview Challenges
-
-Try answering these independently before reading the solutions.
-
-### Challenge 1 — The Invisible Loading Indicator
-
-A developer writes:
-
-```javascript
-status.textContent = "Loading...";
-
-calculateFor500Milliseconds();
-
-status.textContent = "Done";
-```
-
-Users never see the loading message.
-
-Why?
-
-Would adding `await Promise.resolve()` between the first two statements guarantee that the message appears?
-
-### Challenge 2 — The Slow Animation
-
-A modal animates its position by changing its `left` property sixty times per second. The animation stutters.
-
-What browser work might this trigger?
-
-What alternative would you consider?
-
-### Challenge 3 — The Misleading Vue Diagnosis
-
-A Vue application renders 10,000 table rows. Changing the sort order freezes the interface. The team proposes replacing Vue with React.
-
-Is that a reasonable first step?
-
-What evidence would you collect?
-
-### Challenge 4 — The Worker Question
-
-A frontend performs an expensive image-analysis algorithm that consumes 700 milliseconds of CPU time. The calculation does not need DOM access.
-
-Would a Web Worker help?
-
-What additional costs or limitations must be considered?
-
-### Challenge 5 — The Promise Trap
-
-A developer moves an expensive synchronous function into an `async` function and awaits it. The interface still freezes.
-
-Explain why.
-
 ---
-
-# 15. Solutions and Discussion
-
-**Challenge 1**
-
-The browser ordinarily doesn't paint the intermediate DOM state while the synchronous JavaScript callback continues executing. By the time the browser gets an opportunity to render, the text has already changed to "Done."
-
-Adding `await Promise.resolve()` doesn't guarantee a paint because the continuation runs through the microtask mechanism, typically before the next rendering opportunity.
-
-The application needs to structure its work so the browser can actually update the screen, potentially by yielding appropriately, separating expensive work into tasks, or moving computation into a worker.
-
-**Challenge 2**
-
-Changing `left` may invalidate layout geometry and require subsequent painting and compositing. If the same visual effect can be produced with `transform`, the browser may be able to animate it primarily through the compositor.
-
-I would test the change and inspect the Performance panel rather than assuming the improvement is guaranteed.
-
-**Challenge 3**
-
-No. Switching frameworks before identifying the bottleneck is an expensive guess. Ten thousand table rows can create substantial DOM and rendering work regardless of framework.
-
-I would profile JavaScript execution, component updates, DOM operations, layout, and painting. Virtualization, pagination, or reducing rendering complexity may be more effective than a framework migration.
-
-**Challenge 4**
-
-Yes, a Web Worker is a strong candidate because the computation is CPU-intensive and independent of the DOM.
-
-But sending and returning data has overhead. Large inputs may require transferable buffers or other data-transfer strategies. The worker also cannot directly update DOM elements, so the main thread must receive the result and update the interface.
-
-**Challenge 5**
-
-Declaring a function `async` doesn't move its synchronous computation to another thread. The expensive function still runs on the main JavaScript thread until it completes.
-
-`await` suspends execution when awaiting a pending promise, but it doesn't parallelize arbitrary CPU work. The developer needs to change how the computation is scheduled or where it executes.
-
----
-
-# 16. The Mental Model Worth Keeping
-
-A browser is not merely a JavaScript interpreter with a screen attached. It's a sophisticated rendering and execution environment.
-
-The essential chain is:
-
-```text
-HTML + CSS
-     ↓
-DOM + Style Information
-     ↓
-Style Calculation
-     ↓
-Layout
-     ↓
-Paint
-     ↓
-Compositing
-     ↓
-Visible Pixels
-```
-
-JavaScript can modify the inputs to that pipeline. Those modifications may require very different amounts of work. Some changes affect geometry. Others affect only appearance. Some can be handled largely by compositing already-rendered content.
-
-Meanwhile, the browser's main thread must coordinate JavaScript execution, events, and rendering opportunities. Long synchronous computations can therefore delay user interactions and prevent timely visual updates.
-
-Microtasks, promises, and reactive frameworks do not automatically eliminate that problem. Vue can batch DOM updates intelligently, but it cannot make the browser's rendering costs disappear. Web Workers can move suitable computations away from the main thread, but they do not directly solve excessive DOM or layout work.
-
-And perhaps the most important lesson from our hotel-search mystery:
-
-**A slow frontend isn't necessarily caused by slow JavaScript calculations. Sometimes the real bottleneck is the work the browser must perform after JavaScript finishes.**
-
-Understanding that distinction is the foundation of serious frontend performance engineering.
-
----
-
-# 17. Next Session — Frontend Architecture Beyond Components
-
-The browser can render beautifully and the architecture can still become hostile to change: six months in, a hotel-booking rule touches seven unrelated files, and a "reusable" component knows about auth, pricing, and currency.
-
-In **SE240-L02 — Frontend Architecture Beyond Components**, we'll explore boundaries, state ownership, composables, feature modules, dependency direction, and the principles that distinguish maintainable frontend systems from collections of components that merely happen to work.
-
----
-
-
----
-
-## Next Lecture — SE240-L02: Frontend Architecture Beyond Components
-
-Continue in **SE240 — Browser and Frontend Engineering**.
 
 ## Further Reading — Optional References
 

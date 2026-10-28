@@ -30,7 +30,7 @@ next: null
 
 Your hotel-booking platform has an impressive testing infrastructure. The frontend contains 1,200 automated tests. Vitest executes most of them in seconds, Vue Test Utils verifies the components, and Playwright runs end-to-end scenarios.
 
-Your CI dashboard displays:
+Your CI dashboard is all green: `1,200 / 1,200` tests passed, statement coverage at `98%`, build successful, deployment successful.
 
 ```text
 Tests passed:       1,200 / 1,200
@@ -83,7 +83,7 @@ It's about developing justified confidence that a system will behave correctly u
 
 # 2. What Does a Test Actually Prove?
 
-Consider this test:
+Consider a Vitest example: `calculateNights` subtracts check-in day from check-out day, and one assertion expects `calculateNights(10, 13)` to equal `3`.
 
 ```typescript
 import { describe, expect, it } from "vitest";
@@ -126,7 +126,7 @@ A test has three essential ingredients:
 
 The third ingredient is especially important. A test needs an **oracle**: some independent basis for deciding what correct behavior means.
 
-Imagine writing:
+Imagine asserting that `calculatePrice(input)` equals `calculatePrice(input)` — the same call on both sides of `toBe`:
 
 ```typescript
 expect(calculatePrice(input)).toBe(
@@ -176,7 +176,7 @@ The model is useful, although real applications don't need to obey one universal
 
 ## 3.1 Unit tests: Is this piece of logic correct?
 
-Suppose reservations may be cancelled only before a particular deadline. We can express a simplified rule:
+Suppose reservations may be cancelled only before a particular deadline. A simplified `canCancel` returns true only when status is `"confirmed"` and `now` is strictly less than `deadline`:
 
 ```typescript
 interface CancellationPolicy {
@@ -195,7 +195,7 @@ export function canCancel(
 }
 ```
 
-Now test several meaningful conditions:
+Vitest cases then cover three conditions: confirmed before the deadline (`now: 100`, `deadline: 200`) is allowed; confirmed exactly at the deadline is rejected; already `"cancelled"` is rejected.
 
 ```typescript
 import { describe, expect, it } from "vitest";
@@ -244,7 +244,7 @@ Those are different questions requiring different tests.
 
 ## 3.2 Component tests: Does the UI behave correctly?
 
-Now consider a Vue component:
+Now consider a Vue `HotelOffer` that shows `price` and `currency`, and a Reserve button that emits `reserve` on click unless `disabled` is true:
 
 ```vue
 <script setup lang="ts">
@@ -273,7 +273,7 @@ const emit = defineEmits<{
 </template>
 ```
 
-We can mount the component with Vue Test Utils and interact with it.
+With Vue Test Utils we `mount` it at `149 EUR` enabled, `trigger("click")` on the button, and expect one `reserve` emission; a second case mounts with `disabled: true` and asserts the button's `disabled` attribute is present.
 
 ```typescript
 import { mount } from "@vue/test-utils";
@@ -350,7 +350,7 @@ That's the point.
 
 Many bugs occur not inside modules, but where modules exchange information.
 
-For example:
+For example, dates may travel `DatePicker` → `SearchStore` → `BookingWorkflow` → `ReservationAPI`:
 
 ```text
 DatePicker
@@ -369,7 +369,7 @@ If the date picker emits a string but the workflow assumes a different date repr
 
 ## 3.4 End-to-end tests: Can the customer actually accomplish the task?
 
-Finally, consider a real browser test. The customer opens the application, searches for Berlin, selects dates, chooses a hotel, confirms a reservation, and sees a confirmation. A tool such as Playwright can automate this journey.
+Finally, consider a real browser test. A tool such as Playwright can automate the journey: open `/search`, fill Destination with Berlin, click Search hotels, expect the heading Hotels in Berlin, open Hotel Alexander, click Reserve room, and expect Reservation confirmed.
 
 ```typescript
 import { test, expect } from "@playwright/test";
@@ -421,7 +421,7 @@ There is still an important question, however.
 
 # 4. A Fake Backend Can Give You Real Confidence—About the Wrong Thing
 
-Suppose your Playwright test intercepts the reservation request:
+Suppose your Playwright test uses `page.route` on `**/api/reservations` and fulfills with status `201` and a JSON body containing `reservationId: "9821"` and `status: "confirmed"`:
 
 ```typescript
 await page.route("**/api/reservations", async route => {
@@ -464,7 +464,7 @@ This doesn't mean mocks are bad. They're indispensable for many situations. They
 
 ## 4.1 Three different versions of an end-to-end test
 
-Imagine testing the same booking workflow in three environments.
+Imagine testing the same booking workflow in three environments. Browser plus mocked APIs verifies UI and client-side integration, but misses real backend behavior. Browser plus a real test backend verifies full application interaction, but still misses some production infrastructure differences. Browser plus a production-like deployment covers APIs, deployment configuration, and more infrastructure — and still cannot reproduce every real-world condition.
 
 | Environment | What it verifies | What it misses |
 |---|---|---|
@@ -486,7 +486,7 @@ It's:
 
 ## 4.2 Mock at boundaries, not everywhere
 
-Suppose you're testing the booking interface. One approach is to mock every internal function:
+Suppose you're testing the booking interface. One approach is to mock every internal function: date picker, store, booking composable, price calculation, and API adapter.
 
 ```text
 Mock date picker
@@ -514,7 +514,7 @@ Let's return to our opening production bug. The frontend submits an old date ran
 
 Why didn't tests catch it?
 
-Perhaps the search component used:
+Perhaps the search component used `vi.mock` on `./hotelApi` so `fetchHotels` always `mockResolvedValue`s a single Hotel Alexander immediately:
 
 ```typescript
 vi.mock("./hotelApi", () => ({
@@ -534,14 +534,12 @@ This is a subtle danger. A test double isn't merely a replacement implementation
 
 ## 5.1 Make the race happen deliberately
 
-A better test can control response ordering. Imagine:
+A better test can control response ordering. Imagine request A for November 10–13 and request B for November 17–20. Force the sequence: A starts, B starts, B completes, then A completes — the stale response last.
 
 ```text
 Request A: November 10–13
 Request B: November 17–20
 ```
-
-Now force this sequence:
 
 ```text
 A starts
@@ -578,7 +576,7 @@ The broader idea is called **fault injection**. Instead of waiting for productio
 
 # 6. Code Coverage: The Number That Looks More Important Than It Is
 
-Let's address the elephant in the CI dashboard.
+Let's address the elephant in the CI dashboard: statement coverage reported as `98%`.
 
 ```text
 Statement coverage: 98%
@@ -590,7 +588,7 @@ But what does it mean?
 
 Depending on the coverage configuration, it means that test execution reached approximately 98% of the measured statements. It doesn't mean 98% of application behavior is correct. Nor does it mean 98% of possible failure scenarios have been tested.
 
-Let's examine a simple function:
+Let's examine a simple `canBook` that returns true when `availableRooms >= requestedRooms`, otherwise false:
 
 ```typescript
 function canBook(
@@ -605,14 +603,14 @@ function canBook(
 }
 ```
 
-Suppose the tests call:
+Suppose the tests call `canBook(5, 2)` and `canBook(0, 1)`.
 
 ```typescript
 canBook(5, 2);
 canBook(0, 1);
 ```
 
-Both branches execute, and coverage might report excellent results. But what about:
+Both branches execute, and coverage might report excellent results. But what about `canBook(1, -100)`?
 
 ```typescript
 canBook(1, -100);
@@ -646,13 +644,11 @@ Suppose a pricing function contains the wrong discount formula. Tests might exec
 
 There's a technique called **mutation testing**. Instead of asking whether tests execute the code, mutation testing deliberately modifies the code.
 
-For example, it might change:
+For example, it might change a comparison from `price > 100` to `price >= 100`.
 
 ```typescript
 price > 100
 ```
-
-to:
 
 ```typescript
 price >= 100
@@ -715,7 +711,7 @@ A flaky test produces inconsistent results under conditions that are intended to
 
 ## 7.1 Fixed delays
 
-Consider:
+Consider a Search click followed by `waitForTimeout(1000)`, then a one-shot check that Hotel Alexander `isVisible()`:
 
 ```typescript
 await page.getByRole("button", {
@@ -739,7 +735,7 @@ But perhaps CI is slower. Perhaps the response takes 1.2 seconds.
 
 Perhaps it takes only 100 milliseconds, in which case the test wastes 900 milliseconds.
 
-A better approach uses a condition:
+A better approach clicks Search, then uses Playwright's auto-retrying `expect(...).toBeVisible()` on Hotel Alexander — no fixed sleep:
 
 ```typescript
 await page.getByRole("button", {
@@ -763,7 +759,7 @@ The condition-based assertion asks:
 
 ## 7.2 Fragile selectors
 
-Consider:
+Consider clicking via `locator("div:nth-child(4) > div > button.primary")` — a path tied to DOM shape:
 
 ```typescript
 await page.locator(
@@ -773,7 +769,7 @@ await page.locator(
 
 This selector depends on implementation structure. A designer adds another wrapper element, and the test breaks, even though the application's user-visible behavior may be completely unchanged.
 
-A more resilient test uses meaningful interface semantics:
+A more resilient test uses `getByRole("button", { name: "Reserve room" })`:
 
 ```typescript
 await page.getByRole("button", {
@@ -843,7 +839,7 @@ Accessibility isn't simply a matter of adding alternative text to images. It con
 
 ## 8.1 Semantic HTML does useful work for you
 
-Consider:
+Consider a clickable `<div onclick="reserve()">` labeled Reserve Room:
 
 ```html
 <div onclick="reserve()">
@@ -853,7 +849,7 @@ Consider:
 
 This looks like a button if CSS makes it look like one. But it doesn't automatically acquire all the behavior of a native button.
 
-Compare:
+Compare a real `<button type="button">Reserve Room</button>`:
 
 ```html
 <button type="button">
@@ -871,7 +867,7 @@ Using native elements correctly can eliminate entire categories of interaction b
 
 ## 8.2 Test with roles and accessible names
 
-Playwright supports queries such as:
+Playwright supports queries such as `getByRole("button", { name: "Reserve Room" })`:
 
 ```typescript
 page.getByRole("button", {
@@ -938,7 +934,7 @@ But testing Playwright's WebKit isn't identical to testing every actual version 
 
 ## 9.1 Don't test every combination equally
 
-Imagine supporting:
+Imagine supporting 3 browser engines × 5 viewport sizes × 4 operating systems × 20 major workflows:
 
 ```text
 3 browser engines
@@ -967,7 +963,7 @@ The objective is meaningful coverage of supported environments, not combinatoria
 
 We've now collected several testing approaches. How should they fit together? Consider a conventional Vue/Node.js SaaS team.
 
-A practical pipeline could look like this:
+A practical pipeline could look like this: on each pull request, type checking, linting, unit tests, component tests, focused integration tests, and critical browser smoke tests; after merge and deployment, post-deployment smoke checks plus broader scheduled suites.
 
 ```text
 Pull Request
@@ -1096,118 +1092,9 @@ Operational reliability therefore connects directly to deployment architecture. 
 
 ---
 
-# 12. Practical Lab — Break Your Tests on Purpose
+# 12. Engineering and Interview Challenges
 
-Let's perform two small investigations.
-
-## Experiment A — A test that passes for the wrong reason
-
-Consider:
-
-```typescript
-function applyDiscount(
-  price: number,
-  discountPercent: number
-) {
-  return price - discountPercent;
-}
-```
-
-This implementation is wrong if the business requirement says `discountPercent` represents a percentage.
-
-Now imagine testing:
-
-```typescript
-expect(applyDiscount(100, 10)).toBe(90);
-```
-
-The test passes! Why?
-
-Because the selected input disguises the mistake. Subtracting €10 and applying a 10% discount to €100 happen to produce the same result.
-
-Now test:
-
-```typescript
-expect(applyDiscount(200, 10)).toBe(180);
-```
-
-The implementation returns 190.
-
-The bug becomes visible.
-
-This simple example illustrates a crucial testing principle.
-
-**The quality of test cases matters more than the number of times the test runner executes the function.**
-
-Choose examples that distinguish correct behavior from plausible incorrect implementations.
-
-## Experiment B — Reproduce the stale-response bug
-
-Create a simple asynchronous search function.
-
-```typescript
-function fakeSearch(
-  city: string,
-  delay: number
-): Promise<string> {
-  return new Promise(resolve => {
-    setTimeout(() => resolve(city), delay);
-  });
-}
-```
-
-Now execute:
-
-```typescript
-async function search(city: string, delay: number) {
-  const result = await fakeSearch(city, delay);
-
-  console.log("Displaying:", result);
-}
-
-search("Berlin", 500);
-search("Hamburg", 100);
-```
-
-Hamburg appears first.
-
-Berlin appears afterward.
-
-That's the same class of failure that broke our booking workflow.
-
-Now introduce request identity:
-
-```typescript
-let latestRequest = 0;
-
-async function safeSearch(
-  city: string,
-  delay: number
-) {
-  const requestId = ++latestRequest;
-  const result = await fakeSearch(city, delay);
-
-  if (requestId !== latestRequest) {
-    return;
-  }
-
-  console.log("Displaying:", result);
-}
-```
-
-Repeat the experiment.
-
-Only the latest requested result should be accepted.
-
-The next challenge is more interesting.
-
-Write a Vitest test that controls two unresolved promises explicitly and settles them in reverse order. Assert that an obsolete response cannot overwrite current state.
-
-Such a test should not depend on sleeping for an arbitrary number of milliseconds. It should control the sequence deliberately. That's how you turn a timing-sensitive production bug into a deterministic regression test.
-
----
-
-# 13. Engineering and Interview Challenges
+Try answering these independently before reading the solutions.
 
 ### Challenge 1 — The 98% Coverage Trap
 
@@ -1223,9 +1110,7 @@ Which boundary wasn't actually tested? How would you improve the testing strateg
 
 ### Challenge 3 — The Flaky Test
 
-A browser test fails in CI approximately once every twenty runs.
-
-It uses:
+A browser test fails in CI approximately once every twenty runs. It uses a fixed `await page.waitForTimeout(500)`:
 
 ```typescript
 await page.waitForTimeout(500);
@@ -1251,7 +1136,7 @@ What determines the correct choice?
 
 ---
 
-# 14. Solutions and Discussion
+# 13. Solutions and Discussion
 
 **Challenge 1**
 
@@ -1285,7 +1170,7 @@ Trivial unit tests are rarely worth prioritizing merely to increase test counts.
 
 ---
 
-# 15. The Mental Model Worth Keeping
+# 14. The Mental Model Worth Keeping
 
 Testing isn't about demonstrating that your code works when everything behaves exactly as expected. It's about discovering where your understanding of the system is incomplete.
 
@@ -1317,20 +1202,132 @@ A thousand tests of isolated implementation details may be less valuable than a 
 
 ---
 
-# 16. Next Session — Architecture Workshop: Design a Modern Web Product
+# 15. Closing — Beyond SE240
 
 We've studied the major pieces of modern web engineering in isolation. The real challenge is making them work together under real constraints—limited time, limited money, and a product that must stay correct as it grows.
 
-In **SE490-L02 — Architecture Workshop: Design a Modern Web Product**, we'll design a realistic hotel-booking SaaS and defend its architecture as though we were in a senior engineering interview. The objective won't be the most sophisticated diagram possible—it will be the simplest architecture that convincingly meets the product's actual requirements.
-
----
-
+A natural next step outside this course is **SE490-L02 — Architecture Workshop: Design a Modern Web Product**: design a realistic hotel-booking SaaS and defend its architecture as though you were in a senior engineering interview. The objective isn't the most sophisticated diagram possible—it is the simplest architecture that convincingly meets the product's actual requirements.
 
 ---
 
 ## End of SE240
 
 **SE240 — Browser and Frontend Engineering** is complete. See the recommended study order in `README.md` for natural next courses.
+
+---
+
+*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet and technical references — skip if you are listening; revisit when you can look at the screen.*
+
+## Optional Practical Lab — Break Your Tests on Purpose
+
+These experiments are meant for a console or Vitest session where you can run the snippets. Each fence is copy-paste; the surrounding prose states what should happen if you skip the fence while listening again later.
+
+## Experiment A — A test that passes for the wrong reason
+
+Consider an `applyDiscount` that subtracts `discountPercent` from `price` instead of applying a percentage:
+
+```typescript
+function applyDiscount(
+  price: number,
+  discountPercent: number
+) {
+  return price - discountPercent;
+}
+```
+
+This implementation is wrong if the business requirement says `discountPercent` represents a percentage.
+
+Now imagine asserting `expect(applyDiscount(100, 10)).toBe(90)`:
+
+```typescript
+expect(applyDiscount(100, 10)).toBe(90);
+```
+
+The test passes! Why?
+
+Because the selected input disguises the mistake. Subtracting €10 and applying a 10% discount to €100 happen to produce the same result.
+
+Now assert `expect(applyDiscount(200, 10)).toBe(180)` — a correct 10% off €200:
+
+```typescript
+expect(applyDiscount(200, 10)).toBe(180);
+```
+
+The implementation returns 190.
+
+The bug becomes visible.
+
+This simple example illustrates a crucial testing principle.
+
+**The quality of test cases matters more than the number of times the test runner executes the function.**
+
+Choose examples that distinguish correct behavior from plausible incorrect implementations.
+
+## Experiment B — Reproduce the stale-response bug
+
+Create a `fakeSearch` that resolves to the city name after a given `delay` via `setTimeout`:
+
+```typescript
+function fakeSearch(
+  city: string,
+  delay: number
+): Promise<string> {
+  return new Promise(resolve => {
+    setTimeout(() => resolve(city), delay);
+  });
+}
+```
+
+Now run a `search` that always displays whatever finishes: fire Berlin with delay 500, then Hamburg with delay 100:
+
+```typescript
+async function search(city: string, delay: number) {
+  const result = await fakeSearch(city, delay);
+
+  console.log("Displaying:", result);
+}
+
+search("Berlin", 500);
+search("Hamburg", 100);
+```
+
+Hamburg appears first.
+
+Berlin appears afterward.
+
+That's the same class of failure that broke our booking workflow.
+
+Now introduce request identity with a `latestRequest` counter: each call increments, awaits the fake search, and displays only if `requestId === latestRequest`:
+
+```typescript
+let latestRequest = 0;
+
+async function safeSearch(
+  city: string,
+  delay: number
+) {
+  const requestId = ++latestRequest;
+  const result = await fakeSearch(city, delay);
+
+  if (requestId !== latestRequest) {
+    return;
+  }
+
+  console.log("Displaying:", result);
+}
+```
+
+Repeat the experiment.
+
+Only the latest requested result should be accepted.
+
+The next challenge is more interesting.
+
+Write a Vitest test that controls two unresolved promises explicitly and settles them in reverse order. Assert that an obsolete response cannot overwrite current state.
+
+Such a test should not depend on sleeping for an arbitrary number of milliseconds. It should control the sequence deliberately. That's how you turn a timing-sensitive production bug into a deterministic regression test.
+
+---
 
 ## Further Reading — Optional References
 

@@ -17,7 +17,6 @@ next: SE240-L04
 
 
 
-
 # SE240 — Browser and Frontend Engineering
 
 ## Lecture 03: State Management and Reactive Applications
@@ -56,7 +55,7 @@ Meanwhile, something even stranger happens.
 
 An older availability request completes after the failed reservation attempt.
 
-Its response says:
+Its response still claims `roomId` 73 with `availableRooms` of 1:
 
 ```json
 {
@@ -73,7 +72,7 @@ The customer clicks Reserve a second time.
 
 Another failure.
 
-And somewhere in the middle of all this, your application is maintaining several state variables:
+And somewhere in the middle of all this, your application is maintaining several state variables — `isAvailable` true, `isReserved` false, `isLoading` false, and `reservationFailed` true:
 
 ```typescript
 isAvailable = true
@@ -108,9 +107,9 @@ Let's investigate.
 
 # 2. Reactivity: The Beautiful Machinery Underneath
 
-We already explored JavaScript execution and the browser's event loop in the computer science foundations courses (CS110, CS220, CS320) and SE240 SE240-L01. Now we'll focus specifically on Vue's reactive model.
+We already explored JavaScript execution and the browser's event loop in the computer science foundations courses (CS110, CS220, CS320) and SE240-L01. Now we'll focus specifically on Vue's reactive model.
 
-Consider:
+Consider a `ref` for `nightlyPrice` at 150, a `ref` for `nights` at 3, and a `computed` `totalPrice` that multiplies them:
 
 ```typescript
 import { ref, computed } from "vue";
@@ -123,7 +122,7 @@ const totalPrice = computed(
 );
 ```
 
-Initially:
+Initially the nightly price is €150, nights are 3, and the total is €450:
 
 ```text
 Nightly price: €150
@@ -131,7 +130,7 @@ Nights:        3
 Total:         €450
 ```
 
-Now execute:
+Now set `nights.value` to 4:
 
 ```typescript
 nights.value = 4;
@@ -143,13 +142,13 @@ How?
 
 ## 2.1 Dependency tracking
 
-At a conceptual level, Vue maintains relationships between reactive data and computations that consume it. When a computed getter executes:
+At a conceptual level, Vue maintains relationships between reactive data and computations that consume it. When a computed getter multiplies `nightlyPrice.value` by `nights.value`:
 
 ```typescript
 () => nightlyPrice.value * nights.value
 ```
 
-Vue tracks which reactive values were accessed. A simplified dependency graph might look like:
+Vue tracks which reactive values were accessed. A simplified dependency graph has `nightlyPrice` and `nights` both feeding `totalPrice`, which then drives UI rendering:
 
 ```text
 nightlyPrice ──┐
@@ -165,11 +164,13 @@ Underneath, Vue's reactivity system uses mechanisms involving tracked reads and 
 
 Both are useful.
 
+A `ref` such as `searchCity` wrapping `"Berlin"` holds a single reactive value:
+
 ```typescript
 const searchCity = ref("Berlin");
 ```
 
-A `ref` wraps a value in a reactive container. For an object:
+A `ref` wraps a value in a reactive container. For an object, `reactive` can expose `city`, `guests`, and `refundableOnly` through a proxy:
 
 ```typescript
 const filters = reactive({
@@ -179,7 +180,7 @@ const filters = reactive({
 });
 ```
 
-Vue provides reactive property access through a proxy. The choice often comes down to ergonomics, replacement behavior, and how the state is consumed. For example, directly destructuring primitive properties from a reactive object can lose the original reactive connection:
+Vue provides reactive property access through a proxy. The choice often comes down to ergonomics, replacement behavior, and how the state is consumed. For example, directly destructuring `city` from a `reactive` `filters` object can lose the original reactive connection:
 
 ```typescript
 const filters = reactive({
@@ -197,7 +198,7 @@ But the more interesting issue isn't which API you choose. It's deciding what in
 
 # 3. Derived State: Don't Store What You Can Calculate
 
-Suppose your reservation form stores:
+Suppose your reservation form stores `nightlyPrice`, `nights`, and also a mutable `totalPrice` ref set to 450:
 
 ```typescript
 const nightlyPrice = ref(150);
@@ -205,7 +206,7 @@ const nights = ref(3);
 const totalPrice = ref(450);
 ```
 
-Every time `nights` changes, you manually update `totalPrice`. Perhaps you use a watcher:
+Every time `nights` changes, you manually update `totalPrice`. Perhaps you use a watcher that assigns `nightlyPrice.value * nights.value`:
 
 ```typescript
 watch(nights, () => {
@@ -220,7 +221,7 @@ Soon the application contains a network of synchronization rules attempting to k
 
 **You've stored information that could have been derived from other information.**
 
-A better approach:
+A better approach keeps `nightlyPrice`, `nights`, and `discountPercent` as independent refs, then derives `subtotal` and `discountedTotal` with `computed`:
 
 ```typescript
 const nightlyPrice = ref(150);
@@ -236,7 +237,7 @@ const discountedTotal = computed(
 );
 ```
 
-Now the dependency graph explains the relationships.
+Now the dependency graph explains the relationships: `nightlyPrice` and `nights` feed `subtotal`, and `subtotal` plus `discountPercent` feed `discountedTotal`:
 
 ```text
 nightlyPrice ──┐
@@ -253,7 +254,7 @@ There are exceptions. Expensive calculations may need memoization or other optim
 
 ## 3.1 Computed properties are for calculations, not orchestration
 
-Consider this questionable code:
+Consider this questionable code — a `computed` whose getter is `async` and `await`s `fetchHotels(filters.value)`:
 
 ```typescript
 const hotels = computed(async () => {
@@ -281,7 +282,7 @@ Imagine opening the hotel search page. It contains:
 
 All of these are state. But treating them as one homogeneous collection of values is a mistake, because they have different owners, lifetimes, and consistency requirements.
 
-A useful classification:
+A useful classification, spoken in order: local UI state such as a dropdown open/closed belongs to the component; navigation state such as city, dates, and filters often belongs in the URL or router; shared client state such as selected currency belongs in a shared store; derived state such as sorted hotel results belongs in a computed value; server state such as room availability is owned by the backend and only cached locally; workflow state such as booking pending, failed, or confirmed belongs to the feature-level operation.
 
 | Kind of state | Example | Natural owner |
 |---|---|---|
@@ -296,7 +297,7 @@ The table isn't a rigid architectural specification. It's a way of asking better
 
 ## 4.1 Local state
 
-Consider:
+Consider a filter-panel open flag as a local `ref(false)`:
 
 ```typescript
 const isFilterPanelOpen = ref(false);
@@ -306,7 +307,7 @@ Only the filter panel needs this value. Putting it in a global Pinia store would
 
 ## 4.2 Navigation state
 
-Suppose the user searches:
+Suppose the user searches city Berlin, guests 2, check-in November 10, and check-out November 13:
 
 ```text
 City: Berlin
@@ -315,7 +316,7 @@ Check-in: November 10
 Check-out: November 13
 ```
 
-Wouldn't it be useful if the URL preserved those choices? For example:
+Wouldn't it be useful if the URL preserved those choices — for example `/search?city=Berlin&guests=2&checkIn=2026-11-10&checkOut=2026-11-13`?
 
 ```text
 /search?city=Berlin&guests=2&checkIn=2026-11-10&checkOut=2026-11-13
@@ -327,7 +328,7 @@ This suggests that the URL is often a natural home for shareable navigation stat
 
 ## 4.3 Shared client state
 
-The selected display currency might be relevant across many features. A Pinia store is a reasonable owner:
+The selected display currency might be relevant across many features. A Pinia store is a reasonable owner — `defineStore("preferences")` with a `currency` ref defaulting to `"EUR"` and a `selectCurrency` action:
 
 ```typescript
 export const usePreferencesStore = defineStore(
@@ -348,7 +349,7 @@ This is state controlled by the client. The application can make a local change 
 
 ## 4.4 Server state
 
-Now consider:
+Now consider `availableRooms` as a local `ref(1)`:
 
 ```typescript
 const availableRooms = ref(1);
@@ -366,19 +367,19 @@ That distinction changes everything.
 
 # 5. Server State: Your Frontend Is Living in the Past
 
-Let's examine the availability problem. At 12:00:00, the backend reports:
+Let's examine the availability problem. At 12:00:00, the backend reports available rooms: 1:
 
 ```text
 Available rooms: 1
 ```
 
-Your frontend receives the response at 12:00:00.100. At 12:00:01, another customer books the room, and the backend now reports:
+Your frontend receives the response at 12:00:00.100. At 12:00:01, another customer books the room, and the backend now reports available rooms: 0:
 
 ```text
 Available rooms: 0
 ```
 
-But your frontend still displays:
+But your frontend still displays available rooms: 1:
 
 ```text
 Available rooms: 1
@@ -420,13 +421,13 @@ A customer types into a city search field.
 
 The application sends a request for every completed search term.
 
-At first:
+At first the search is Berlin:
 
 ```text
 Search: Berlin
 ```
 
-Then the customer changes it to:
+Then the customer changes it to Hamburg:
 
 ```text
 Search: Hamburg
@@ -442,7 +443,7 @@ Naturally, you'd expect Berlin to finish first.
 
 Except networks don't guarantee that.
 
-Imagine:
+Imagine this timeline: Berlin starts at 0 ms; Hamburg starts at 50 ms, completes at 100 ms, and the UI shows Hamburg at 110 ms; then Berlin completes at 350 ms and the UI wrongly shows Berlin at 360 ms:
 
 ```text
 Time       Request A: Berlin        Request B: Hamburg
@@ -469,7 +470,7 @@ This is an **asynchronous race condition**.
 
 ## 6.1 The naive implementation
 
-Consider:
+Consider a watcher that assigns `hotels.value` from `await fetchHotels(city)` whenever `searchCity` changes:
 
 ```typescript
 watch(searchCity, async city => {
@@ -491,7 +492,7 @@ The overall system is incorrect because it doesn't account for concurrent operat
 
 ## 6.2 One solution: Ignore outdated responses
 
-We can associate requests with a monotonically increasing generation number.
+We can associate requests with a monotonically increasing generation number. Bump `latestRequest`, capture that id before awaiting `fetchHotels`, and only assign `hotels.value` when `requestId` still equals `latestRequest`:
 
 ```typescript
 let latestRequest = 0;
@@ -525,7 +526,7 @@ The example also omits loading and error handling for clarity; those need the sa
 
 Vue supports watcher cleanup.
 
-We can use `AbortController` to cancel a previous fetch when the search value changes.
+We can use `AbortController` to cancel a previous fetch when the search value changes. The watcher creates a controller, registers `onCleanup` to abort and clear an `active` flag, sets status to loading, fetches `/api/hotels?city=…` with `signal`, and only writes hotels or error status while still `active`:
 
 ```typescript
 const hotels = ref<Hotel[]>([]);
@@ -598,7 +599,7 @@ That distinction becomes crucial when working with payments, reservations, and o
 
 # 7. Loading, Error, and Success Are States—Not Random Booleans
 
-Let's return to our reservation interface. Suppose we represent its workflow using:
+Let's return to our reservation interface. Suppose we represent its workflow using three separate booleans — `isLoading`, `isSuccessful`, and `hasError`:
 
 ```typescript
 const isLoading = ref(false);
@@ -606,7 +607,7 @@ const isSuccessful = ref(false);
 const hasError = ref(false);
 ```
 
-Three booleans create eight possible combinations. Some are sensible. Others are contradictory. For example:
+Three booleans create eight possible combinations. Some are sensible. Others are contradictory. For example all three can be true at once — loading, successful, and error together:
 
 ```text
 isLoading:    true
@@ -616,7 +617,7 @@ hasError:     true
 
 What does that mean? Is the operation loading? Did it succeed? Did it fail? Technically, all three values can be true. But perhaps the actual workflow should allow only one of several distinct states.
 
-A better model:
+A better model is a single `BookingStatus` union of `"idle"`, `"submitting"`, `"confirmed"`, and `"failed"`, held in one ref:
 
 ```typescript
 type BookingStatus =
@@ -628,7 +629,7 @@ type BookingStatus =
 const bookingStatus = ref<BookingStatus>("idle");
 ```
 
-Now the application has a clearer vocabulary.
+Now the application has a clearer vocabulary. From idle you move to submitting; from submitting you branch to confirmed or failed; from failed you can return to submitting on retry:
 
 ```text
 idle
@@ -647,7 +648,7 @@ This is the beginning of a **state machine**. A state machine defines valid stat
 
 ## 7.1 Make state transitions explicit
 
-Imagine a reservation workflow:
+Imagine a reservation workflow as a discriminated union: idle; submitting with an `attemptId`; confirmed with a `reservationId`; or failed with a `message`:
 
 ```typescript
 type BookingState =
@@ -659,7 +660,7 @@ type BookingState =
 
 This uses a discriminated union, where the different variants carry different information. A confirmed state necessarily includes a reservation identifier. A failed state includes an error message. An idle state doesn't pretend to have either. TypeScript can help ensure the UI handles the possibilities.
 
-For example:
+For example, `getStatusText` switches on `state.status` and returns ready, submitting, confirmed-with-id, or the failure message:
 
 ```typescript
 function getStatusText(state: BookingState): string {
@@ -679,7 +680,7 @@ function getStatusText(state: BookingState): string {
 }
 ```
 
-This kind of modeling becomes increasingly valuable as workflows gain more states. A payment flow might distinguish:
+This kind of modeling becomes increasingly valuable as workflows gain more states. A payment flow might distinguish idle, creating-payment, awaiting-customer-action, processing, succeeded, and failed:
 
 ```text
 idle
@@ -730,7 +731,7 @@ That's acceptable for some interactions and dangerous for others.
 
 ## 8.1 A simple optimistic interaction
 
-Imagine:
+Imagine `addFavorite`: remember whether the hotel was already favorited, append it to `favorites` if not, await `favoriteApi.add`, and on catch filter that id back out if it wasn't a favorite before:
 
 ```typescript
 async function addFavorite(hotelId: string) {
@@ -788,7 +789,7 @@ Potentially involves external availability, payments, cancellation policies, and
 
 The UI should not announce a confirmed reservation before receiving an authoritative confirmation.
 
-It can immediately respond:
+It can immediately respond with "Submitting reservation...":
 
 ```text
 Submitting reservation...
@@ -796,7 +797,7 @@ Submitting reservation...
 
 That provides fast feedback without making a false claim.
 
-Then, after success:
+Then, after success, "Reservation confirmed!":
 
 ```text
 Reservation confirmed!
@@ -818,7 +819,7 @@ You can make an interface feel responsive without lying about whether a conseque
 
 Suppose your application contains twenty different API queries.
 
-For each query, you manually maintain:
+For each query, you manually maintain `data`, `loading`, and `error` refs — often initialized to `null`, `false`, and `null`:
 
 ```typescript
 const data = ref(null);
@@ -854,7 +855,7 @@ They can coexist.
 
 ## 9.1 Queries are identified by keys
 
-Imagine fetching hotels:
+Imagine fetching hotels with `useQuery`: `queryKey` `["hotels", city]`, `queryFn` calling `fetchHotels(city.value)`, and `staleTime` of 30,000 milliseconds:
 
 ```typescript
 import { useQuery } from "@tanstack/vue-query";
@@ -870,13 +871,11 @@ const hotelQuery = useQuery({
 
 The query key identifies the requested dataset.
 
-Conceptually:
+Conceptually, `["hotels", "Berlin"]` is different from `["hotels", "Hamburg"]`:
 
 ```text
 ["hotels", "Berlin"]
 ```
-
-is different from:
 
 ```text
 ["hotels", "Hamburg"]
@@ -894,13 +893,11 @@ Otherwise, distinct requests can incorrectly share cached results.
 
 The `staleTime` option specifies how long fetched query data should be considered fresh.
 
-In our example:
+In our example, `staleTime: 30_000` means 30 seconds:
 
 ```typescript
 staleTime: 30_000
 ```
-
-means 30 seconds.
 
 But be careful.
 
@@ -930,7 +927,7 @@ Suppose a customer successfully adds a hotel to their favorites.
 
 Other components displaying favorite hotels may now have outdated cached data.
 
-A mutation handler can invalidate the relevant query:
+A mutation handler can invalidate the relevant query with `queryClient.invalidateQueries` on `queryKey` `["favorites"]`:
 
 ```typescript
 await queryClient.invalidateQueries({
@@ -960,7 +957,7 @@ A small Vue application with a handful of simple API requests may not need one.
 
 But as fetching, caching, and synchronization requirements grow, manually managing all those concerns through general-purpose stores can become expensive.
 
-A useful division might be:
+A useful division might be: Vue component state for local UI interactions; Pinia for shared client-owned preferences and workflows; TanStack Query for cached server data, fetching, and invalidation; and the backend for authoritative business state:
 
 ```text
 Vue component state
@@ -1014,7 +1011,7 @@ Let's redesign the interface from our opening mystery. The user is viewing a roo
 
 First, the displayed availability is a snapshot. Second, the customer initiating a booking is not equivalent to a successful reservation. Third, concurrent requests must not overwrite newer state. Fourth, failure and uncertainty need explicit representation.
 
-A possible state model:
+A possible state model uses idle; submitting with `attemptId`; confirmed with `reservationId`; rejected with `reason`; and `unknown` with `attemptId` when the network outcome is uncertain:
 
 ```typescript
 type ReservationState =
@@ -1027,7 +1024,7 @@ type ReservationState =
 
 Why introduce `unknown`? Because distributed operations can have uncertain outcomes. If a reservation request times out after the server may have committed it, the frontend should not automatically assume that nothing happened. It can use the original attempt identifier to retrieve or reconcile the operation's authoritative status.
 
-Now imagine the booking flow:
+Now imagine the booking flow: Reserve moves to SUBMITTING; the server may confirm, reject, or leave the outcome UNKNOWN, after which the client queries authoritative status and resolves:
 
 ```text
 Customer clicks Reserve
@@ -1066,79 +1063,9 @@ That's less theatrically satisfying than immediately announcing success. But it'
 
 ---
 
-# 12. Practical Investigation
+# 12. Engineering and Interview Challenges
 
-Let's perform two small experiments.
-
-## Experiment A — Reproduce an asynchronous race
-
-Open your browser console and execute:
-
-```javascript
-function fakeSearch(city, delay) {
-  return new Promise(resolve => {
-    setTimeout(() => resolve(city), delay);
-  });
-}
-
-async function search(city, delay) {
-  const result = await fakeSearch(city, delay);
-  console.log("Displaying:", result);
-}
-
-search("Berlin", 500);
-search("Hamburg", 100);
-```
-
-The Hamburg result appears first. Then Berlin appears. Imagine replacing `console.log()` with:
-
-```javascript
-hotels.value = result;
-```
-
-You've recreated the race condition. Now introduce a generation counter:
-
-```javascript
-let latest = 0;
-
-async function safeSearch(city, delay) {
-  const id = ++latest;
-  const result = await fakeSearch(city, delay);
-
-  if (id !== latest) return;
-
-  console.log("Displaying:", result);
-}
-
-safeSearch("Berlin", 500);
-safeSearch("Hamburg", 100);
-```
-
-Only the latest requested search is displayed. It's a tiny experiment that demonstrates an extremely common production problem.
-
-## Experiment B — Inspect reactive dependencies
-
-In a small Vue component, create:
-
-```typescript
-const price = ref(100);
-const nights = ref(2);
-
-const total = computed(() => {
-  console.log("Recalculating total");
-  return price.value * nights.value;
-});
-```
-
-Read `total.value` several times. Notice that Vue doesn't need to recalculate it every time when its dependencies are unchanged. Then modify `nights.value` and read the total again. The computed getter reevaluates because a dependency changed. Now consider how much unnecessary synchronization code this mechanism eliminates.
-
-### Optional extension
-
-Create a component that fetches data whenever a search term changes. Use a delayed mock fetch to force responses to arrive out of order. Then fix the implementation using watcher cleanup or a request-generation counter. This is a worthwhile exercise because it resembles problems you'll eventually encounter in real applications.
-
----
-
-# 13. Engineering and Interview Challenges
+Try answering these independently before reading the solutions.
 
 ### Challenge 1 — The Stale Search
 
@@ -1189,7 +1116,7 @@ What mechanisms help resolve the uncertainty?
 
 ---
 
-# 14. Solutions and Discussion
+# 13. Solutions and Discussion
 
 **Challenge 1**
 
@@ -1219,7 +1146,7 @@ This is a distributed-systems problem appearing inside an ordinary web applicati
 
 ---
 
-# 15. The Mental Model Worth Keeping
+# 14. The Mental Model Worth Keeping
 
 Reactivity is an elegant mechanism for propagating changes through an application. But it doesn't determine whether the changes are correct.
 
@@ -1245,9 +1172,9 @@ The most important principle is:
 
 ---
 
-# 16. Next Session — The Frontend–Backend Contract
+# 15. Next Session — The Frontend–Backend Contract
 
-We've now investigated how a frontend maintains and synchronizes state. But that state often arrives through an API, and APIs introduce their own subtle problems. Imagine that the frontend expects:
+We've now investigated how a frontend maintains and synchronizes state. But that state often arrives through an API, and APIs introduce their own subtle problems. Imagine that the frontend expects a flat `price` of 149 with `currency` `"EUR"`:
 
 ```json
 {
@@ -1256,7 +1183,7 @@ We've now investigated how a frontend maintains and synchronizes state. But that
 }
 ```
 
-The backend team introduces a new representation:
+The backend team introduces a new representation where `price` is an object with `amount` 14900 and nested `currency`:
 
 ```json
 {
@@ -1275,12 +1202,85 @@ In **SE310-L01 — The Frontend–Backend Contract**, we'll investigate REST, Gr
 
 ---
 
-
----
-
 ## Next Lecture — SE240-L04: Delivering Modern Web Applications
 
 Continue in **SE240 — Browser and Frontend Engineering**.
+
+---
+
+*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet and technical references — skip if you are listening; revisit when you can look at the screen.*
+
+## Optional Practical Lab — Race Conditions and Reactive Dependencies
+
+These experiments need a browser console or a small Vue component. Each fence is copy-paste; the surrounding steps say what to watch for.
+
+## Experiment A — Reproduce an asynchronous race
+
+Open your browser console and run a `fakeSearch` that resolves to the city after a delay, then call `search("Berlin", 500)` and `search("Hamburg", 100)` so the slower Berlin call can overwrite Hamburg:
+
+```javascript
+function fakeSearch(city, delay) {
+  return new Promise(resolve => {
+    setTimeout(() => resolve(city), delay);
+  });
+}
+
+async function search(city, delay) {
+  const result = await fakeSearch(city, delay);
+  console.log("Displaying:", result);
+}
+
+search("Berlin", 500);
+search("Hamburg", 100);
+```
+
+The Hamburg result appears first. Then Berlin appears. Imagine replacing `console.log()` with assigning `hotels.value = result`:
+
+```javascript
+hotels.value = result;
+```
+
+You've recreated the race condition. Now introduce a generation counter — bump `latest`, capture `id`, and only log when `id === latest` — then call `safeSearch("Berlin", 500)` and `safeSearch("Hamburg", 100)`:
+
+```javascript
+let latest = 0;
+
+async function safeSearch(city, delay) {
+  const id = ++latest;
+  const result = await fakeSearch(city, delay);
+
+  if (id !== latest) return;
+
+  console.log("Displaying:", result);
+}
+
+safeSearch("Berlin", 500);
+safeSearch("Hamburg", 100);
+```
+
+Only the latest requested search is displayed. It's a tiny experiment that demonstrates an extremely common production problem.
+
+## Experiment B — Inspect reactive dependencies
+
+In a small Vue component, create `price` and `nights` refs plus a `computed` `total` that logs `"Recalculating total"` whenever it multiplies them:
+
+```typescript
+const price = ref(100);
+const nights = ref(2);
+
+const total = computed(() => {
+  console.log("Recalculating total");
+  return price.value * nights.value;
+});
+```
+
+Read `total.value` several times. Notice that Vue doesn't need to recalculate it every time when its dependencies are unchanged. Then modify `nights.value` and read the total again. The computed getter reevaluates because a dependency changed. Now consider how much unnecessary synchronization code this mechanism eliminates.
+
+### Optional extension
+
+Create a component that fetches data whenever a search term changes. Use a delayed mock fetch to force responses to arrive out of order. Then fix the implementation using watcher cleanup or a request-generation counter. This is a worthwhile exercise because it resembles problems you'll eventually encounter in real applications.
+
+---
 
 ## Further Reading — Optional References
 
@@ -1363,4 +1363,3 @@ SAFER BOOKING
 
 SENIOR LINE: Reactivity syncs UI to local state. Architecture + protocols sync that to reality.
 ```
-

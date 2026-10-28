@@ -56,7 +56,7 @@ Somewhere in this mess, the loyalty rule has been implemented three times.
 
 The actual backend still calculates the authoritative price correctly, fortunately. But the frontend presents conflicting figures.
 
-A senior developer suggests extracting everything into a new composable:
+A senior developer suggests extracting everything into a new composable named `useHotelPricing()`:
 
 ```typescript
 useHotelPricing()
@@ -82,7 +82,7 @@ Vue encourages us to decompose interfaces into components.
 
 That's a good thing.
 
-A hotel search interface might contain:
+A hotel search interface might contain a `HotelSearchPage` whose children are `SearchFilters` (with `LocationSelector`, `DateRangePicker`, and `GuestSelector`), `SortingControls`, and `HotelResults` built from repeated `HotelCard`s:
 
 ```text
 HotelSearchPage
@@ -101,7 +101,7 @@ HotelSearchPage
 
 This is a useful decomposition of the visible interface. But it doesn't tell us where the business logic belongs. Who determines whether a hotel is refundable? Who knows how loyalty discounts work? Who decides whether search results are stale? Who communicates with the backend? Who owns the selected currency? And what happens when the same information is needed on a completely different page?
 
-A component tree describes **visual composition**. An application architecture describes **responsibilities and dependencies**. Those are different structures. A component can be beautifully written and still participate in a terrible architecture. Consider:
+A component tree describes **visual composition**. An application architecture describes **responsibilities and dependencies**. Those are different structures. A component can be beautifully written and still participate in a terrible architecture. Consider a `<script setup>` that imports `useAuthStore`, `useCurrencyStore`, and `useBookingStore`, plus `getLoyaltyDiscount` and `fetchHotelDetails`, then instantiates those three stores — with another 150 lines of application logic implied below:
 
 ```vue
 <script setup lang="ts">
@@ -151,7 +151,7 @@ Two concepts, however, have survived for excellent reasons:
 
 ## 3.1 Coupling: How much do modules depend on one another?
 
-Suppose a component imports:
+Suppose a component imports four Pinia stores at once — `useAuthStore`, `useBookingStore`, `usePaymentStore`, and `useSearchStore`:
 
 ```typescript
 import { useAuthStore } from "@/stores/auth";
@@ -176,7 +176,7 @@ A tightly coupled system often exhibits **change propagation**. You modify one f
 
 ## 3.2 Cohesion: Do related responsibilities live together?
 
-Imagine a module containing:
+Imagine a module that exports four unrelated helpers together: `calculateHotelPrice`, `validateEmail`, `getBrowserWidth`, and `sendAnalyticsEvent`:
 
 ```typescript
 export function calculateHotelPrice() { /* ... */ }
@@ -194,7 +194,7 @@ But why do they belong together?
 
 What is the module actually responsible for?
 
-A cohesive module contains functionality that belongs to a meaningful common purpose. For example:
+A cohesive module contains functionality that belongs to a meaningful common purpose. For example, a `booking-pricing/` folder whose files are `calculate-subtotal.ts`, `apply-discount.ts`, `price-types.ts`, and `pricing.test.ts`:
 
 ```text
 booking-pricing/
@@ -218,19 +218,19 @@ A useful way to evaluate architecture is to imagine a future change. Suppose the
 
 In a well-structured system, you'd expect to modify a reasonably identifiable area.
 
-In a poorly structured system, you might search through thirty components for scattered conditions such as:
+In a poorly structured system, you might search through thirty components for scattered conditions such as `booking.isRefundable`:
 
 ```typescript
 booking.isRefundable
 ```
 
-or:
+or `hoursBeforeCheckIn > 24`:
 
 ```typescript
 hoursBeforeCheckIn > 24
 ```
 
-or:
+or `booking.status !== "confirmed"`:
 
 ```typescript
 booking.status !== "confirmed"
@@ -250,7 +250,7 @@ They're different kinds of work that benefit from being distinguished.
 
 ## 4.1 Presentation: What should the user see?
 
-Presentation logic concerns the visible interface and user interactions. A `HotelPrice.vue` component might receive:
+Presentation logic concerns the visible interface and user interactions. A `HotelPrice.vue` component might receive props for `amountCents`, `currency`, and whether the price is `discounted`:
 
 ```typescript
 interface Props {
@@ -280,7 +280,7 @@ That doesn't mean components must be completely free of logic. A dropdown handli
 
 ## 4.2 Application logic: What is the user trying to accomplish?
 
-Imagine the user clicks:
+Imagine the user clicks **Confirm Reservation**:
 
 ```text
 Confirm Reservation
@@ -309,7 +309,7 @@ Domain logic expresses concepts specific to the problem being solved. Examples i
 
 Some of these rules can be represented as ordinary TypeScript functions.
 
-For example:
+For example, `calculateDiscountedSubtotal` takes `subtotalCents` and `discountPercent`, rejects unsafe or out-of-range inputs, rounds `subtotalCents * discountPercent / 100`, and returns the reduced subtotal:
 
 ```typescript
 interface DiscountInput {
@@ -355,7 +355,7 @@ Frontend domain logic is useful for consistency and user experience, not as a tr
 
 ## 4.4 Infrastructure: How does the application communicate with the outside world?
 
-Infrastructure concerns implementation mechanisms. For example:
+Infrastructure concerns implementation mechanisms. For example, `fetchHotels(city)` GETs `/api/hotels?city=…`, throws when the response is not ok, and otherwise returns the parsed JSON as `HotelDto[]`:
 
 ```typescript
 export async function fetchHotels(
@@ -381,7 +381,7 @@ Nor should the pricing calculation need to know whether hotel data came from RES
 
 A healthy architecture prevents unnecessary knowledge from leaking across these responsibilities.
 
-Conceptually:
+Conceptually, Vue components sit above application or feature logic; that layer can call domain rules sideways and talks downward through API or infrastructure adapters to backend services:
 
 ```text
 Vue Components
@@ -404,7 +404,7 @@ This is a useful mental model, not a requirement to construct four folders and a
 
 # 5. Organizing by Technical Type Versus Organizing by Feature
 
-One of the most common frontend structures looks like this:
+One of the most common frontend structures organizes `src/` by technical type — `components/`, `composables/`, `stores/`, `services/`, `utils/`, `types/`, `views/`, and `router/`:
 
 ```text
 src/
@@ -434,7 +434,7 @@ That's a meaningful difference.
 
 ## 5.1 Feature-based organization
 
-An alternative is to organize substantial functionality around business features. For example:
+An alternative is to organize substantial functionality around business features. For example, `src/app/` for bootstrap, then `features/hotel-search/`, `features/reservations/`, and `features/payments/` each with their own components, API, model, and public `index.ts`, plus a thin `shared/` for `ui/`, `formatting/`, and `http/`:
 
 ```text
 src/
@@ -476,7 +476,7 @@ Here's the catch.
 
 You can reorganize files into feature directories and accomplish almost nothing architecturally.
 
-Suppose:
+Suppose `HotelCard.vue` inside hotel-search reaches into payments and imports `usePaymentStore` from that feature's internal `paymentStore`:
 
 ```typescript
 // features/hotel-search/components/HotelCard.vue
@@ -484,7 +484,7 @@ import { usePaymentStore } from
   "@/features/payments/model/paymentStore";
 ```
 
-And:
+And `PaymentForm.vue` reaches the other way, importing `useSearchStore` from hotel-search's internal `searchStore`:
 
 ```typescript
 // features/payments/components/PaymentForm.vue
@@ -498,7 +498,7 @@ The files are neatly organized. But the features remain tightly coupled. The rea
 
 # 6. Public Interfaces: Stop Reaching into Everyone Else's Drawers
 
-Imagine the reservations feature provides a capability:
+Imagine the reservations feature provides a capability: an async `startReservation(hotelId)` that coordinates reservation creation and returns `Promise<void>`:
 
 ```typescript
 export async function startReservation(
@@ -512,7 +512,7 @@ Another feature needs to initiate a reservation.
 
 It should ideally depend on a stable, intentional interface.
 
-For example:
+For example, importing `startReservation` from `@/features/reservations` — the feature's public package path:
 
 ```typescript
 import {
@@ -520,7 +520,7 @@ import {
 } from "@/features/reservations";
 ```
 
-The reservations feature can expose that function through its public entry point:
+The reservations feature can expose that function through its public entry point `features/reservations/index.ts`, re-exporting from `./application/startReservation`:
 
 ```typescript
 // features/reservations/index.ts
@@ -529,7 +529,7 @@ export { startReservation } from
   "./application/startReservation";
 ```
 
-Now compare an alternative:
+Now compare an alternative that imports `useReservationInternalStore` from `@/features/reservations/model/internalStore`:
 
 ```typescript
 import {
@@ -549,7 +549,7 @@ The internal implementation should be changeable without forcing unrelated consu
 
 ## 6.1 Dependency direction
 
-Consider three features:
+Consider three features named Hotel Search, Reservations, and Payments:
 
 ```text
 Hotel Search
@@ -557,7 +557,7 @@ Reservations
 Payments
 ```
 
-A tempting design allows all three to import one another freely. That can produce cycles:
+A tempting design allows all three to import one another freely. That can produce a cycle: Hotel Search depends on Reservations, Reservations on Payments, and Payments back on Hotel Search:
 
 ```text
 Hotel Search ───► Reservations
@@ -574,7 +574,7 @@ Testing requires constructing large portions of the application.
 
 And business changes propagate through unexpected paths.
 
-A cleaner approach might introduce an explicit checkout workflow that coordinates the relevant capabilities:
+A cleaner approach might introduce an explicit Checkout Workflow that fans out to Search Data, the Reservation Capability, and the Payment Capability — so those three do not import one another in a cycle:
 
 ```text
         Checkout Workflow
@@ -594,7 +594,7 @@ Developers begin with proper feature boundaries.
 
 Then they encounter a function used by two features.
 
-They move it into:
+They move it into `shared/utils/`:
 
 ```text
 shared/utils/
@@ -625,7 +625,7 @@ Vue's Composition API provides tremendous flexibility. Unfortunately, flexibilit
 
 A composable is a function that leverages Vue's Composition API to encapsulate reusable stateful behavior.
 
-Consider:
+Consider `useHotelSearch`: it creates `hotels`, `loading`, and `error` refs, exposes an async `search(city)` that sets loading, calls `fetchHotels`, and on failure sets `error` to `"Search failed"`, then returns those four members:
 
 ```typescript
 import { ref } from "vue";
@@ -675,7 +675,7 @@ And sharing module-level mutable state introduces considerations for lifecycle, 
 
 ## 7.2 Pinia: State shared across application boundaries
 
-Suppose many unrelated components need the selected display currency. The navigation bar displays it. Search results use it. The hotel details page uses it. The checkout page uses it. A Pinia store may be appropriate:
+Suppose many unrelated components need the selected display currency. The navigation bar displays it. Search results use it. The hotel details page uses it. The checkout page uses it. A Pinia store may be appropriate — `useCurrencyStore` with id `"currency"`, a `selectedCurrency` ref defaulting to `"EUR"`, and a `setCurrency` mutator:
 
 ```typescript
 import { defineStore } from "pinia";
@@ -714,7 +714,7 @@ We'll examine state ownership and synchronization much more deeply in SE240-L03.
 
 ## 7.3 Services: Operations and external boundaries
 
-The term *service* is overloaded. In frontend applications, it often refers to modules that perform operations such as:
+The term *service* is overloaded. In frontend applications, it often refers to modules that perform operations — for example a `hotelApi` object with async `getById(id)` and `search(criteria)`, each wrapping an HTTP request:
 
 ```typescript
 export const hotelApi = {
@@ -742,7 +742,7 @@ Responsibilities matter more than suffixes.
 
 ## 7.4 Plain TypeScript functions: Often the best answer
 
-Not everything needs to be reactive. Not everything needs a store. Not everything needs a composable. Consider:
+Not everything needs to be reactive. Not everything needs a store. Not everything needs a composable. Consider a pure `calculateNights(checkIn, checkOut)` that returns a number from date strings alone:
 
 ```typescript
 export function calculateNights(
@@ -761,7 +761,7 @@ This is an underrated architectural advantage.
 
 The less code depends directly on a framework, the easier it is to understand independently of that framework.
 
-For a useful rule of thumb:
+For a useful rule of thumb, match the concern to a likely home: dropdown open/closed state stays in the component; reusable reactive behavior belongs in a composable; state shared across unrelated views belongs in a store; a hotel cancellation rule belongs in a domain module; an HTTP call to the hotel API belongs in an API adapter; formatting a currency value belongs in a formatting utility; and a multi-step booking interaction belongs in feature-level application logic.
 
 | Concern | Likely home |
 |---|---|
@@ -781,7 +781,7 @@ Architecture requires judgment.
 
 # 8. The Boundary Between Frontend Models and Backend Data
 
-Suppose the backend returns:
+Suppose the backend returns a DTO with snake_case fields: `hotel_id` 4812, `nightly_price_minor` 14900, `currency_code` `"EUR"`, and `is_refundable` true:
 
 ```json
 {
@@ -792,7 +792,7 @@ Suppose the backend returns:
 }
 ```
 
-Your Vue components might prefer:
+Your Vue components might prefer an internal `Hotel` with `id`, a nested `nightlyPrice` of `{ amountCents, currency }`, and a boolean `refundable`:
 
 ```typescript
 interface Hotel {
@@ -805,7 +805,7 @@ interface Hotel {
 }
 ```
 
-Should every component understand the raw backend response format? Usually not. If backend serialization details leak across the entire frontend, changing those details becomes expensive. One approach is to define a mapping function:
+Should every component understand the raw backend response format? Usually not. If backend serialization details leak across the entire frontend, changing those details becomes expensive. One approach is to define a mapping function `toHotel(dto)` that copies `hotel_id` → `id`, `nightly_price_minor` → `nightlyPrice.amountCents`, `currency_code` → `currency`, and `is_refundable` → `refundable`:
 
 ```typescript
 interface HotelDto {
@@ -863,7 +863,7 @@ You might need to mount the Vue component, initialize Pinia, mock HTTP, configur
 
 Even if the test passes, understanding why it passes can be difficult.
 
-Now imagine the booking policy is represented by a pure function.
+Now imagine the booking policy is represented by a pure function `canCancel`: given `status`, `now`, and `cancellationDeadline`, it returns true only when status is `"confirmed"` and `now` is still before the deadline.
 
 ```typescript
 interface BookingPolicy {
@@ -882,7 +882,7 @@ export function canCancel(
 }
 ```
 
-Testing is straightforward:
+Testing is straightforward — two Vitest cases: confirmed with `now` 100 and deadline 200 expects `true`; cancelled with the same timestamps expects `false`:
 
 ```typescript
 import { describe, expect, it } from "vitest";
@@ -918,7 +918,7 @@ Suppose an application operation depends on an API.
 
 You could import a global singleton directly.
 
-Or you could make the dependency explicit:
+Or you could make the dependency explicit: `createReservationWorkflow(api)` takes a `ReservationApi` with `create(input)`, and returns an object whose `submit` simply forwards to `api.create`:
 
 ```typescript
 interface ReservationApi {
@@ -951,7 +951,7 @@ Now comes the necessary counterargument.
 
 **Architecture can become its own source of complexity.**
 
-Imagine a tiny Vue application with three pages. A developer introduces:
+Imagine a tiny Vue application with three pages. A developer introduces nine top-level folders — `presentation/`, `application/`, `domain/`, `infrastructure/`, `repositories/`, `factories/`, `interfaces/`, `adapters/`, and `dependency-injection/`:
 
 ```text
 presentation/
@@ -1054,7 +1054,7 @@ First understand what the existing code is doing.
 
 ## Step 3 — Create a coherent feature boundary
 
-Move the relevant pricing presentation and application logic into a recognizable area. For example:
+Move the relevant pricing presentation and application logic into a recognizable area. For example, `features/pricing/` with `api/`, `model/`, `components/`, and a public `index.ts`:
 
 ```text
 features/
@@ -1099,7 +1099,7 @@ Let's design the frontend of a growing hotel-booking SaaS. It has these capabili
 - Currency and localization preferences.
 - Account settings.
 
-There are four developers today, but the team may expand. The product is complex enough to justify some modularity, but not large enough to demand an elaborate enterprise architecture. A reasonable starting point:
+There are four developers today, but the team may expand. The product is complex enough to justify some modularity, but not large enough to demand an elaborate enterprise architecture. A reasonable starting point: `src/app/` for `main.ts`, `router/`, and `providers/`; `features/` for `hotel-search`, `hotel-details`, `reservations`, `checkout`, `payments`, and `account`; `shared/` for `ui`, `http`, `formatting`, and `validation`; plus `assets/`:
 
 ```text
 src/
@@ -1157,7 +1157,7 @@ Try answering these before reading the discussion.
 
 ### Challenge 1 — The Universal Composable
 
-A developer creates:
+A developer creates a composable named `useApplication()`:
 
 ```typescript
 useApplication()
@@ -1271,7 +1271,7 @@ But there's a particularly difficult category of responsibility we haven't explo
 
 **State.**
 
-Imagine a customer opening a hotel-booking page. The frontend displays:
+Imagine a customer opening a hotel-booking page. The frontend displays **Available rooms: 1**:
 
 ```text
 Available rooms: 1
@@ -1279,7 +1279,7 @@ Available rooms: 1
 
 The customer clicks Reserve.
 
-The button becomes disabled, and the application optimistically displays:
+The button becomes disabled, and the application optimistically displays **Reservation confirmed!**:
 
 ```text
 Reservation confirmed!
@@ -1293,12 +1293,13 @@ In **SE240-L03 — State Management and Reactive Applications**, we'll investiga
 
 ---
 
-
----
-
 ## Next Lecture — SE240-L03: State Management and Reactive Applications
 
 Continue in **SE240 — Browser and Frontend Engineering**.
+
+---
+
+*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet and technical references — skip if you are listening; revisit when you can look at the screen.*
 
 ## Further Reading — Optional References
 

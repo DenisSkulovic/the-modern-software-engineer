@@ -68,12 +68,20 @@ events:
   action: listen
   phase: studying
   confidence: 2
-  note: "Full voice listen-through; one session. Prose done; labs not started. (Catalogue renumber: was CS230-L06 before the L05/L06 addressing-NAT split.)"
+  note: 'Full voice listen-through; one session. Prose done; labs not started. (Catalogue renumber: was
+    CS230-L06 before the L05/L06 addressing-NAT split.)'
   source: backfill
 - at: '2026-10-27'
   lecture: CS230-L08
   action: listen
   phase: studying
   confidence: 2
-  note: "Full voice listen-through; one session. Prose done; labs not started. (Catalogue renumber: was CS230-L07 before the L05/L06 addressing-NAT split.)"
+  note: 'Full voice listen-through; one session. Prose done; labs not started. (Catalogue renumber: was
+    CS230-L07 before the L05/L06 addressing-NAT split.)'
   source: backfill
+- at: '2026-10-28'
+  lecture: CS220-L01
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through; one session. Prose done; labs not started.

@@ -30,7 +30,7 @@ next: SE240-L06
 
 Your hotel-booking platform has a performance problem. Customers complain that the website is slow.
 
-Naturally, the engineering team investigates. The backend team proudly produces its measurements:
+Naturally, the engineering team investigates. The backend team proudly produces its measurements: average API response about `68 ms`, database queries around `12 ms`, and server CPU utilization only `24%`.
 
 ```text
 Average API response:      68 ms
@@ -42,7 +42,7 @@ Excellent. The infrastructure team reports that CloudFront is serving most stati
 
 The frontend team points out that the application uses Vue 3, Vite, lazy-loaded routes, and reasonably compact JavaScript bundles. Everything looks healthy.
 
-Then someone runs a performance investigation using an ordinary midrange Android phone. The results are considerably less impressive:
+Then someone runs a performance investigation using an ordinary midrange Android phone. The results are considerably less impressive: Largest Contentful Paint at `4.8` seconds, Interaction to Next Paint at `680` milliseconds, and Cumulative Layout Shift at `0.24`.
 
 ```text
 Largest Contentful Paint:      4.8 seconds
@@ -74,7 +74,7 @@ This session is about understanding performance as the customer actually experie
 
 # 2. Performance Is a Chain of Dependencies
 
-In previous sessions, we've studied the major components of a web application. We can now put them together:
+In previous sessions, we've studied the major components of a web application. We can now put them together as a chain: the user opens the site; DNS, connection, and TLS complete; the HTTP exchange finishes; HTML is parsed; critical resources download; JavaScript executes; meaningful content renders; then the page responds to interactions.
 
 ```text
 User opens website
@@ -103,7 +103,7 @@ Respond to interactions
 
 This diagram is simplified. Many operations can overlap. But the distinction between parallel and sequential work is essential.
 
-Imagine our initial loading sequence:
+Imagine our initial loading sequence with these durations: HTML `200 ms`, JavaScript `500 ms`, application startup `300 ms`, hotel API `250 ms`, and rendering `150 ms`.
 
 ```text
 HTML                 200 ms
@@ -113,7 +113,7 @@ Hotel API            250 ms
 Rendering            150 ms
 ```
 
-If every operation depends on the previous one, the customer waits approximately:
+If every operation depends on the previous one, the customer waits approximately `200 + 500 + 300 + 250 + 150 = 1400` milliseconds.
 
 ```text
 200 + 500 + 300 + 250 + 150 = 1400 ms
@@ -151,6 +151,8 @@ Google's Core Web Vitals provide three standardized measurements of important as
 
 They don't describe every dimension of application performance. But they're excellent starting points because they correspond to distinct user-visible problems.
 
+Three metrics, three thresholds: **LCP** — Largest Contentful Paint — measures loading of prominent content, good at `2.5` seconds or less; **INP** — Interaction to Next Paint — measures responsiveness to interactions, good at `200` milliseconds or less; **CLS** — Cumulative Layout Shift — measures unexpected visual movement, good at `0.1` or less.
+
 | Metric | Measures | Good threshold |
 |---|---|---|
 | **LCP** — Largest Contentful Paint | Loading of prominent content | ≤ 2.5 seconds |
@@ -163,7 +165,7 @@ Let's understand what that actually means.
 
 ## 3.1 LCP: When does the important content appear?
 
-Suppose our hotel page displays:
+Suppose our hotel page displays a card for Hotel Alexander: a large hotel photograph in the middle, then `€149 / night` and a Reserve Now button beneath it.
 
 ```text
 ┌─────────────────────────────────────┐
@@ -190,13 +192,13 @@ A good LCP is 2.5 seconds or less. Above 4 seconds is considered poor.
 
 ## 3.2 INP: Does the page actually respond?
 
-Suppose the customer clicks:
+Suppose the customer clicks Show Filters.
 
 ```text
 Show Filters
 ```
 
-Nothing happens for 600 milliseconds. Then the panel opens.
+Nothing happens for `600` milliseconds. Then the panel opens.
 
 The network might be idle. The backend might not be involved.
 
@@ -214,7 +216,7 @@ A good INP is 200 milliseconds or less. Above 500 milliseconds is poor.
 
 ## 3.3 CLS: Does the interface stay where it belongs?
 
-Imagine the user preparing to click:
+Imagine the user preparing to click Reserve Room.
 
 ```text
 Reserve Room
@@ -236,13 +238,13 @@ The distinction matters for long-lived applications. Now let's investigate each 
 
 # 4. LCP: Where Four Seconds Disappear
 
-Our hotel-booking website has:
+Our hotel-booking website has an LCP of `4.8` seconds.
 
 ```text
 LCP: 4.8 seconds
 ```
 
-The backend API takes only 68 milliseconds. Where is the delay?
+The backend API takes only `68` milliseconds. Where is the delay?
 
 We need to break LCP into more useful components. For an image-based LCP, a common decomposition is:
 
@@ -251,7 +253,7 @@ We need to break LCP into more useful components. For an image-based LCP, a comm
 3. Resource load duration.
 4. Element render delay.
 
-Let's examine a hypothetical case.
+Let's examine a hypothetical case. The phases sum to the full `4,800 ms`: TTFB `500 ms`, resource load delay `1,300 ms`, resource load duration `1,100 ms`, and element render delay `1,900 ms`.
 
 | Phase | Duration |
 |---|---:|
@@ -283,7 +285,7 @@ We need to examine the other phases.
 
 ## 4.2 Resource load delay: Why didn't the browser start sooner?
 
-Imagine the hotel photograph is inserted by JavaScript:
+Imagine the hotel photograph is inserted by JavaScript: `await fetchHotelDetails()`, then assign `hotel.mainImageUrl` to `heroImage.value`.
 
 ```typescript
 const hotel = await fetchHotelDetails();
@@ -291,7 +293,7 @@ const hotel = await fetchHotelDetails();
 heroImage.value = hotel.mainImageUrl;
 ```
 
-The browser cannot discover the photograph's URL until the application retrieves and processes the hotel data. The dependency chain might be:
+The browser cannot discover the photograph's URL until the application retrieves and processes the hotel data. The dependency chain might be: download HTML, download JavaScript, initialize Vue, fetch hotel data, discover the image URL, and only then start the image download.
 
 ```text
 Download HTML
@@ -316,7 +318,7 @@ The photograph might be hosted on a blazing-fast CDN. But the browser cannot dow
 
 That is **resource discovery delay**. One possible architectural improvement is to make the important resource discoverable earlier.
 
-For example, server-rendered HTML could contain:
+For example, server-rendered HTML could contain an `<img>` pointing at `/images/hotel-alexander.avif`, with `width="1200"`, `height="800"`, and `fetchpriority="high"`.
 
 ```html
 <img
@@ -332,7 +334,7 @@ Now the browser can discover the image while parsing the initial HTML. The `fetc
 
 It doesn't guarantee a particular scheduling outcome, but it can help indicate that this resource deserves attention.
 
-If the image can't appear directly in the initial HTML, a carefully configured preload may help:
+If the image can't appear directly in the initial HTML, a carefully configured preload may help — a `<link rel="preload" as="image">` for the same AVIF URL, again with `fetchpriority="high"`.
 
 ```html
 <link
@@ -361,7 +363,7 @@ Now suppose the image download itself takes 1.1 seconds. Several factors may mat
 
 A 3 MB JPEG displayed at 600 pixels wide is a suspicious candidate for optimization. The browser may not need that much image data.
 
-You could provide appropriately sized responsive images:
+You could provide appropriately sized responsive images: an `<img>` with `srcset` candidates at `400w`, `800w`, and `1200w`, plus a `sizes` hint of `(max-width: 700px) 100vw, 600px`.
 
 ```html
 <img
@@ -394,7 +396,7 @@ Perhaps the application hasn't finished initializing. Perhaps the image is hidde
 
 Perhaps the main thread is executing expensive JavaScript. Perhaps a component waits for several unrelated dependencies before rendering the image.
 
-Or perhaps styles and layout work delay the final rendering opportunity. Consider:
+Or perhaps styles and layout work delay the final rendering opportunity. Consider waiting on `Promise.all` of `fetchHotel()`, `fetchReviews()`, and `fetchRecommendations()` before setting `pageReady.value = true`.
 
 ```typescript
 const [hotel, reviews, recommendations] =
@@ -425,7 +427,7 @@ This distinction prevents a lot of wasted optimization effort.
 
 Open Chrome DevTools and visit the Network panel. You'll see a waterfall of requests.
 
-It might resemble:
+It might resemble a timeline out to about `2000 ms`: HTML early, then CSS and Main JS overlapping, Font and Analytics starting mid-stream, the API later, and the hero image not beginning until around `1500 ms`.
 
 ```text
 Time →  0       500      1000      1500      2000 ms
@@ -453,7 +455,7 @@ Was it accidentally marked for lazy loading even though it appears immediately i
 
 ## 5.1 Not all bytes are equal
 
-Suppose your page downloads:
+Suppose your page downloads Main JavaScript at `250 KB`, an analytics library at `180 KB`, below-fold photographs at `2 MB`, and a critical stylesheet at only `30 KB`.
 
 ```text
 Main JavaScript:        250 KB
@@ -474,7 +476,7 @@ An optimization that removes 1 MB from irrelevant below-the-fold resources may b
 
 # 6. INP: When JavaScript Steals the User's Time
 
-Our page has:
+Our page has an INP of `680` milliseconds.
 
 ```text
 INP: 680 milliseconds
@@ -482,7 +484,7 @@ INP: 680 milliseconds
 
 A customer clicks the filters button. The interface responds more than half a second later.
 
-Let's break down one slow interaction. INP can be understood through three components:
+Let's break down one slow interaction. INP can be understood through three components in order: the user interacts, then Input Delay, then Event Handler Processing, then Presentation Delay, and finally the Next Frame.
 
 ```text
 User interacts
@@ -500,7 +502,7 @@ Presentation Delay
 Next Frame
 ```
 
-Suppose:
+Suppose the phases are input delay `250 ms`, event processing `180 ms`, and presentation delay `250 ms` — totaling `680 ms`.
 
 | Phase | Duration |
 |---|---:|
@@ -525,7 +527,7 @@ That's an important diagnostic clue. A slow filters button may actually be cause
 
 ## 6.2 Processing duration: The handler does too much
 
-Now the browser starts executing the click handler. Consider:
+Now the browser starts executing the click handler. Consider `openFilters`: it sets `filtersOpen.value = true`, then immediately runs `expensiveHotelAnalysis(allHotels)` and stores the result in `analytics.value`.
 
 ```typescript
 function openFilters() {
@@ -563,7 +565,7 @@ This is why INP isn't simply a measurement of JavaScript event-handler duration.
 
 Sometimes the expensive work cannot be eliminated entirely. But it may not need to happen in one uninterrupted task.
 
-Consider:
+Consider `processHotels`: it processes hotels in batches of `100`, and after each batch awaits a `setTimeout(..., 0)` so the event loop can breathe between slices.
 
 ```typescript
 async function processHotels(hotels: Hotel[]) {
@@ -593,7 +595,7 @@ That's often exactly what the user needs.
 
 # 7. CLS: The Button That Escaped Under the Customer's Finger
 
-Now for the third problem. Our hotel page has:
+Now for the third problem. Our hotel page has a CLS of `0.24`.
 
 ```text
 CLS: 0.24
@@ -607,7 +609,7 @@ It's a geometry problem.
 
 ## 7.1 How layout shifts happen
 
-Consider:
+Consider a bare `<img src="/hotel.jpg" alt="Hotel">` with no width or height attributes.
 
 ```html
 <img src="/hotel.jpg" alt="Hotel">
@@ -615,7 +617,7 @@ Consider:
 
 The browser doesn't necessarily know how much vertical space the image should occupy before its dimensions or layout constraints become known.
 
-If the page initially reserves little or no space, surrounding elements may shift when the image loads. A better implementation can provide dimensions:
+If the page initially reserves little or no space, surrounding elements may shift when the image loads. A better implementation can provide dimensions — `width="1200"` and `height="800"` on the same image:
 
 ```html
 <img
@@ -626,7 +628,7 @@ If the page initially reserves little or no space, surrounding elements may shif
 >
 ```
 
-The browser can infer the image's aspect ratio before the resource finishes loading. CSS can then size the image responsively:
+The browser can infer the image's aspect ratio before the resource finishes loading. CSS can then size the image responsively with `.hotel-image { width: 100%; height: auto; }`:
 
 ```css
 .hotel-image {
@@ -648,13 +650,13 @@ Images aren't the only culprit. Unexpected shifts can come from:
 - Late-loading widgets.
 - Components changing height after asynchronous data arrives.
 
-Imagine a reservation page initially displaying:
+Imagine a reservation page initially displaying only `Price: €149`.
 
 ```text
 Price: €149
 ```
 
-Then, after another API request:
+Then, after another API request, the same price plus `Taxes and fees: €47` and `Total: €196`:
 
 ```text
 Price: €149
@@ -690,7 +692,7 @@ A stable layout isn't merely aesthetic. It prevents mistakes.
 
 # 8. Lab Performance Versus Real User Performance
 
-Now imagine you've optimized the application on your powerful desktop computer. Chrome DevTools reports:
+Now imagine you've optimized the application on your powerful desktop computer. Chrome DevTools reports LCP `1.4` seconds, INP `75` milliseconds, and CLS `0.02`.
 
 ```text
 LCP: 1.4 seconds
@@ -727,7 +729,7 @@ This can reveal how an application performs across:
 - Page types.
 - User workflows.
 
-For example:
+For example, high-end desktop users may show LCP p75 at `1.5` seconds, while midrange mobile users sit at `3.8` seconds.
 
 ```text
 High-end desktop users:
@@ -747,7 +749,7 @@ The distinction matters because optimizing only for the development team's machi
 
 ## 8.3 Why percentiles matter
 
-Suppose your production measurements show:
+Suppose your production measurements show LCP average `2.1` seconds, p50 `1.5` seconds, p75 `2.8` seconds, and p95 `5.4` seconds.
 
 ```text
 LCP average:   2.1 seconds
@@ -807,7 +809,7 @@ Use it when the interface freezes, stutters, or responds slowly.
 
 ## 9.3 Field telemetry
 
-You can collect Core Web Vitals using the maintained `web-vitals` library. For example:
+You can collect Core Web Vitals using the maintained `web-vitals` library. For example, import `onLCP`, `onINP`, and `onCLS`, then register a callback for each that logs `metric.value`.
 
 ```typescript
 import {
@@ -849,7 +851,7 @@ The strongest performance investigations combine both.
 
 # 10. The Optimization Trap: Improving the Wrong Thing
 
-Suppose your team discovers:
+Suppose your team discovers LCP `4.8` seconds, INP `680 ms`, and CLS `0.24`.
 
 ```text
 LCP: 4.8 seconds
@@ -895,7 +897,7 @@ Not a contest to demonstrate how many optimization techniques you know.
 
 # 11. Performance Budgets: Preventing Tomorrow's Regression
 
-Imagine you fix the hotel-booking platform. The results improve:
+Imagine you fix the hotel-booking platform. The results improve to LCP `2.1` seconds, INP `145 ms`, and CLS `0.05`.
 
 ```text
 LCP: 2.1 seconds
@@ -911,7 +913,7 @@ Six months later, the website is slow again. How do you prevent performance from
 
 One useful technique is a **performance budget**. A performance budget establishes limits or objectives for measurable aspects of an application.
 
-For example:
+For example: initial JavaScript transfer at most `250 KB`, critical CSS at most `50 KB`, mobile LCP p75 at most `2.5 s`, mobile INP p75 at most `200 ms`, and CLS p75 at most `0.1`.
 
 ```text
 Initial JavaScript transfer:   ≤ 250 KB
@@ -959,82 +961,25 @@ The objective is not to minimize every millisecond at any cost. It's to deliver 
 
 ---
 
-# 12. Practical Lab — Investigating a Real Page
+# 12. Engineering and Interview Challenges
 
-Here's a focused investigation you can perform using Chrome. You don't need to create a new application.
-
-Choose a website you visit regularly or an existing project you control.
-
-## Experiment A — Find the LCP element
-
-Open Chrome DevTools. Navigate to the Performance panel.
-
-Record a page load. Identify the LCP event and associated element.
-
-Ask:
-
-1. Which element became LCP?
-2. When did its resource begin loading, if it needed one?
-3. Was the resource discoverable from the initial HTML?
-4. Did it finish downloading long before it rendered?
-
-Now inspect the Network panel. Try to identify the critical dependency chain.
-
-Don't simply count requests. Look for sequential delays.
-
-## Experiment B — Simulate a weaker device
-
-Use appropriate CPU and network throttling in DevTools. Reload the page.
-
-Compare the timeline against your normal desktop experience. Which phases become more expensive?
-
-If JavaScript execution grows dramatically while network timing changes little, CPU capability may be a major factor.
-
-If downloads dominate, resource loading deserves more attention.
-
-Remember that software throttling approximates constrained conditions; it isn't identical to testing on an actual midrange phone.
-
-## Experiment C — Record a slow interaction
-
-Open a page with a substantial interactive component. Start a Performance recording.
-
-Change a filter, open a large menu, or sort a table. Stop the recording.
-
-Inspect the interaction and main-thread work. Determine whether the delay came primarily from:
-
-- Waiting to process input.
-- JavaScript callbacks.
-- Layout and rendering.
-
-Now imagine how you'd optimize each different cause. The solutions should differ.
-
-## Experiment D — Observe layout shifts
-
-In the Performance panel, inspect the Layout Shifts track if the page produces any shifts. Identify the elements that moved and what caused the movement.
-
-Was space reserved for images? Did an asynchronously loaded component change the page's geometry?
-
-Did a font change text dimensions? Try to understand the causal chain instead of simply observing the final CLS score.
-
----
-
-# 13. Engineering and Interview Challenges
+Try answering these independently before reading the solutions.
 
 ### Challenge 1 — The Fast Backend
 
-Your backend processes requests in 40 milliseconds. But the page's LCP is 4.5 seconds.
+Your backend processes requests in `40` milliseconds. But the page's LCP is `4.5` seconds.
 
 Name at least four mechanisms outside backend execution that could explain the result.
 
 ### Challenge 2 — The Giant Image
 
-A page contains a 3 MB hero photograph. A developer compresses it to 300 KB.
+A page contains a `3 MB` hero photograph. A developer compresses it to `300 KB`.
 
 The LCP improves only slightly. What might explain the disappointing result?
 
 ### Challenge 3 — The Frozen Button
 
-A button's event handler runs for only 5 milliseconds. Yet INP is 600 milliseconds.
+A button's event handler runs for only `5` milliseconds. Yet INP is `600` milliseconds.
 
 How is that possible? What would you investigate?
 
@@ -1052,7 +997,7 @@ Why might the results differ? How would you investigate the discrepancy?
 
 ---
 
-# 14. Solutions and Discussion
+# 13. Solutions and Discussion
 
 **Challenge 1**
 
@@ -1096,7 +1041,7 @@ Optimizing only against a high-end development computer is not sufficient.
 
 ---
 
-# 15. The Mental Model Worth Keeping
+# 14. The Mental Model Worth Keeping
 
 Web performance is not one measurement.
 
@@ -1128,7 +1073,7 @@ Performance engineering is the art of understanding that difference.
 
 ---
 
-# 16. Next Session — Testing and Reliability in the Frontend
+# 15. Next Session — Testing and Reliability in the Frontend
 
 Now imagine you've optimized the application. It loads quickly.
 
@@ -1152,12 +1097,72 @@ The central mystery:
 
 ---
 
-
----
-
 ## Next Lecture — SE240-L06: Testing and Reliability in the Frontend
 
 Continue in **SE240 — Browser and Frontend Engineering**.
+
+---
+
+*The spoken lecture ends here. The remaining material is a screen-first investigation worksheet and technical references — skip if you are listening; revisit when you can look at the screen.*
+
+## Optional Practical Lab — Investigating a Real Page
+
+Here's a focused investigation you can perform using Chrome. You don't need to create a new application.
+
+Choose a website you visit regularly or an existing project you control. Each experiment needs DevTools open; the surrounding questions say what to look for.
+
+### Experiment A — Find the LCP element
+
+Open Chrome DevTools. Navigate to the Performance panel.
+
+Record a page load. Identify the LCP event and associated element.
+
+Ask:
+
+1. Which element became LCP?
+2. When did its resource begin loading, if it needed one?
+3. Was the resource discoverable from the initial HTML?
+4. Did it finish downloading long before it rendered?
+
+Now inspect the Network panel. Try to identify the critical dependency chain.
+
+Don't simply count requests. Look for sequential delays.
+
+### Experiment B — Simulate a weaker device
+
+Use appropriate CPU and network throttling in DevTools. Reload the page.
+
+Compare the timeline against your normal desktop experience. Which phases become more expensive?
+
+If JavaScript execution grows dramatically while network timing changes little, CPU capability may be a major factor.
+
+If downloads dominate, resource loading deserves more attention.
+
+Remember that software throttling approximates constrained conditions; it isn't identical to testing on an actual midrange phone.
+
+### Experiment C — Record a slow interaction
+
+Open a page with a substantial interactive component. Start a Performance recording.
+
+Change a filter, open a large menu, or sort a table. Stop the recording.
+
+Inspect the interaction and main-thread work. Determine whether the delay came primarily from:
+
+- Waiting to process input.
+- JavaScript callbacks.
+- Layout and rendering.
+
+Now imagine how you'd optimize each different cause. The solutions should differ.
+
+### Experiment D — Observe layout shifts
+
+In the Performance panel, inspect the Layout Shifts track if the page produces any shifts. Identify the elements that moved and what caused the movement.
+
+Was space reserved for images? Did an asynchronously loaded component change the page's geometry?
+
+Did a font change text dimensions? Try to understand the causal chain instead of simply observing the final CLS score.
+
+---
 
 ## Further Reading — Optional References
 

@@ -8,9 +8,9 @@ Personal learning tracker (not manuscript status). History is the append-only [`
 
 | Status | Count |
 | --- | ---: |
-| `unopened` · | 80 |
+| `unopened` · | 79 |
 | `wandering` ~ | 1 |
-| `studying` > | 9 |
+| `studying` > | 10 |
 | `labbing` * | 0 |
 | `settled` ✓ | 0 |
 | `fluent` ★ | 0 |
@@ -42,7 +42,7 @@ Current phase of each lecture, in catalogue order. This is not a timeline — th
 | --- | --- | --- |
 | `CS110` | `underway` | `>>>>·` |
 | `CS120` | `unopened` | `·····` |
-| `CS220` | `unopened` | `········` |
+| `CS220` | `underway` | `>·······` |
 | `CS230` | `underway` | `~>>>··>>···` |
 | `CS320` | `unopened` | `········` |
 | `SE240` | `unopened` | `······` |
@@ -66,11 +66,11 @@ Each cell is how many events fell on that day. The glyph is intensity; the digit
 
 | Week of | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2026-10-26 | █5 | █5 | · | · | · | · | · |
+| 2026-10-26 | █5 | █5 | ░1 | · | · | · | · |
 
 Intensity: `·` 0, `░` 1, `▒` 2, `▓` 3–4, `█` 5+.
 
-10 events across 2 days, from 2026-10-26.
+11 events across 3 days, from 2026-10-26.
 
 ## Course by week
 
@@ -79,6 +79,7 @@ Session counts per course (listen, read, skim, lab, oral, review). `note` events
 | Course | 2026-W44 |
 | --- | ---: |
 | `CS110` | 4 |
+| `CS220` | 1 |
 | `CS230` | 6 |
 
 Week labels are ISO weeks. 2026-W44 starts 2026-10-26.
@@ -89,6 +90,7 @@ Newest day first. A later session does not replace an earlier one.
 
 | When | Lecture | Action | Phase | Conf | Note |
 | --- | --- | --- | --- | ---: | --- |
+| 2026-10-28 | `CS220-L01` What a Programming Language Actually Promises | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
 | 2026-10-27 | `CS230-L08` TLS and the Architecture of Trust | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. (Catalogue renumber: was CS230-L07 before the L05/L06 addressing-NAT split.) |
 | 2026-10-27 | `CS230-L07` The Life of a Network Connection | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. (Catalogue renumber: was CS230-L06 before the L05/L06 addressing-NAT split.) |
 | 2026-10-27 | `CS230-L04` DNS: The Internet's Distributed Naming System | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
@@ -127,7 +129,7 @@ Folded snapshot. Passes count listen, read, skim, lab, oral, and review events. 
 | `CS120-L03` | `unopened` | 0 | 0 | — | — |  |
 | `CS120-L04` | `unopened` | 0 | 0 | — | — |  |
 | `CS120-L05` | `unopened` | 0 | 0 | — | — |  |
-| `CS220-L01` | `unopened` | 0 | 0 | — | — |  |
+| `CS220-L01` | `studying` | 2 | 1 | 2026-10-28 | — | Full voice listen-through; one session.… |
 | `CS220-L02` | `unopened` | 0 | 0 | — | — |  |
 | `CS220-L03` | `unopened` | 0 | 0 | — | — |  |
 | `CS220-L04` | `unopened` | 0 | 0 | — | — |  |
