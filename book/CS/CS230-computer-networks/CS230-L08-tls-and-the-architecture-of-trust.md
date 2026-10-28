@@ -1,20 +1,21 @@
 ---
-id: CS230-L07
+id: CS230-L08
 course: CS230
 title: "TLS and the Architecture of Trust"
 type: core
 manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
-prev: CS230-L06
-next: CS230-L08
+prev: CS230-L07
+next: CS230-L09
 ---
+
 
 
 
 # CS230 — Computer Networks and Web Protocols
 
-## Lecture 07: TLS and the Architecture of Trust
+## Lecture 08: TLS and the Architecture of Trust
 
 *How two strangers establish a secret across a hostile network, why certificates deserve your trust, and why the little padlock in your browser is considerably less reassuring than it looks.*
 
@@ -116,7 +117,7 @@ But 0-RTT has special replay considerations. Sending a non-idempotent payment or
 
 The client wants to contact a specific hostname. The server presents credentials. The client verifies the trust chain and that the certificate applies to the intended name and purpose. The TLS 1.3 handshake establishes fresh symmetric secrets and authenticates the server. Protected application bytes then flow. A certificate error indicates that part of the authentication contract failed. Disabling validation doesn't repair the contract—it discards it.
 
-#### Three questions before L07
+#### Three questions before L08
 
 1. Can encrypted communication be with an attacker? **Yes**, if authentication is missing or defective.
 2. Why does TLS use symmetric cryptography after the handshake? **Efficient bulk protection using established session keys.**
@@ -1678,7 +1679,7 @@ Once you understand these distinctions, TLS errors become comprehensible rather 
 
 ---
 
-# 18. Next Lecture — Proxies, Load Balancers, and Modern Web Transport
+# 18. Next Lecture — Proxies, Load Balancers, and CDNs
 
 We've followed packets across networks, established transport connections, and investigated how TLS secures communication.
 
@@ -1688,7 +1689,7 @@ Between them may stand a CDN, a reverse proxy, an API gateway, multiple load bal
 
 Each intermediary can change routing, caching, connection reuse, protocol negotiation, and even the identity that the backend believes is making the request.
 
-In **CS230-L08 — Proxies, Load Balancers, and Modern Web Transport**, we'll explore how those components cooperate and how HTTP/1.1, HTTP/2, HTTP/3, and QUIC change communication through modern infrastructure.
+In **CS230-L09 — Proxies, Load Balancers, and CDNs**, we'll explore how those components cooperate — and leave modern HTTP transport, streaming, and intermediary timeouts for CS230-L10.
 
 The connection is secure.
 
@@ -1906,7 +1907,7 @@ A senior-level diagnosis should narrow the failure to a particular protocol boun
 *Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
 
 ```text
-CS230-L07  TLS / TRUST — INTERVIEW GLANCE CARD
+CS230-L08  TLS / TRUST — INTERVIEW GLANCE CARD
 
 THREE PROPERTIES (+ what TLS is NOT)
   Confidentiality   observers without keys can't read protected app data

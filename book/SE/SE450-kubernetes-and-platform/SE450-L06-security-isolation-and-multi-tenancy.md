@@ -10,6 +10,7 @@ prev: SE450-L05
 next: SE450-L07
 ---
 
+
 # SE450 — Kubernetes and Platform Engineering
 
 ## Lecture 06: Security, Isolation, and Multi-Tenancy

@@ -1,20 +1,21 @@
 ---
-id: CS230-L09
+id: CS230-L11
 course: CS230
 title: "Network Forensics for Software Engineers"
 type: core
 manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
-prev: CS230-L08
+prev: CS230-L10
 next: null
 ---
 
 
 
+
 # CS230 — Computer Networks and Web Protocols
 
-## Lecture 09: Network Forensics for Software Engineers
+## Lecture 11: Network Forensics for Software Engineers
 
 *Seven production mysteries, dozens of misleading clues, and the difference between knowing networking theory and actually knowing what to do when everything stops working.*
 
@@ -142,7 +143,7 @@ When networking fails, don't walk down a memorized list of commands in random or
 
 For each answer, distinguish observed evidence from an inferred cause. Investigate the first boundary where expected behavior diverged.
 
-#### Three questions before L09
+#### Three questions before L11
 
 1. Does an HTTP 504 prove Node.js sent an error? **No.** The proxy could have emitted it.
 2. Does a certificate error justify disabling verification? **No.** Diagnose the validation failure.
@@ -819,7 +820,7 @@ A retry often succeeds immediately.
 
 The supplier's API is healthy, and fresh connections work normally.
 
-This pattern should sound familiar from CS230-L06.
+This pattern should sound familiar from CS230-L07.
 
 Now we need to investigate it like a production engineer.
 
@@ -913,7 +914,7 @@ A colleague concludes that Node.js has a bug.
 
 Another proposes disabling TLS certificate verification.
 
-We already investigated the security consequences of that approach in CS230-L07.
+We already investigated the security consequences of that approach in CS230-L08.
 
 Let's focus on the forensic method.
 
@@ -987,7 +988,7 @@ The backend logs show no matching request.
 
 If we assume all user-visible responses originate from the application server, the evidence looks impossible.
 
-But we know from CS230-L08 that a CDN or another shared cache can answer requests independently.
+But we know from CS230-L09 that a CDN or another shared cache can answer requests independently.
 
 ## 9.1 Search for the component that produced the response
 
@@ -1896,7 +1897,7 @@ The objective is to practice explaining not merely what you changed, but why you
 *Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
 
 ```text
-CS230-L09  NETWORK FORENSICS — INTERVIEW GLANCE CARD
+CS230-L11  NETWORK FORENSICS — INTERVIEW GLANCE CARD
 
 METHOD
   Observation ≠ hypothesis ≠ diagnosis
@@ -1916,10 +1917,10 @@ CASE PATTERNS (taught)
                                  some packets ≠ all sizes; raise HTTP timeout won't deliver
   Intermittent 504 / no Node log which component authored 504; upstream connect timeout;
                                  one bad target (silent drop) + LB spread
-  Idle first fail / next OK      stale pooled conn vs intermediary idle close (L06);
+  Idle first fail / next OK      stale pooled conn vs intermediary idle close (L07);
                                  instrument fresh vs reuse; idempotency for side effects
   Chrome OK / Node TLS fail      same host? SNI? trust store? missing intermediate
-  Wrong private data / 200 / no backend log   shared cache key ignored auth identity (L08)
+  Wrong private data / 200 / no backend log   shared cache key ignored auth identity (L09)
 
 TOOL LIMITS
   Browser DevTools   client view; SW/browser cache may skip network; timing defs matter

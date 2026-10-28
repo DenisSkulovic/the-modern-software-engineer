@@ -12,6 +12,7 @@ next: CS340-L05
 
 
 
+
 # CS340 — Data Systems Beyond Relational Databases
 
 ## Lecture 04: Indexes, Queries, and Aggregation Beyond SQL

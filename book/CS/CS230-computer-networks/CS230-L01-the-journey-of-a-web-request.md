@@ -12,6 +12,7 @@ next: CS230-L02
 
 
 
+
 # CS230 — Computer Networks and Web Protocols
 
 ## Lecture 01: The Journey of a Web Request
@@ -96,7 +97,7 @@ Now take the original 43-millisecond API number and put it in the appropriate bo
 
 A user asks for a page. The browser checks what it already knows. DNS may help locate an endpoint. The system routes traffic there. A transport and secure channel allow communication. An edge service may return a cached response or forward the request. The application produces data when needed. The response comes back. The browser performs more work to turn that data into a page.
 
-If you can visualize those steps and say **which one is not implied by the others**, you have the skeleton of the whole networking course. CS230-L02 through L09 fill in individual boxes. They aren't nine unrelated subjects.
+If you can visualize those steps and say **which one is not implied by the others**, you have the skeleton of the whole networking course. CS230-L02 through L11 fill in individual boxes. They aren't eleven unrelated subjects.
 
 #### Three questions before L01
 

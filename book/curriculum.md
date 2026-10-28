@@ -42,7 +42,7 @@ Library/content state — not whether you have studied the lecture. See [`STATUS
 
 Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `type: elective` or still-`planned`, not a separate numbering universe).
 
-## Core courses (17 · 85 lectures)
+## Core courses (17 · 87 lectures)
 
 ### CS — Computer Science
 
@@ -60,15 +60,15 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `
 
 #### CS120 — Mathematical and Statistical Thinking for Software Engineers
 
-100-level · 5 lectures · course status `in_progress` · `CS/CS120-mathematical-and-statistical-thinking/`
+100-level · 5 lectures · course status `complete` · `CS/CS120-mathematical-and-statistical-thinking/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
-| `CS120-L01` | Logic, Proofs, and Invariants | `stub` | `2.0.0` | `` |
-| `CS120-L02` | Probability, Randomness, and Risk | `stub` | `2.0.0` | `` |
-| `CS120-L03` | Statistics, Distributions, and Sampling | `stub` | `2.0.0` | `` |
-| `CS120-L04` | Experiments, Evidence, and Causality | `stub` | `2.0.0` | `` |
-| `CS120-L05` | Mathematical Models of Real Systems | `stub` | `2.0.0` | `` |
+| `CS120-L01` | Logic, Proofs, and Invariants | `manuscript` | `2.0.0` | `` |
+| `CS120-L02` | Probability, Randomness, and Risk | `manuscript` | `2.0.0` | `` |
+| `CS120-L03` | Statistics, Distributions, and Sampling | `manuscript` | `2.0.0` | `` |
+| `CS120-L04` | Experiments, Evidence, and Causality | `manuscript` | `2.0.0` | `` |
+| `CS120-L05` | Mathematical Models of Real Systems | `manuscript` | `2.0.0` | `` |
 
 #### CS220 — Programming Languages, Memory, and Execution
 
@@ -84,7 +84,7 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `
 
 #### CS230 — Computer Networks and Web Protocols
 
-200-level · 9 lectures · course status `in_progress` · `CS/CS230-computer-networks/`
+200-level · 11 lectures · course status `complete` · `CS/CS230-computer-networks/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
@@ -92,26 +92,28 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `
 | `CS230-L02` | Networking for Software Engineers | `manuscript` | `2.0.0` | `WEB201-S02` |
 | `CS230-L03` | HTTP: The Protocol That Runs the Web | `manuscript` | `2.0.0` | `WEB201-S03` |
 | `CS230-L04` | DNS: The Internet's Distributed Naming System | `manuscript` | `2.0.0` | `` |
-| `CS230-L05` | IP Addressing, Subnets, Routing, and NAT | `manuscript` | `2.0.0` | `` |
-| `CS230-L06` | The Life of a Network Connection | `manuscript` | `2.0.0` | `` |
-| `CS230-L07` | TLS and the Architecture of Trust | `manuscript` | `2.0.0` | `` |
-| `CS230-L08` | Proxies, Load Balancers, and Modern Web Transport | `manuscript` | `2.0.0` | `` |
-| `CS230-L09` | Network Forensics for Software Engineers | `manuscript` | `2.0.0` | `` |
+| `CS230-L05` | IP Addressing, Subnets, and Routing | `revised` | `2.1.0` | `` |
+| `CS230-L06` | Private Networks, NAT, and Cloud Reachability | `revised` | `2.1.0` | `` |
+| `CS230-L07` | The Life of a Network Connection | `manuscript` | `2.0.0` | `` |
+| `CS230-L08` | TLS and the Architecture of Trust | `manuscript` | `2.0.0` | `` |
+| `CS230-L09` | Proxies, Load Balancers, and CDNs | `revised` | `2.1.0` | `` |
+| `CS230-L10` | Modern HTTP Transport and Streaming | `revised` | `2.1.0` | `` |
+| `CS230-L11` | Network Forensics for Software Engineers | `manuscript` | `2.0.0` | `` |
 
 #### CS320 — Operating Systems, Concurrency, and Runtimes
 
-300-level · 8 lectures · course status `in_progress` · `CS/CS320-operating-systems-and-concurrency/`
+300-level · 8 lectures · course status `complete` · `CS/CS320-operating-systems-and-concurrency/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
 | `CS320-L01` | Concurrency, Parallelism, and Asynchrony | `manuscript` | `2.0.0` | `CS101-S09` |
 | `CS320-L02` | Operating Systems: The Manager Behind the Curtain | `manuscript` | `2.0.0` | `CS101-S10` |
 | `CS320-L03` | JavaScript and TypeScript Under the Microscope | `manuscript` | `2.0.0` | `CS101-S11` |
-| `CS320-L04` | Scheduling, CPU Time, and Contention | `stub` | `2.0.0` | `` |
-| `CS320-L05` | Virtual Memory, Paging, and Memory Pressure | `stub` | `2.0.0` | `` |
-| `CS320-L06` | From System Calls to Asynchronous I/O | `stub` | `2.0.0` | `` |
-| `CS320-L07` | Threads, Atomics, and Memory Ordering | `stub` | `2.0.0` | `` |
-| `CS320-L08` | Operating-System and Runtime Forensics | `stub` | `2.0.0` | `` |
+| `CS320-L04` | Scheduling, CPU Time, and Contention | `manuscript` | `2.0.0` | `` |
+| `CS320-L05` | Virtual Memory, Paging, and Memory Pressure | `manuscript` | `2.0.0` | `` |
+| `CS320-L06` | From System Calls to Asynchronous I/O | `manuscript` | `2.0.0` | `` |
+| `CS320-L07` | Threads, Atomics, and Memory Ordering | `manuscript` | `2.0.0` | `` |
+| `CS320-L08` | Operating-System and Runtime Forensics | `manuscript` | `2.0.0` | `` |
 
 #### CS330 — Relational Databases and Transactions
 
@@ -278,18 +280,18 @@ Active electives have on-disk lecture stubs or manuscripts and are validated lik
 
 #### SE450 — Kubernetes and Platform Engineering
 
-400-level · 8 lectures · course status `in_progress` · `SE/SE450-kubernetes-and-platform/`
+400-level · 8 lectures · course status `complete` · `SE/SE450-kubernetes-and-platform/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
-| `SE450-L01` | Kubernetes: A System That Reconciles Reality | `stub` | `2.0.0` | `` |
-| `SE450-L02` | Pods, Deployments, Jobs, and Controllers | `stub` | `2.0.0` | `` |
-| `SE450-L03` | Cluster Networking and Service Discovery | `stub` | `2.0.0` | `` |
-| `SE450-L04` | Scheduling, Resources, and Autoscaling | `stub` | `2.0.0` | `` |
-| `SE450-L05` | Configuration, Secrets, and Persistent State | `stub` | `2.0.0` | `` |
-| `SE450-L06` | Security, Isolation, and Multi-Tenancy | `stub` | `2.0.0` | `` |
-| `SE450-L07` | Releases, GitOps, and Platform Observability | `stub` | `2.0.0` | `` |
-| `SE450-L08` | The Kubernetes Incident Room | `stub` | `2.0.0` | `` |
+| `SE450-L01` | Kubernetes: A System That Reconciles Reality | `manuscript` | `2.0.0` | `` |
+| `SE450-L02` | Pods, Deployments, Jobs, and Controllers | `manuscript` | `2.0.0` | `` |
+| `SE450-L03` | Cluster Networking and Service Discovery | `manuscript` | `2.0.0` | `` |
+| `SE450-L04` | Scheduling, Resources, and Autoscaling | `manuscript` | `2.0.0` | `` |
+| `SE450-L05` | Configuration, Secrets, and Persistent State | `manuscript` | `2.0.0` | `` |
+| `SE450-L06` | Security, Isolation, and Multi-Tenancy | `manuscript` | `2.0.0` | `` |
+| `SE450-L07` | Releases, GitOps, and Platform Observability | `manuscript` | `2.0.0` | `` |
+| `SE450-L08` | The Kubernetes Incident Room | `manuscript` | `2.0.0` | `` |
 
 #### SE460 — Performance Engineering
 

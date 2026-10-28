@@ -8,7 +8,7 @@ Personal learning tracker (not manuscript status). History is the append-only [`
 
 | Status | Count |
 | --- | ---: |
-| `unopened` · | 75 |
+| `unopened` · | 77 |
 | `wandering` ~ | 1 |
 | `studying` > | 9 |
 | `labbing` * | 0 |
@@ -16,9 +16,9 @@ Personal learning tracker (not manuscript status). History is the append-only [`
 | `fluent` ★ | 0 |
 | `fading` ? | 0 |
 | `encore` ↻ | 0 |
-| **Total** | **85** |
+| **Total** | **87** |
 
-Progress through core lectures (settled+fluent): **0/85** (0%).
+Progress through core lectures (settled+fluent): **0/87** (0%).
 
 Counts cover every core lecture currently in the catalogue. A lecture with no events is `unopened`.
 
@@ -43,7 +43,7 @@ Current phase of each lecture, in catalogue order. This is not a timeline — th
 | `CS110` | `underway` | `>>>>·` |
 | `CS120` | `unopened` | `·····` |
 | `CS220` | `unopened` | `·····` |
-| `CS230` | `underway` | `~>>>·>>··` |
+| `CS230` | `underway` | `~>>>··>>···` |
 | `CS320` | `unopened` | `········` |
 | `SE240` | `unopened` | `······` |
 | `SE310` | `unopened` | `···` |
@@ -89,8 +89,8 @@ Newest day first. A later session does not replace an earlier one.
 
 | When | Lecture | Action | Phase | Conf | Note |
 | --- | --- | --- | --- | ---: | --- |
-| 2026-10-27 | `CS230-L07` TLS and the Architecture of Trust | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
-| 2026-10-27 | `CS230-L06` The Life of a Network Connection | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
+| 2026-10-27 | `CS230-L08` TLS and the Architecture of Trust | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. (Catalogue renumber: was CS230-L07 before the L05/L06 addressing-NAT split.) |
+| 2026-10-27 | `CS230-L07` The Life of a Network Connection | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. (Catalogue renumber: was CS230-L06 before the L05/L06 addressing-NAT split.) |
 | 2026-10-27 | `CS230-L04` DNS: The Internet's Distributed Naming System | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
 | 2026-10-27 | `CS230-L03` HTTP: The Protocol That Runs the Web | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
 | 2026-10-27 | `CS230-L02` Networking for Software Engineers | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
@@ -137,10 +137,12 @@ Folded snapshot. Passes count listen, read, skim, lab, oral, and review events. 
 | `CS230-L03` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.… |
 | `CS230-L04` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.… |
 | `CS230-L05` | `unopened` | 0 | 0 | — | — |  |
-| `CS230-L06` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.… |
+| `CS230-L06` | `unopened` | 0 | 0 | — | — |  |
 | `CS230-L07` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.… |
-| `CS230-L08` | `unopened` | 0 | 0 | — | — |  |
+| `CS230-L08` | `studying` | 2 | 1 | 2026-10-27 | — | Full voice listen-through; one session.… |
 | `CS230-L09` | `unopened` | 0 | 0 | — | — |  |
+| `CS230-L10` | `unopened` | 0 | 0 | — | — |  |
+| `CS230-L11` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L01` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L02` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L03` | `unopened` | 0 | 0 | — | — |  |

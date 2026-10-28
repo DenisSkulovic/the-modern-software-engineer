@@ -1,20 +1,21 @@
 ---
-id: CS230-L06
+id: CS230-L07
 course: CS230
 title: "The Life of a Network Connection"
 type: core
 manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
-prev: CS230-L05
-next: CS230-L07
+prev: CS230-L06
+next: CS230-L08
 ---
+
 
 
 
 # CS230 — Computer Networks and Web Protocols
 
-## Lecture 06: The Life of a Network Connection
+## Lecture 07: The Life of a Network Connection
 
 *How operating systems turn packets into conversations, why reliable connections sometimes fail mysteriously, and how TCP, UDP, and QUIC make fundamentally different promises.*
 
@@ -121,7 +122,7 @@ The transport options solve the same general problem—moving application inform
 
 Node.js uses a socket. TCP's three-way handshake establishes transport state. Application protocols exchange framed messages over TCP's reliable ordered bytes. The OS manages buffers and acknowledgments. An idle pooled connection may be closed or become stale. A later write can fail, and that failure may leave the remote business outcome unknown. UDP offers datagrams; QUIC builds a modern reliable-stream transport over UDP for HTTP/3.
 
-#### Three questions before L06
+#### Three questions before L07
 
 1. Does TCP deliver each JSON write as one matching read? **No.** It delivers ordered bytes, not message boundaries.
 2. Is `ECONNRESET` evidence that the supplier didn't process the booking? **No.** It is transport evidence, not proof of business outcome.
@@ -192,7 +193,7 @@ This is why understanding network connections matters well beyond networking int
 
 A modern application spends much of its life communicating with other processes: databases, message brokers, identity providers, payment gateways, third-party APIs, and internal services. Every such interaction depends on assumptions about connectivity, delivery, timing, and failure.
 
-In CS230-L05, we investigated how IP packets find their destinations. But IP alone doesn't establish a persistent conversation between applications.
+In CS230-L05 and CS230-L06, we investigated how IP packets find their destinations and how private networks reach the public internet. But IP alone doesn't establish a persistent conversation between applications.
 
 TCP, UDP, and QUIC provide different ways to build communication on top of that packet-delivery system.
 
@@ -803,7 +804,7 @@ This can delay multiple HTTP/2 streams sharing the connection.
 
 The important distinction is that HTTP/2 solves one class of HTTP-level head-of-line blocking through multiplexing, but it doesn't eliminate TCP's connection-wide ordered-byte-stream constraint.
 
-We will revisit this in CS230-L08 when examining modern web transport.
+We will revisit this in CS230-L10 when examining modern web transport.
 
 For now, remember the trade-off.
 
@@ -1761,7 +1762,7 @@ An encrypted connection isn't automatically an authenticated connection.
 
 And an authenticated connection isn't automatically authorized to access every resource.
 
-In **CS230-L07 — TLS and the Architecture of Trust**, we'll examine certificates, public-key cryptography, key exchange, trust chains, TLS handshakes, and the boundaries of HTTPS protection.
+In **CS230-L08 — TLS and the Architecture of Trust**, we'll examine certificates, public-key cryptography, key exchange, trust chains, TLS handshakes, and the boundaries of HTTPS protection.
 
 We now know how two applications can communicate.
 
@@ -1980,7 +1981,7 @@ The goal is to reason across the application, transport, and infrastructure laye
 *Fenced so voice readers skip it. Skim on screen when revising; open sections above only when a row fails to spark.*
 
 ```text
-CS230-L06  CONNECTIONS / TCP / UDP / QUIC — INTERVIEW GLANCE CARD
+CS230-L07  CONNECTIONS / TCP / UDP / QUIC — INTERVIEW GLANCE CARD
 
 CORE MODEL
   Connection          Coordinated endpoint state machines over unreliable packets

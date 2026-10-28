@@ -12,6 +12,7 @@ next: CS230-L05
 
 
 
+
 # CS230 — Computer Networks and Web Protocols
 
 ## Lecture 04: DNS — The Internet's Distributed Naming System
@@ -961,15 +962,15 @@ Once you understand that architecture, DNS migrations, inconsistent client behav
 
 ---
 
-# 15. Next Lecture — IP Addressing, Subnets, Routing, and NAT
+# 15. Next Lecture — IP Addressing, Subnets, and Routing
 
 We've discovered how a hostname can lead a client toward an IP address.
 
 But how does the client actually reach that address?
 
-Why can your laptop communicate with a public server even though its own address might be something like `192.168.1.42`? What does a subnet mask actually mean? How do routers determine the next hop, and why can a firewall allow one connection while rejecting another?
+What does a subnet mask actually mean? How do routers determine the next hop? And once packets leave your private network — how does address translation and cloud reachability work?
 
-In **CS230-L05**, we'll follow packets through local networks, routers, NAT devices, and the wider internet.
+In **CS230-L05**, we'll follow packets through local networks and routers. **CS230-L06** then picks up private addressing, NAT, and how cloud networks become reachable from the public internet.
 
 This time, the challenge won't be discovering the destination.
 

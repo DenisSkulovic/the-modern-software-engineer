@@ -12,6 +12,7 @@ next: CS120-L03
 
 
 
+
 # CS120 — Mathematical and Statistical Thinking for Software Engineers
 
 ## Lecture 02: Probability, Randomness, and Risk

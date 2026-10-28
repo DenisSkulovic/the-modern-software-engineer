@@ -15,6 +15,7 @@ next: CS220-L03
 
 
 
+
 # CS220 — Programming Languages, Memory, and Execution
 ## Lecture 02: Memory: The Invisible Battlefield
 

@@ -10,6 +10,7 @@ prev: SE450-L04
 next: SE450-L06
 ---
 
+
 # SE450 — Kubernetes and Platform Engineering
 
 ## Lecture 05: Configuration, Secrets, and Persistent State

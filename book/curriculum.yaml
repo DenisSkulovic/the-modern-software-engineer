@@ -107,7 +107,7 @@ courses:
   discipline: CS
   level: 100
   type: core
-  status: in_progress
+  status: complete
   slug: mathematical-and-statistical-thinking
   dir: CS/CS120-mathematical-and-statistical-thinking
   notes: 'Foundational mathematical literacy for engineers: logic, probability, statistics, experiments,
@@ -157,9 +157,9 @@ courses:
   status: complete
   slug: programming-languages
   dir: CS/CS220-programming-languages
-  notes: 'All five lectures at manuscript status with Part I Intuition / Part II Deep Dive.
-    L01–L03 are JS/TS-centric foundations; L04–L05 broaden comparative type systems, ownership,
-    and multi-runtime behavior. Do not relocate CS320-L03 language-semantics material casually.'
+  notes: All five lectures at manuscript status with Part I Intuition / Part II Deep Dive. L01–L03 are
+    JS/TS-centric foundations; L04–L05 broaden comparative type systems, ownership, and multi-runtime
+    behavior. Do not relocate CS320-L03 language-semantics material casually.
   lectures:
   - id: CS220-L01
     title: Programming Languages and Abstraction
@@ -199,13 +199,12 @@ courses:
     source: CS/CS220-programming-languages/CS220-L05-one-program-many-runtimes.md
     manuscript: manuscript
     edition: 2.0.0
-
 - code: CS230
   title: Computer Networks and Web Protocols
   discipline: CS
   level: 200
   type: core
-  status: in_progress
+  status: complete
   slug: computer-networks
   dir: CS/CS230-computer-networks
   lectures:
@@ -241,38 +240,52 @@ courses:
     manuscript: manuscript
     edition: 2.0.0
   - id: CS230-L05
-    title: IP Addressing, Subnets, Routing, and NAT
-    slug: ip-addressing-subnets-routing-and-nat
+    title: IP Addressing, Subnets, and Routing
+    slug: ip-addressing-subnets-and-routing
     legacy_ids: []
-    source: CS/CS230-computer-networks/CS230-L05-ip-addressing-subnets-routing-and-nat.md
-    manuscript: manuscript
-    edition: 2.0.0
+    source: CS/CS230-computer-networks/CS230-L05-ip-addressing-subnets-and-routing.md
+    manuscript: revised
+    edition: 2.1.0
   - id: CS230-L06
+    title: Private Networks, NAT, and Cloud Reachability
+    slug: private-networks-nat-and-cloud-reachability
+    legacy_ids: []
+    source: CS/CS230-computer-networks/CS230-L06-private-networks-nat-and-cloud-reachability.md
+    manuscript: revised
+    edition: 2.1.0
+  - id: CS230-L07
     title: The Life of a Network Connection
     slug: the-life-of-a-network-connection
     legacy_ids: []
-    source: CS/CS230-computer-networks/CS230-L06-the-life-of-a-network-connection.md
-    manuscript: manuscript
-    edition: 2.0.0
-  - id: CS230-L07
-    title: TLS and the Architecture of Trust
-    slug: tls-and-the-architecture-of-trust
-    legacy_ids: []
-    source: CS/CS230-computer-networks/CS230-L07-tls-and-the-architecture-of-trust.md
+    source: CS/CS230-computer-networks/CS230-L07-the-life-of-a-network-connection.md
     manuscript: manuscript
     edition: 2.0.0
   - id: CS230-L08
-    title: Proxies, Load Balancers, and Modern Web Transport
-    slug: proxies-load-balancers-and-modern-web-transport
+    title: TLS and the Architecture of Trust
+    slug: tls-and-the-architecture-of-trust
     legacy_ids: []
-    source: CS/CS230-computer-networks/CS230-L08-proxies-load-balancers-and-modern-web-transport.md
+    source: CS/CS230-computer-networks/CS230-L08-tls-and-the-architecture-of-trust.md
     manuscript: manuscript
     edition: 2.0.0
   - id: CS230-L09
+    title: Proxies, Load Balancers, and CDNs
+    slug: proxies-load-balancers-and-cdns
+    legacy_ids: []
+    source: CS/CS230-computer-networks/CS230-L09-proxies-load-balancers-and-cdns.md
+    manuscript: revised
+    edition: 2.1.0
+  - id: CS230-L10
+    title: Modern HTTP Transport and Streaming
+    slug: modern-http-transport-and-streaming
+    legacy_ids: []
+    source: CS/CS230-computer-networks/CS230-L10-modern-http-transport-and-streaming.md
+    manuscript: revised
+    edition: 2.1.0
+  - id: CS230-L11
     title: Network Forensics for Software Engineers
     slug: network-forensics-for-software-engineers
     legacy_ids: []
-    source: CS/CS230-computer-networks/CS230-L09-network-forensics-for-software-engineers.md
+    source: CS/CS230-computer-networks/CS230-L11-network-forensics-for-software-engineers.md
     manuscript: manuscript
     edition: 2.0.0
 - code: CS320
@@ -283,9 +296,8 @@ courses:
   status: complete
   slug: operating-systems-and-concurrency
   dir: CS/CS320-operating-systems-and-concurrency
-  notes: All eight lectures at manuscript status with Part I Intuition / Part II Deep Dive.
-    L03 language-semantics material may belong more naturally in CS220 in a future revision — do not relocate
-    casually.
+  notes: All eight lectures at manuscript status with Part I Intuition / Part II Deep Dive. L03 language-semantics
+    material may belong more naturally in CS220 in a future revision — do not relocate casually.
   lectures:
   - id: CS320-L01
     title: Concurrency, Parallelism, and Asynchrony
@@ -991,7 +1003,7 @@ courses:
   discipline: SE
   level: 400
   type: elective
-  status: in_progress
+  status: complete
   slug: kubernetes-and-platform
   dir: SE/SE450-kubernetes-and-platform
   builds_on:
@@ -1004,56 +1016,56 @@ courses:
     slug: kubernetes-a-system-that-reconciles-reality
     legacy_ids: []
     source: SE/SE450-kubernetes-and-platform/SE450-L01-kubernetes-a-system-that-reconciles-reality.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE450-L02
     title: Pods, Deployments, Jobs, and Controllers
     slug: pods-deployments-jobs-and-controllers
     legacy_ids: []
     source: SE/SE450-kubernetes-and-platform/SE450-L02-pods-deployments-jobs-and-controllers.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE450-L03
     title: Cluster Networking and Service Discovery
     slug: cluster-networking-and-service-discovery
     legacy_ids: []
     source: SE/SE450-kubernetes-and-platform/SE450-L03-cluster-networking-and-service-discovery.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE450-L04
     title: Scheduling, Resources, and Autoscaling
     slug: scheduling-resources-and-autoscaling
     legacy_ids: []
     source: SE/SE450-kubernetes-and-platform/SE450-L04-scheduling-resources-and-autoscaling.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE450-L05
     title: Configuration, Secrets, and Persistent State
     slug: configuration-secrets-and-persistent-state
     legacy_ids: []
     source: SE/SE450-kubernetes-and-platform/SE450-L05-configuration-secrets-and-persistent-state.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE450-L06
     title: Security, Isolation, and Multi-Tenancy
     slug: security-isolation-and-multi-tenancy
     legacy_ids: []
     source: SE/SE450-kubernetes-and-platform/SE450-L06-security-isolation-and-multi-tenancy.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE450-L07
     title: Releases, GitOps, and Platform Observability
     slug: releases-gitops-and-platform-observability
     legacy_ids: []
     source: SE/SE450-kubernetes-and-platform/SE450-L07-releases-gitops-and-platform-observability.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE450-L08
     title: The Kubernetes Incident Room
     slug: the-kubernetes-incident-room
     legacy_ids: []
     source: SE/SE450-kubernetes-and-platform/SE450-L08-the-kubernetes-incident-room.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   notes: Kubernetes as a distributed control system. SE440 recommended. Development priority after CS120
     and CS320 expansion.

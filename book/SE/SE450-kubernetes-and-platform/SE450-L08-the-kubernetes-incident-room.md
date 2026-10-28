@@ -10,6 +10,7 @@ prev: SE450-L07
 next: null
 ---
 
+
 # SE450 — Kubernetes and Platform Engineering
 
 ## Lecture 08: The Kubernetes Incident Room

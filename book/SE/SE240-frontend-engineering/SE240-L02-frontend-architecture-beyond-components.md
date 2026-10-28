@@ -15,6 +15,7 @@ next: SE240-L03
 
 
 
+
 # SE240 — Browser and Frontend Engineering
 
 ## Lecture 02: Frontend Architecture Beyond Components

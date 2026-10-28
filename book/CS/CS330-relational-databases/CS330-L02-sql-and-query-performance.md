@@ -15,6 +15,7 @@ next: CS330-L03
 
 
 
+
 # CS330 — Relational Databases and Transactions
 
 ## Lecture 02: SQL and Query Performance
