@@ -3,12 +3,13 @@ id: SE250-L05
 course: SE250
 title: "React in Production: SPAs, Next.js, and Server Rendering"
 type: elective
-manuscript: manuscript
+manuscript: stub
 edition: "2.0.0"
 legacy_ids: []
 prev: SE250-L04
 next: SE250-L06
 ---
+
 
 # SE250 — React Engineering for Experienced Developers
 ## Lecture 05: React in Production — SPAs, Next.js, and Server Rendering

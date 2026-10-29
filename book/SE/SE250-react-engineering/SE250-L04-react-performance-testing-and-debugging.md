@@ -3,12 +3,13 @@ id: SE250-L04
 course: SE250
 title: "React Performance, Testing, and Debugging"
 type: elective
-manuscript: manuscript
+manuscript: stub
 edition: "2.0.0"
 legacy_ids: []
 prev: SE250-L03
 next: SE250-L05
 ---
+
 
 # SE250 — React Engineering for Experienced Developers
 ## Lecture 04: React Performance, Testing, and Debugging

@@ -3,12 +3,13 @@ id: CS350-L02
 course: CS350
 title: "PostgreSQL Query Plan Forensics"
 type: elective
-manuscript: manuscript
+manuscript: stub
 edition: "2.0.0"
 legacy_ids: []
 prev: CS350-L01
 next: CS350-L03
 ---
+
 
 # CS350 — Advanced PostgreSQL Engineering
 ## Lecture 02: PostgreSQL Query Plan Forensics

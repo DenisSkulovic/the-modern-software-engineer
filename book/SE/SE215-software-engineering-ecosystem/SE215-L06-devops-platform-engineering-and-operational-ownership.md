@@ -10,6 +10,7 @@ prev: SE215-L05
 next: SE215-L07
 ---
 
+
 # SE215 — The Software Engineering Ecosystem
 
 ## Lecture 06: DevOps, Platform Engineering, and Operational Ownership

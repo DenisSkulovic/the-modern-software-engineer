@@ -1,6 +1,6 @@
 # Study Ledger — dskul
 
-**Student:** `dskul` · **Curriculum:** v2.0 · **Updated:** 2026-10-28 · **Rendered:** 2026-10-28
+**Student:** `dskul` · **Curriculum:** v2.0 · **Updated:** 2026-10-29 · **Rendered:** 2026-10-29
 
 Personal learning tracker (not manuscript status). History is the append-only [`activity.yaml`](activity.yaml); this page folds it. Design: [`../../STATUS.md`](../../STATUS.md).
 
@@ -66,11 +66,11 @@ Each cell is how many events fell on that day. The glyph is intensity; the digit
 
 | Week of | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2026-10-26 | █5 | █5 | ░1 | · | · | · | · |
+| 2026-10-26 | █5 | █5 | ▓3 | · | · | · | · |
 
 Intensity: `·` 0, `░` 1, `▒` 2, `▓` 3–4, `█` 5+.
 
-11 events across 3 days, from 2026-10-26.
+13 events across 3 days, from 2026-10-26.
 
 ## Course by week
 
@@ -81,6 +81,7 @@ Session counts per course (listen, read, skim, lab, oral, review). `note` events
 | `CS110` | 4 |
 | `CS220` | 1 |
 | `CS230` | 6 |
+| `SE215` | 2 |
 
 Week labels are ISO weeks. 2026-W44 starts 2026-10-26.
 
@@ -90,6 +91,8 @@ Newest day first. A later session does not replace an earlier one.
 
 | When | Lecture | Action | Phase | Conf | Note |
 | --- | --- | --- | --- | ---: | --- |
+| 2026-10-28 | `SE215-L02` How Engineering Work Gets Planned and Delivered | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
+| 2026-10-28 | `SE215-L01` The People and Teams Behind Software | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
 | 2026-10-28 | `CS220-L01` What a Programming Language Actually Promises | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
 | 2026-10-27 | `CS230-L08` TLS and the Architecture of Trust | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. (Catalogue renumber: was CS230-L07 before the L05/L06 addressing-NAT split.) |
 | 2026-10-27 | `CS230-L07` The Life of a Network Connection | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. (Catalogue renumber: was CS230-L06 before the L05/L06 addressing-NAT split.) |

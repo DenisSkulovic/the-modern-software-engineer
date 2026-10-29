@@ -3,12 +3,13 @@ id: CS345-L03
 course: CS345
 title: "Pagination, Derived Fields, and Materialized Data"
 type: elective
-manuscript: manuscript
+manuscript: stub
 edition: "2.0.0"
 legacy_ids: []
 prev: CS345-L02
 next: CS345-L04
 ---
+
 
 # CS345 — MongoDB Production Query Engineering
 ## Lecture 03: Pagination, Derived Fields, and Materialized Data

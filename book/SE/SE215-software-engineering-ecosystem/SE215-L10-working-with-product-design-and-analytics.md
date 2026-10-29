@@ -7,8 +7,9 @@ manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: SE215-L09
-next: null
+next: SE215-L11
 ---
+
 
 # SE215 — The Software Engineering Ecosystem
 
@@ -1076,23 +1077,23 @@ Their responsibilities differ, but their work must connect.
 
 **A senior engineer doesn't merely build what was requested. They help ensure the team understands what it's building, why it matters, and whether it actually worked.**
 
-# Closing — The Software Engineering Ecosystem
+# Next Lecture — SE215-L11: Release Management, Versioning, and Change Ownership
 
-This concludes SE215.
+Mercury's redesigned booking flow is ready in principle.
 
-Across these ten lectures, we've examined the people, workflows, tools, and neighboring disciplines surrounding software development.
+The product brief is clear. Design and analytics are aligned. The implementation is reviewed.
 
-We've explored how engineering work is planned, how code is integrated, how repositories and cloud platforms are organized, how software reaches production, how quality is verified, and how data and product decisions shape the work.
+Then someone asks the practical question every shipping team eventually faces:
 
-The central insight is that software engineering is not confined to writing source code.
+Which version is this?
 
-Software exists inside a system of collaborating people, technical dependencies, organizational constraints, business objectives, and production realities.
+Is it tagged? Built? Deployed to staging? Visible to customers?
 
-You don't need to become a specialist in every discipline.
+Who approves Thursday's window—and what do we undo if conversion collapses after the announcement?
 
-But you should understand how those disciplines connect to your own work, recognize when collaboration is necessary, and ask better questions when something doesn't fit.
+Git, CI, and feature flags are parts of the answer, but release management is the discipline that connects them.
 
-That is the kind of professional fluency SE215 is meant to provide.
+In the next lecture, we'll examine versioning, release ownership, staged rollouts, and rollback decisions from the perspective of a developer who may have to own the release themselves.
 
 *The spoken lecture ends here. The remaining material is for practical investigation and screen-based revision.*
 

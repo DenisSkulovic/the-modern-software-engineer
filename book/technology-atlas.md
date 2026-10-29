@@ -109,8 +109,10 @@ Catalogue source of truth: [`curriculum.yaml`](curriculum.yaml). Course listings
 | Azure | Microsoft Azure service categories | Same SaaS pattern on Azure | — | SE215-L05 | planned orientation |
 | Cloud service models (IaaS/PaaS/serverless) | Choose shared-responsibility boundaries | Decide what the team still owns | SE340 | SE215-L05 | working understanding + planned orientation |
 | Containers / Kubernetes | Schedule and reconcile containerized workloads | Deploy, configure, observe clusters | SE450 | SE215-L06 (org context) | practical / manuscript + planned orientation |
-| Terraform / IaC | Declare and version infrastructure | Manage state, modules, and delivery pipelines | SE340-L04 | SE215-L06 (context), SE360 (elective stubs) | working understanding / planned specialization |
+| Terraform / IaC | Declare and version infrastructure | Manage state, modules, and delivery pipelines | SE340-L04 | SE215-L06 (context), SE360-L02 (zero-intro + diagnostics) | working understanding / planned specialization |
 | CI/CD pipeline forensics | Investigate green builds that ship the wrong thing | Jenkins / Actions / GitLab mental model | SE340-L04 | SE360 | planned elective |
+| Release management / versioning | Own what reaches customers and how it is named | Tags, SemVer, notes, windows, rollout/rollback | SE215-L03 (Git), SE340-L04 | SE215-L11 (stub) | orientation → planned |
+| Vague idea → shipped product | Negotiate scope and adjacent ownership under pressure | Clarify, ship safely, measure, push back | SE215-L01–L11 | SE215-L12 (stub capstone) | planned orientation |
 | Redis / RabbitMQ production diagnostics | Debug cache and worker failures under load | Eviction, prefetch, retry amplification | SE320-L02/L03 | SE335 | planned elective |
 
 ---
@@ -148,6 +150,7 @@ Catalogue source of truth: [`curriculum.yaml`](curriculum.yaml). Course listings
 | Distributed systems fundamentals | Consistency, failure, coordination | Design for partial failure | CS430 | — | working understanding |
 | Monorepos / multirepos / build systems | Organize code and builds across apps | Workspaces, caching, ownership, CI | Scattered mentions | SE215-L04 | planned orientation |
 | Git collaboration / PRs | Coordinate concurrent change safely | Branching, review, hotfix, release tags | Scattered delivery references | SE215-L03 | planned orientation |
+| Release ownership | Connect versions, builds, deploys, and customer-visible change | SemVer/CalVer, notes, staged rollout, rollback | SE340 / SE360 (machinery) | SE215-L11 | planned orientation |
 | Architecture evolution / debt | Change systems without collapsing them | Refactor economics and incentives | SE330-L03 | SE215-L02, SE215-L03 | working understanding + planned orientation |
 | Architecture studio | Integrated design workshops | Defend end-to-end designs | SE490 | — | practical |
 

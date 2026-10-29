@@ -14,6 +14,7 @@ next: SE450-L02
 
 
 
+
 # SE450 — Kubernetes and Platform Engineering
 
 ## Lecture 01: Kubernetes — A System That Reconciles Reality

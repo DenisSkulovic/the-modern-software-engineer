@@ -3,12 +3,13 @@ id: CS345-L01
 course: CS345
 title: "MongoDB Query Plans and Index Forensics"
 type: elective
-manuscript: manuscript
+manuscript: stub
 edition: "2.0.0"
 legacy_ids: []
 prev: null
 next: CS345-L02
 ---
+
 
 # CS345 — MongoDB Production Query Engineering
 ## Lecture 01: MongoDB Query Plans and Index Forensics

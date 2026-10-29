@@ -19,6 +19,7 @@ next: SE240-L06
 
 
 
+
 # SE240 — Browser and Frontend Engineering
 
 ## Lecture 05: Performance: Why Fast Code Can Feel Slow

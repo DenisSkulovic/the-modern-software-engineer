@@ -260,7 +260,7 @@ Lecture IDs look like `CS330-L03`. Electives use the same scheme (courses with `
 | `AI410-L06` | Evaluating Nondeterministic Software | `manuscript` | `2.0.0` | `AI501-S10` |
 | `AI410-L07` | Security, Reliability, and Economics of AI Systems | `manuscript` | `2.0.0` | `AI501-S11` |
 
-## Active electives (10 · 58 lectures)
+## Active electives (10 · 60 lectures)
 
 Active electives have on-disk lecture stubs or manuscripts and are validated like core courses. They remain optional in the study programme.
 
@@ -306,7 +306,7 @@ Active electives have on-disk lecture stubs or manuscripts and are validated lik
 
 #### SE215 — The Software Engineering Ecosystem
 
-200-level · 10 lectures · course status `in_progress` · `SE/SE215-software-engineering-ecosystem/`
+200-level · 12 lectures · course status `in_progress` · `SE/SE215-software-engineering-ecosystem/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
@@ -317,9 +317,11 @@ Active electives have on-disk lecture stubs or manuscripts and are validated lik
 | `SE215-L05` | Cloud Platforms and Service Models | `manuscript` | `2.0.0` | `` |
 | `SE215-L06` | DevOps, Platform Engineering, and Operational Ownership | `manuscript` | `2.0.0` | `` |
 | `SE215-L07` | Owning End-to-End Testing | `manuscript` | `2.0.0` | `` |
-| `SE215-L08` | Technical SEO and Web Discoverability | `stub` | `2.0.0` | `` |
-| `SE215-L09` | Data Engineering for Application Developers | `stub` | `2.0.0` | `` |
-| `SE215-L10` | Working With Product, Design, and Analytics | `stub` | `2.0.0` | `` |
+| `SE215-L08` | Technical SEO and Web Discoverability | `manuscript` | `2.0.0` | `` |
+| `SE215-L09` | Data Engineering for Application Developers | `manuscript` | `2.0.0` | `` |
+| `SE215-L10` | Working With Product, Design, and Analytics | `manuscript` | `2.0.0` | `` |
+| `SE215-L11` | Release Management, Versioning, and Change Ownership | `stub` | `2.0.0` | `` |
+| `SE215-L12` | From Vague Business Idea to Shipped Product | `stub` | `2.0.0` | `` |
 
 #### SE250 — React Engineering for Experienced Developers
 
@@ -388,13 +390,13 @@ Active electives have on-disk lecture stubs or manuscripts and are validated lik
 
 #### SE360 — Practical Terraform and Cloud Delivery
 
-300-level · 3 lectures · course status `in_progress` · `SE/SE360-practical-terraform/`
+300-level · 3 lectures · course status `complete` · `SE/SE360-practical-terraform/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
-| `SE360-L01` | CI/CD in the Real World: Jenkins, GitHub Actions, and GitLab CI | `stub` | `2.0.0` | `` |
-| `SE360-L02` | Terraform and Reproducible Infrastructure | `stub` | `2.0.0` | `` |
-| `SE360-L03` | The Broken Release Studio | `stub` | `2.0.0` | `` |
+| `SE360-L01` | CI/CD in the Real World: Jenkins, GitHub Actions, and GitLab CI | `manuscript` | `2.0.0` | `` |
+| `SE360-L02` | Terraform and Reproducible Infrastructure | `manuscript` | `2.1.0` | `` |
+| `SE360-L03` | The Broken Release Studio | `manuscript` | `2.0.0` | `` |
 
 ## Planned electives
 

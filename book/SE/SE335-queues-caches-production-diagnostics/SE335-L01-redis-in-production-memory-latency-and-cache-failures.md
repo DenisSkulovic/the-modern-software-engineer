@@ -3,12 +3,13 @@ id: SE335-L01
 course: SE335
 title: "Redis in Production: Memory, Latency, and Cache Failures"
 type: elective
-manuscript: manuscript
+manuscript: stub
 edition: "2.0.0"
 legacy_ids: []
 prev: null
 next: SE335-L02
 ---
+
 
 # SE335 — Queues, Caches, and Worker Production Diagnostics
 ## Lecture 01: Redis in Production — Memory, Latency, and Cache Failures

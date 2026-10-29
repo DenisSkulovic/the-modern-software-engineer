@@ -3,12 +3,13 @@ id: CS350-L01
 course: CS350
 title: "SQL Fluency for Working Backend Engineers"
 type: elective
-manuscript: manuscript
+manuscript: stub
 edition: "2.0.0"
 legacy_ids: []
 prev: null
 next: CS350-L02
 ---
+
 
 # CS350 — Advanced PostgreSQL Engineering
 ## Lecture 01: SQL Fluency for Working Backend Engineers

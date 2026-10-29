@@ -3,12 +3,13 @@ id: SE250-L03
 course: SE250
 title: "State, Data Fetching, and Real Application Architecture"
 type: elective
-manuscript: manuscript
+manuscript: stub
 edition: "2.0.0"
 legacy_ids: []
 prev: SE250-L02
 next: SE250-L04
 ---
+
 
 # SE250 — React Engineering for Experienced Developers
 ## Lecture 03: State, Data Fetching, and Real Application Architecture

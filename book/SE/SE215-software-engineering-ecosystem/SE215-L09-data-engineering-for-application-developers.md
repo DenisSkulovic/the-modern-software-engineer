@@ -10,6 +10,7 @@ prev: SE215-L08
 next: SE215-L10
 ---
 
+
 # SE215 — The Software Engineering Ecosystem
 
 ## Lecture 09: Data Engineering for Application Developers
@@ -1150,7 +1151,7 @@ Did the team optimize the wrong metric?
 
 Or did the experiment produce misleading evidence?
 
-In the final SE215 lecture, we'll examine how software engineers work with product managers, designers, researchers, and analysts to turn business objectives into useful features—and how to determine whether those features actually worked.
+In the next lecture, we'll examine how software engineers work with product managers, designers, researchers, and analysts to turn business objectives into useful features—and how to determine whether those features actually worked.
 
 *The spoken lecture ends here. The remaining material is for practical investigation and screen-based revision.*
 

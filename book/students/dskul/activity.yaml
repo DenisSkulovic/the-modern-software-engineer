@@ -85,3 +85,15 @@ events:
   phase: studying
   confidence: 2
   note: Full voice listen-through; one session. Prose done; labs not started.
+- at: '2026-10-28'
+  lecture: SE215-L01
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through; one session. Prose done; labs not started.
+- at: '2026-10-28'
+  lecture: SE215-L02
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through; one session. Prose done; labs not started.

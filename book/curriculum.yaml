@@ -1139,25 +1139,39 @@ courses:
     slug: technical-seo-and-web-discoverability
     legacy_ids: []
     source: SE/SE215-software-engineering-ecosystem/SE215-L08-technical-seo-and-web-discoverability.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE215-L09
     title: Data Engineering for Application Developers
     slug: data-engineering-for-application-developers
     legacy_ids: []
     source: SE/SE215-software-engineering-ecosystem/SE215-L09-data-engineering-for-application-developers.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE215-L10
     title: Working With Product, Design, and Analytics
     slug: working-with-product-design-and-analytics
     legacy_ids: []
     source: SE/SE215-software-engineering-ecosystem/SE215-L10-working-with-product-design-and-analytics.md
+    manuscript: manuscript
+    edition: 2.0.0
+  - id: SE215-L11
+    title: Release Management, Versioning, and Change Ownership
+    slug: release-management-versioning-and-change-ownership
+    legacy_ids: []
+    source: SE/SE215-software-engineering-ecosystem/SE215-L11-release-management-versioning-and-change-ownership.md
     manuscript: stub
     edition: 2.0.0
-  notes: 'Short orientation elective (~18–25 min lectures) on adjacent disciplines and professional
+  - id: SE215-L12
+    title: From Vague Business Idea to Shipped Product
+    slug: from-vague-business-idea-to-shipped-product
+    legacy_ids: []
+    source: SE/SE215-software-engineering-ecosystem/SE215-L12-from-vague-business-idea-to-shipped-product.md
+    manuscript: stub
+    edition: 2.0.0
+  notes: 'Short orientation elective (~18–30 min lectures) on adjacent disciplines and professional
     workflows. Not a mandatory core prerequisite. Gateway into deeper SE/CS coverage rather than a
-    specialist qualification.'
+    specialist qualification. L11–L12 extend release ownership and end-to-end vague-idea shipping.'
 - code: SE250
   title: React Engineering for Experienced Developers
   discipline: SE
@@ -1474,7 +1488,7 @@ courses:
   discipline: SE
   level: 300
   type: elective
-  status: in_progress
+  status: complete
   slug: practical-terraform
   dir: SE/SE360-practical-terraform
   builds_on:
@@ -1485,21 +1499,21 @@ courses:
     slug: cicd-in-the-real-world
     legacy_ids: []
     source: SE/SE360-practical-terraform/SE360-L01-cicd-in-the-real-world.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE360-L02
     title: Terraform and Reproducible Infrastructure
     slug: terraform-and-reproducible-infrastructure
     legacy_ids: []
     source: SE/SE360-practical-terraform/SE360-L02-terraform-and-reproducible-infrastructure.md
-    manuscript: stub
-    edition: 2.0.0
+    manuscript: manuscript
+    edition: 2.1.0
   - id: SE360-L03
     title: The Broken Release Studio
     slug: the-broken-release-studio
     legacy_ids: []
     source: SE/SE360-practical-terraform/SE360-L03-the-broken-release-studio.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   notes: 'Practical delivery elective on top of SE340. Pipeline forensics (Jenkins/Actions/GitLab),
     Terraform operations, broken-release studio. Not plugin tourism. See book/production-cases/CICD-01

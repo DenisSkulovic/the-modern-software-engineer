@@ -3,7 +3,7 @@ id: SE360-L01
 course: SE360
 title: "CI/CD in the Real World: Jenkins, GitHub Actions, and GitLab CI"
 type: elective
-manuscript: stub
+manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: null
@@ -14,36 +14,2767 @@ next: SE360-L02
 # SE360 — Practical Terraform and Cloud Delivery
 ## Lecture 01: CI/CD in the Real World: Jenkins, GitHub Actions, and GitLab CI
 
-*Green build, wrong artifact. Controllers, agents, workspaces, credentials, and what “deployed” actually meant.*
+*The deployment pipeline is green. The container registry contains the new image. Kubernetes reports a successful rollout. Production is running code from yesterday.*
 
 ---
 
-### Status — Planning Stub
+# Part I — Intuition
 
-**Pedagogical model:** pipeline literacy studio. Complements SE340-L04; adds Jenkins/Actions/GitLab investigation depth without plugin tourism.
+## 1. The Green Pipeline That Deployed the Wrong Code
 
-### Learning Objective
+Imagine you're working on a SaaS platform that continuously deploys backend services.
 
-Explain pipeline architecture (controller vs agent/runner, stages, workspaces, credentials, caching, artifacts, gates) well enough to investigate “works locally, fails in CI” and successful-but-wrong deploys.
+A developer fixes an important reservation-processing bug. The pull request is reviewed, tests pass, and the commit is merged into the main branch.
 
-### Opening Problem
+The CI/CD pipeline begins automatically.
 
-`CICD-01`: Jenkins (or peer) reports successful deployment; production runs an unexpected application version.
+The build succeeds.
 
-### Planned Coverage
+Unit tests pass.
 
-Declarative pipeline model; agents/runners; workspaces; credentials; caching; artifacts; triggers; approval gates; shared libraries (recognition-level); mapping the same ideas across Jenkins / GitHub Actions / GitLab CI.
+The container image is published successfully.
 
-### Scope Boundaries
+The staging deployment succeeds.
 
-SE340 owns progressive delivery and IaC concepts at programme level. This lecture owns practical pipeline forensics. Not every Jenkins plugin.
+The production deployment reports success.
 
-### Lab contract
+The release notification appears in Slack.
 
-Trace artifact provenance from commit → build → deploy target; find the mismatch.
+Everything looks green.
 
-### Cross-references
+Twenty minutes later, customer support reports that the original bug is still present.
 
-SE340-L04; SE215-L06; `CICD-01`.
+You check the source repository.
 
-<!-- Full manuscript to be generated later. -->
+The fix is definitely merged.
+
+You inspect the deployment logs.
+
+The pipeline definitely ran.
+
+You look at the container registry.
+
+The new image definitely exists.
+
+Then someone checks the actual application running in production.
+
+Its build information identifies yesterday's commit.
+
+How can a deployment succeed while deploying the wrong application?
+
+The answer is that a deployment pipeline contains several distinct identities, and success at one stage doesn't guarantee that the next stage used the expected output.
+
+A source commit can be correct.
+
+A build can be correct.
+
+A published artifact can be correct.
+
+The deployment can still select the wrong artifact.
+
+And even when the correct artifact is selected, the wrong environment or an incomplete rollout can produce a similar symptom.
+
+**The essential question is not whether the pipeline succeeded. It is whether the intended artifact reached the intended environment and is actually running there.**
+
+## 2. A Release Is a Chain of Custody
+
+Imagine a factory manufacturing medical equipment.
+
+An engineer approves a particular design.
+
+The factory produces a batch.
+
+Quality assurance tests the manufactured equipment.
+
+The batch is labeled and packaged.
+
+A distributor ships it to a hospital.
+
+The hospital installs it.
+
+Every step could succeed independently.
+
+But if the distributor ships a previous batch, the successful design approval and manufacturing process don't establish that the hospital received the intended equipment.
+
+Software delivery has the same problem.
+
+The source commit is the approved design.
+
+The build produces an artifact.
+
+Tests establish confidence in that artifact.
+
+A registry or artifact repository stores it.
+
+A deployment system selects and releases it.
+
+The runtime executes it.
+
+### Visual anchor 1 — The release chain
+
+```text id="ax4r8k"
+Source commit
+      |
+      v
+Build job
+      |
+      v
+Artifact digest
+      |
+      v
+Tested artifact
+      |
+      v
+Registry / artifact store
+      |
+      v
+Deployment selection
+      |
+      v
+Target environment
+      |
+      v
+Running application
+```
+
+Every arrow is a potential source of mismatch.
+
+The important engineering responsibility is preserving evidence that links the stages.
+
+Which commit produced the artifact?
+
+Which artifact was tested?
+
+Which artifact was selected for deployment?
+
+Which environment received it?
+
+Which artifact is actually running?
+
+Without those answers, a green pipeline is only partial evidence.
+
+## 3. A Cache and an Artifact Are Not the Same Thing
+
+Now imagine two different items in the factory.
+
+The factory maintains a shared supply of tools and materials used repeatedly.
+
+It also produces a particular finished product.
+
+The reusable supplies resemble a build cache.
+
+The finished product resembles a build artifact.
+
+A cache accelerates future work.
+
+An artifact represents the output of a particular build.
+
+Suppose a Node.js project uses a cache of downloaded npm packages.
+
+The cache allows a future job to avoid downloading the same dependencies again.
+
+If that cache disappears, the build should normally still be able to download its dependencies and produce the expected artifact.
+
+Now suppose a build job produces a JavaScript bundle or a container image.
+
+That output is the thing we intend to test and deploy.
+
+It should have a known identity.
+
+Using a cache as though it were the definitive build output can cause trouble.
+
+A stale cache might restore files from an earlier build.
+
+A deployment job might find an old `dist` directory in a persistent workspace.
+
+The pipeline might report success because a valid file exists, without proving it was generated by the current commit.
+
+### Visual anchor 2 — Cache versus artifact
+
+```text id="e0qfga"
+BUILD CACHE
+
+Downloaded packages
+Compiler caches
+Reusable intermediate files
+
+Purpose:
+Make work faster.
+
+Can usually be regenerated.
+
+
+BUILD ARTIFACT
+
+Application bundle
+Container image
+Release binary
+Deployment manifest
+
+Purpose:
+Represent the release output.
+
+Must be traceable to the build.
+```
+
+The distinction is fundamental.
+
+Caching is an optimization.
+
+Artifact provenance is part of release correctness.
+
+## 4. The Runner Is Another Machine
+
+Consider your local development environment.
+
+Your project has source files, dependencies, environment variables, and perhaps generated files left over from previous runs.
+
+You execute the tests.
+
+They pass.
+
+Then CI runs the same tests on another machine.
+
+They fail.
+
+The difference may have nothing to do with the application logic.
+
+Perhaps your local computer contains a dependency that isn't declared in the lockfile.
+
+Perhaps a generated file exists locally but isn't committed.
+
+Perhaps the CI agent uses a different Node.js version.
+
+Perhaps the build requires an environment variable that wasn't configured.
+
+Perhaps the CI workspace has different file permissions.
+
+The key intuition is that **a CI job runs in a particular execution environment, not in an abstract copy of your laptop**.
+
+Jenkins uses agents and workspaces.
+
+GitHub Actions uses runners and jobs.
+
+GitLab CI uses runners and job execution environments.
+
+The terminology differs, but the core question is the same:
+
+What machine or container actually executed the command, with which files, credentials, tools, and configuration?
+
+## 5. A Green Build Isn't a Green Release
+
+Suppose the build successfully creates a Docker image.
+
+The deployment job runs `kubectl apply`.
+
+The command exits successfully.
+
+Does that mean customers are now using the new code?
+
+Not necessarily.
+
+The command may have updated the desired Kubernetes configuration.
+
+The rollout may still be progressing.
+
+The new Pods may fail readiness checks.
+
+Some old replicas may remain active.
+
+The deployment may target a different cluster or namespace from the one serving customers.
+
+Or the manifest may reference a mutable image tag that resolves to an unexpected artifact.
+
+A deployment has several relevant states.
+
+The desired configuration has been submitted.
+
+The deployment controller has attempted to reconcile it.
+
+The intended workloads have become ready.
+
+Traffic has reached the expected application version.
+
+These events are related but not identical.
+
+### Visual anchor 3 — Desired state versus observed runtime
+
+```text id="on7tc0"
+CI deploy command
+       |
+       v
+Kubernetes desired state updated
+       |
+       v
+Controller creates or updates Pods
+       |
+       v
+New Pods become ready
+       |
+       v
+Traffic reaches new version
+       |
+       v
+Production verification passes
+```
+
+The pipeline shouldn't claim full release success merely because the first step returned zero.
+
+## 6. Three CI Platforms, One Engineering Problem
+
+Jenkins, GitHub Actions, and GitLab CI look different.
+
+Jenkins pipelines are commonly represented by a `Jenkinsfile`.
+
+GitHub Actions workflows use YAML files under `.github/workflows/`.
+
+GitLab CI uses `.gitlab-ci.yml`.
+
+Jenkins traditionally emphasizes a controller coordinating agents.
+
+GitHub Actions and GitLab CI also use services that schedule work onto runners.
+
+The exact infrastructure differs, but the same conceptual questions recur.
+
+What triggered the run?
+
+Which source revision was checked out?
+
+Which runner executed the build?
+
+What files were available?
+
+Which credentials were granted?
+
+How did the build output move to the deployment job?
+
+Who approved the release?
+
+What environment was targeted?
+
+Which artifact actually started running?
+
+Learning those questions makes you capable of navigating an unfamiliar CI system without memorizing every vendor-specific directive.
+
+## 7. A Tiny Comprehension Check
+
+The build log reports commit `B`.
+
+The image registry contains an artifact produced from commit `B`.
+
+The deployment log reports success.
+
+Production reports commit `A`.
+
+What should you investigate first?
+
+The identity of the artifact selected for deployment and the actual runtime.
+
+Don't immediately rebuild the application.
+
+Don't assume the source repository is wrong.
+
+And don't assume the deployment tool is lying.
+
+It may have successfully deployed precisely the artifact it was told to deploy.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
+
+## 8. CI/CD Is a Dependency Graph of Jobs and Artifacts
+
+In SE340-L04, we established the overall purpose of continuous integration, continuous delivery, and infrastructure as code.
+
+Here we're moving into the operational details.
+
+A pipeline is a graph of jobs.
+
+Some jobs can execute independently.
+
+Others depend on outputs from earlier jobs.
+
+For example, a typical backend pipeline may include checkout, dependency installation, linting, unit tests, building, container-image publication, staging deployment, integration tests, approval, and production deployment.
+
+But the actual execution graph matters more than the visual ordering of stages.
+
+### 8.1 Stages aren't necessarily strict global barriers
+
+A pipeline may execute several tests in parallel.
+
+GitHub Actions uses `needs` to declare dependencies between jobs.
+
+GitLab CI supports stages and `needs`, which can allow jobs to begin before all jobs in earlier stages finish.
+
+Jenkins provides declarative stages and mechanisms for parallel execution.
+
+Therefore, a stage name doesn't by itself prove that the expected artifact or prerequisite was available.
+
+You must inspect the dependency graph and how outputs pass between jobs.
+
+### 8.2 Every job has an execution context
+
+A job executes with some combination of checked-out source, filesystem state, environment variables, dependencies, credentials, and tools.
+
+That context determines what the job can actually do.
+
+Two jobs in the same pipeline should not be assumed to share one filesystem.
+
+On GitHub-hosted Actions runners, separate jobs normally receive separate execution environments.
+
+On self-hosted runners or persistent Jenkins agents, workspaces may survive between runs depending on configuration.
+
+GitLab Runner similarly supports multiple executors and caching arrangements.
+
+The correct mental model is not "the pipeline has a folder."
+
+It is "each job has access to specific files through checkout, explicit transfer, caching, or shared storage."
+
+## 9. Jenkins: Controller, Agents, and Workspaces
+
+Jenkins is a long-established automation server with a flexible plugin ecosystem.
+
+For this course, we don't need to memorize its plugins.
+
+We need to understand its execution architecture and pipeline behavior.
+
+### 9.1 Controller versus agent
+
+The Jenkins controller manages pipeline orchestration, job configuration, scheduling, credentials, and related coordination responsibilities.
+
+Agents execute build steps.
+
+A pipeline can select agents using labels or other allocation rules.
+
+A build may execute on one agent while a deployment stage runs on another.
+
+This distinction matters because the agents may have different operating systems, tools, network access, and workspaces.
+
+### 9.2 The workspace problem
+
+Suppose a build stage creates `dist/app.tar.gz` on Agent A.
+
+The deployment stage runs on Agent B.
+
+Will `dist/app.tar.gz` automatically exist on Agent B?
+
+No.
+
+The output needs to be transferred through an appropriate mechanism or retrieved from a shared artifact repository.
+
+Even when two stages run on the same agent, stale workspace files can create confusion.
+
+A previous build may have left an old bundle.
+
+If the new build fails to regenerate it but the pipeline doesn't validate its provenance, a later step might consume the stale file.
+
+### 9.3 `stash` and `unstash`
+
+Jenkins provides `stash` for transferring files between stages or workspaces within the same pipeline run.
+
+`unstash` restores those files.
+
+This is useful for relatively small intermediate outputs.
+
+But a stash is not a general long-term release repository.
+
+It is normally scoped to a pipeline run, with retention behavior affected by pipeline options and configuration.
+
+### 9.4 `archiveArtifacts`
+
+Jenkins can archive build artifacts for later inspection or retrieval.
+
+This is different from using a temporary stash.
+
+For larger or durable release outputs, a suitable artifact repository or container registry is usually more appropriate.
+
+The important question is not which Jenkins command has the nicest name.
+
+It is whether the next stage retrieves the exact output from the intended build.
+
+## 10. A Jenkins Pipeline You Can Reason About
+
+Consider a simplified pipeline.
+
+The first stage checks out the source and builds a release bundle.
+
+The second stage verifies the bundle.
+
+The third deploys the verified output.
+
+The Jenkinsfile below is a structural illustration; the application-specific scripts would need to exist, and production deployment credentials and controls would need to be configured separately.
+
+```groovy id="5u1vhw"
+pipeline {
+    agent none
+
+    stages {
+        stage('Build') {
+            agent { label 'linux-build' }
+
+            steps {
+                checkout scm
+
+                sh '''
+                  ./scripts/build.sh
+                  ./scripts/create-manifest.sh
+                '''
+
+                stash(
+                    name: 'release-bundle',
+                    includes: 'dist/**,build-manifest.json'
+                )
+            }
+        }
+
+        stage('Verify') {
+            agent { label 'linux-test' }
+
+            steps {
+                unstash 'release-bundle'
+
+                sh '''
+                  ./scripts/verify-bundle.sh
+                  ./scripts/test-bundle.sh
+                '''
+            }
+        }
+
+        stage('Deploy') {
+            agent { label 'linux-deploy' }
+
+            steps {
+                unstash 'release-bundle'
+
+                sh '''
+                  ./scripts/verify-bundle.sh
+                  ./scripts/deploy-verified-bundle.sh
+                '''
+            }
+        }
+    }
+}
+```
+
+The important properties are the explicit artifact transfer and verification.
+
+The deploy stage is not assumed to have the build stage's workspace.
+
+It receives the bundle produced within that pipeline run.
+
+### 10.1 Why labels matter
+
+A deployment agent may have network access to internal infrastructure that ordinary build agents do not.
+
+A build agent may have a compiler toolchain but no access to production credentials.
+
+Those differences can be intentional security boundaries.
+
+An agent label is therefore not merely a performance choice.
+
+It may determine which privileges and resources a job can reach.
+
+### 10.2 Shared libraries
+
+Jenkins shared libraries allow teams to centralize common pipeline behavior.
+
+This can improve consistency.
+
+It can also make unfamiliar pipelines harder to understand because an apparently simple Jenkinsfile may call code maintained elsewhere.
+
+If a deployment behaves unexpectedly, inspect the actual shared-library version and the implementation invoked by that run.
+
+A central shared library is part of the release's executable logic.
+
+It deserves version control, review, and appropriate change management.
+
+## 11. GitHub Actions: Jobs, Runners, and Artifact Transfer
+
+GitHub Actions expresses automation through workflows and jobs.
+
+A workflow runs in response to configured events.
+
+A job executes on a selected runner.
+
+Steps within a job share that job's execution context.
+
+Different jobs ordinarily require explicit mechanisms to exchange files.
+
+### 11.1 `needs` establishes dependencies
+
+Suppose a build job produces an application bundle.
+
+A deploy job uses `needs: build`.
+
+That ensures the deploy job depends on the build job's completion.
+
+But the dependency doesn't automatically transfer the bundle's files.
+
+The workflow must explicitly upload and download artifacts, use a registry, or otherwise arrange the transfer.
+
+### 11.2 Workflow artifacts
+
+GitHub Actions provides artifact-upload and artifact-download actions.
+
+These are appropriate for passing build outputs or reports between jobs.
+
+For production container deployments, publishing an image to a container registry and promoting its immutable digest is often a more natural approach.
+
+The mechanism may differ, but the invariant remains:
+
+The deploy job must consume the artifact produced and verified by the intended build.
+
+### 11.3 A structural workflow
+
+The following example illustrates artifact transfer and source identity.
+
+For readability, it uses version tags for first-party actions. Production workflows should apply their organization's dependency-locking or verified immutable-pinning policy, rather than treating tags as immutable references.
+
+```yaml id="74w7ek"
+name: Build and verify
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          ./scripts/build.sh
+          ./scripts/create-manifest.sh
+
+      - name: Verify output
+        run: ./scripts/verify-bundle.sh
+
+      - name: Upload release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-bundle
+          path: |
+            dist/
+            build-manifest.json
+
+  verify:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-bundle
+
+      - name: Verify transferred output
+        run: ./scripts/verify-bundle.sh
+```
+
+The second job doesn't rely on a persistent workspace.
+
+It downloads a specific workflow artifact and verifies it.
+
+A production deployment flow would add the relevant registry, approval, credentials, target selection, and runtime-verification steps.
+
+### 11.4 `github.sha` and workflow identity
+
+GitHub exposes information about the source revision and workflow run through its context variables.
+
+The relevant commit SHA should be recorded as part of build provenance.
+
+But don't assume a branch name is an immutable identity.
+
+The main branch can move while an older workflow remains queued or gets rerun.
+
+A release must be tied to a specific source revision and build result, not merely to the branch's current head.
+
+## 12. GitLab CI: Stages, `needs`, Artifacts, and Runners
+
+GitLab CI uses `.gitlab-ci.yml` to define jobs and the pipeline structure.
+
+GitLab Runner executes jobs using configured executors.
+
+As with other systems, the environment might be a container, virtual machine, shell process, or another supported execution context.
+
+### 12.1 Artifacts versus caches
+
+GitLab makes an explicit distinction.
+
+Caches are designed for reusable files such as dependencies.
+
+Artifacts are outputs produced by jobs and made available to later jobs.
+
+By default, jobs in later stages can download earlier-stage artifacts.
+
+But when `needs` or `dependencies` controls that relationship, artifact-fetching behavior changes.
+
+A deployment job must verify that it receives the output it expects.
+
+### 12.2 A structural GitLab pipeline
+
+The following example builds an application, publishes a bundle as a job artifact, and verifies that bundle in a later job.
+
+```yaml id="x4v9s6"
+stages:
+  - build
+  - verify
+
+build:
+  stage: build
+  image: node:24
+  script:
+    - npm ci
+    - npm run build
+    - ./scripts/create-manifest.sh
+  artifacts:
+    paths:
+      - dist/
+      - build-manifest.json
+
+verify:
+  stage: verify
+  image: node:24
+  needs:
+    - job: build
+      artifacts: true
+  script:
+    - ./scripts/verify-bundle.sh
+```
+
+This example assumes the relevant scripts and dependencies are present.
+
+A real deployment pipeline would add protected environments, authorization, and an explicit release artifact.
+
+### 12.3 `needs` is more than visual ordering
+
+GitLab's `needs` lets jobs form a dependency graph rather than relying exclusively on stage barriers.
+
+This can shorten pipeline duration.
+
+But the engineer must understand which upstream artifacts are fetched.
+
+A job that starts successfully without the expected output may later consume stale files or rebuild something unintended.
+
+### 12.4 Resource groups and deployment serialization
+
+GitLab provides resource groups for controlling concurrent deployment jobs that share a resource.
+
+This can help prevent overlapping production deployments.
+
+But serializing deployments doesn't prove that they occur in the desired source-revision order.
+
+A queued older pipeline may still be dangerous if release selection permits outdated code to replace newer code.
+
+Deployment ordering and stale-release protection remain explicit concerns.
+
+## 13. One Conceptual Model Across Three Platforms
+
+Let's unify the vocabulary.
+
+A Jenkins agent, GitHub Actions runner, and GitLab Runner all provide execution capacity.
+
+A Jenkins workspace and a job's working directory in either YAML-based platform hold files available to that execution context.
+
+Jenkins stashes, GitHub workflow artifacts, and GitLab job artifacts provide ways to preserve or transfer outputs.
+
+Build caches provide reusable data intended to accelerate work.
+
+Credentials or secrets provide privileged access.
+
+Environments and deployment gates determine where and under what conditions a release can proceed.
+
+The implementation details differ.
+
+The forensic questions are remarkably similar.
+
+**What code ran, where did it run, what files were present, what artifact was produced, and how did the next job obtain it?**
+
+If you can answer those questions, you can diagnose many unfamiliar pipeline failures without becoming a Jenkins or GitLab configuration specialist.
+
+## 14. Commit, Artifact, Tag, and Digest: Four Different Identities
+
+This is the most important distinction in the lecture.
+
+### 14.1 Source commit
+
+A Git commit identifies a particular version of source history.
+
+Its hash can establish which revision the build intended to use.
+
+But a commit alone does not identify the resulting binary.
+
+Different build environments, dependencies, compiler versions, timestamps, or configuration may produce different artifacts from the same commit.
+
+### 14.2 Build artifact
+
+An artifact is the produced output.
+
+It might be a JavaScript bundle, JAR file, compiled executable, Docker image, or release package.
+
+A cryptographic digest can identify its content.
+
+### 14.3 Mutable tag
+
+A tag is a human-friendly reference.
+
+For example, a container registry might have `booking-api:latest` or `booking-api:production`.
+
+Those tags can be moved to different images.
+
+They are references, not immutable guarantees about content.
+
+### 14.4 Immutable digest
+
+A content digest identifies specific artifact content.
+
+For container images, a reference such as `image@sha256:...` pins a particular image manifest or image index.
+
+That gives a stronger identity than a mutable tag.
+
+For multi-platform images, distinguish the index digest from platform-specific image manifests when auditing exactly what a given runtime pulled.
+
+### 14.5 Why mutable tags cause wrong-version incidents
+
+Imagine two builds.
+
+Build A publishes image digest A.
+
+Build B publishes image digest B.
+
+A deployment job intends to promote B.
+
+But it references `latest`.
+
+If `latest` still points to A—or was moved backward by another pipeline—the deployment may select A.
+
+The command succeeds.
+
+The wrong version runs.
+
+This is not an impossible race condition.
+
+It is a predictable consequence of using a mutable reference without verifying what it resolves to.
+
+## 15. Build Once, Promote the Same Artifact
+
+A common release-design principle is to build an artifact once, test it, and promote that same artifact through environments.
+
+Why?
+
+Because rebuilding separately for staging and production can produce different outputs.
+
+Even when the source commit is identical, the build environment may differ.
+
+A dependency may resolve differently.
+
+A configuration value may be embedded at build time.
+
+A package-registry response may change.
+
+### 15.1 Reproducible builds are valuable, but identity is stronger
+
+Reproducible builds aim to produce identical output from identical declared inputs.
+
+That is useful for supply-chain verification.
+
+But release promotion needn't depend entirely on the ability to reproduce the build.
+
+If a tested artifact has a known immutable identity, production can deploy that exact artifact.
+
+The strongest immediate release claim is not merely:
+
+"We can rebuild the same source."
+
+It is:
+
+"We are deploying the same artifact we already verified."
+
+### 15.2 Environment-specific configuration complicates the principle
+
+Frontend builds sometimes embed environment values through tools such as Vite.
+
+For example, a frontend bundle might contain a build-time API base URL.
+
+If staging and production require different values embedded in the bundle, the resulting artifacts differ.
+
+There are several possible solutions.
+
+The application can load environment-specific configuration at runtime.
+
+The deployment can inject configuration through a separate file or endpoint.
+
+Or the system may deliberately produce distinct environment-specific artifacts, each with its own provenance and validation.
+
+The crucial requirement is understanding which bytes were tested and which bytes were deployed.
+
+Don't hide environment-specific rebuilding behind a claim of artifact immutability.
+
+## 16. Caches Can Produce Stale Outputs
+
+Build caches are enormously useful.
+
+But an incorrect cache key or improper workspace reuse can produce stale output.
+
+Consider a frontend application with a cached `dist` directory.
+
+The source changes.
+
+The build job runs, but a script decides not to regenerate the bundle because the output directory already exists.
+
+The subsequent deployment publishes the old bundle.
+
+The job exits successfully.
+
+The cache has become an accidental source of release truth.
+
+### 16.1 Cache dependencies, not unverified releases
+
+A cache should normally accelerate regeneration.
+
+If it is absent or invalidated, the job should produce a correct artifact.
+
+Release output should be explicitly generated and verified.
+
+### 16.2 Content and source identity
+
+A manifest can record the source commit, build identifier, toolchain information, and artifact digest.
+
+The deploy stage can check that the artifact's identity matches the expected build.
+
+A manifest is only as trustworthy as the process producing and verifying it.
+
+If an untrusted script can rewrite both the artifact and its claimed metadata, a manifest alone doesn't provide strong supply-chain assurance.
+
+For higher-assurance environments, trusted build provenance and artifact attestations become relevant.
+
+### 16.3 Never use a cache hit as proof
+
+A cache hit means reusable data was found.
+
+It doesn't establish that the correct release artifact was produced.
+
+Treating those as equivalent can lead directly to successful-but-wrong deployments.
+
+## 17. Source Revision Mismatches
+
+A pipeline can build the wrong revision before artifact selection even begins.
+
+Possible causes include checking out an unintended branch, reusing stale workspaces, triggering a release from the wrong tag, or misunderstanding the source revision associated with a pull-request workflow.
+
+### 17.1 Branch names are moving references
+
+The phrase "build main" is incomplete.
+
+Main at which commit?
+
+A queued job may begin after main has advanced.
+
+A deployment may be manually retriggered long after its original build.
+
+A release mechanism that resolves the branch at deployment time can select a revision different from the one originally approved.
+
+The correct approach records the exact source revision.
+
+### 17.2 Jenkins `checkout scm`
+
+In a Jenkins multibranch pipeline, `checkout scm` generally retrieves the source associated with the relevant job configuration and revision.
+
+But the actual behavior depends on checkout configuration, shared-library logic, and job setup.
+
+If logs show a surprising source revision, inspect the checkout details.
+
+Do not assume the filename `Jenkinsfile` proves which revision the build used.
+
+### 17.3 GitHub Actions event semantics
+
+A GitHub Actions workflow triggered by a pull request may operate on a pull-request merge commit or other event-specific revision.
+
+This differs from simply checking out the branch head in every context.
+
+A release process should use the documented event fields and explicitly establish the intended revision.
+
+Privilege-sensitive triggers such as `pull_request_target` require particular care.
+
+A workflow must not execute untrusted pull-request code with privileged credentials.
+
+## 18. A Successful Job Can Publish the Wrong Artifact
+
+Consider a build stage that creates two outputs.
+
+One is a backend image.
+
+The other is a frontend bundle.
+
+The deployment stage downloads an artifact named `app-release`.
+
+But the artifact name isn't unique enough across repositories, components, or runs.
+
+The deploy job retrieves an output from the wrong producer.
+
+The deployment itself may be completely correct according to its inputs.
+
+This is why artifact identity should include more than a friendly filename.
+
+Useful provenance includes:
+
+Source repository.
+
+Source commit.
+
+Build run identifier.
+
+Component name.
+
+Artifact digest.
+
+Build configuration.
+
+Target platform, where relevant.
+
+### 18.1 Artifact identity should be verified after transfer
+
+A build creates a bundle.
+
+It computes a digest.
+
+A later job downloads the bundle.
+
+The deploy job recomputes the digest and compares it with the expected value.
+
+This verifies that the downloaded bytes match the recorded artifact.
+
+It doesn't prove the build process was trustworthy, but it detects accidental substitution, corruption, and many wrong-artifact scenarios.
+
+### 18.2 Avoid selecting "latest successful" implicitly
+
+Suppose an older build completed after a newer build.
+
+A deployment script selects the latest successfully published artifact by timestamp.
+
+The most recent publication might contain older source code.
+
+Ordering by completion time is not equivalent to ordering by intended release revision.
+
+A deployment should select an explicit artifact identity.
+
+## 19. Credentials Are a Security Boundary
+
+CI/CD systems often have access to powerful credentials.
+
+They may publish container images, update Kubernetes deployments, modify infrastructure, or access production secrets.
+
+Those privileges deserve narrow scope.
+
+### 19.1 Build and deploy permissions should differ
+
+A pull-request test job generally doesn't need production deployment credentials.
+
+A build job may need read access to source and dependencies.
+
+A release job may need registry write access.
+
+A production deployment job may need permission to update a specific environment.
+
+Combining all privileges into every job increases the consequences of a compromised dependency or malicious input.
+
+### 19.2 Jenkins credential bindings
+
+Jenkins can store credentials and expose them to pipeline steps through controlled mechanisms.
+
+But exposing a secret as an environment variable or file still creates a sensitive execution context.
+
+A build script with access to the credential may be able to misuse it.
+
+Masking logs reduces accidental exposure; it is not a complete security boundary.
+
+### 19.3 GitHub Actions permissions and OIDC
+
+GitHub Actions allows explicit permissions for the workflow's `GITHUB_TOKEN`.
+
+Restrict them according to the job's actual needs.
+
+For cloud deployments, OpenID Connect can allow a workflow to obtain short-lived cloud credentials instead of storing long-lived cloud keys.
+
+The cloud provider must enforce appropriate trust conditions.
+
+OIDC does not mean every workflow should automatically receive production access.
+
+### 19.4 GitLab protected environments
+
+GitLab supports controls around protected environments and authorized deployments.
+
+These can restrict which users and jobs may deploy to production.
+
+But an approval gate does not prove the selected artifact is correct.
+
+Authorization and provenance are separate requirements.
+
+## 20. Credentials Can Point at the Wrong Environment
+
+Imagine a deployment job named `deploy-production`.
+
+Its logs show that every command succeeded.
+
+But the job loaded credentials for staging.
+
+The release went to the wrong cluster.
+
+The pipeline name wasn't sufficient evidence of target identity.
+
+### 20.1 Environment names are labels
+
+A variable called `ENVIRONMENT=production` is a useful intention.
+
+But the actual cloud account, cluster endpoint, Kubernetes context, namespace, and service identity determine where commands act.
+
+A robust deploy process verifies those concrete targets before applying changes.
+
+### 20.2 Fail closed on target mismatch
+
+If the expected environment is production but the authenticated cloud account belongs to staging, the deployment should stop.
+
+A mismatch should not merely produce a warning.
+
+Likewise, production deployment should require the appropriate approval and credentials, not just a different value in a shell variable.
+
+### 20.3 Keep credentials out of artifacts and logs
+
+Secrets should not be embedded into release artifacts unnecessarily.
+
+A container image containing a production API key is a serious security problem.
+
+Logs should not print sensitive environment variables or tokens.
+
+The release audit needs credential identities and authorized target information, not the secret values themselves.
+
+## 21. Deployment Gates and Approval
+
+Production delivery frequently includes approval gates.
+
+Jenkins can implement input steps or integrate with external approval processes.
+
+GitHub Actions environments can enforce deployment protection rules where configured and supported.
+
+GitLab CI supports manual jobs and protected-environment controls.
+
+The purpose is to control when sensitive deployment actions may proceed.
+
+But approval can be meaningful only when the approver knows what is being approved.
+
+A good release request identifies the source revision, artifact digest, target environment, relevant changes, and expected operational impact.
+
+An approval button beside an ambiguous `latest` tag provides weak assurance.
+
+## 22. Concurrency and Deployment Ordering
+
+Imagine two commits, A and B.
+
+A enters the pipeline first.
+
+B enters shortly afterward.
+
+B's build finishes faster.
+
+B deploys successfully.
+
+Then A's slower pipeline finishes and deploys its older artifact.
+
+Production moves backward.
+
+Every individual pipeline can report success.
+
+### 22.1 Serialize conflicting deployments
+
+Many CI platforms support mechanisms for limiting concurrent deployment jobs.
+
+Jenkins can use suitable locking or serialization mechanisms.
+
+GitHub Actions supports concurrency controls.
+
+GitLab supports resource groups.
+
+These tools help avoid simultaneous deployments to the same target.
+
+But serialization alone doesn't guarantee the desired ordering.
+
+An older queued deployment may still run after a newer one.
+
+The deployment system should determine whether a candidate release is permitted to replace the currently desired or running version.
+
+### 22.2 Re-runs are particularly dangerous
+
+Re-running an old successful pipeline might re-deploy an older artifact.
+
+That can be intentional during rollback.
+
+Or it can be accidental.
+
+The system should distinguish authorized rollback from stale pipeline execution.
+
+A production deployment should not blindly treat every successful pipeline as the newest desired release.
+
+## 23. Deploying to Kubernetes: Intent Versus Runtime
+
+Suppose the deploy job updates a Kubernetes Deployment.
+
+The manifest references a container image.
+
+`kubectl apply` returns successfully.
+
+What exactly happened?
+
+The API accepted the configuration update.
+
+The deployment controller must still reconcile the desired state.
+
+New Pods may need to start.
+
+Images may need to be pulled.
+
+Readiness checks must pass.
+
+Traffic routing must reach the expected workloads.
+
+### 23.1 Image tags can behave unexpectedly
+
+If a Deployment references a mutable tag, the desired image reference may not uniquely identify the content.
+
+Image-pull behavior also depends on the configured pull policy and node state.
+
+An image already present on a node may be reused under applicable pull policies.
+
+A rollout may not replace Pods if the Pod template hasn't changed.
+
+Therefore, updating what a tag points to does not necessarily cause all running workloads to use new bytes.
+
+### 23.2 Immutable deployment references
+
+A digest-pinned image reference identifies the intended content more precisely.
+
+A rollout can then be associated with that immutable artifact identity.
+
+But the actual running Pods should still be inspected.
+
+The desired manifest alone is not enough.
+
+### 23.3 Verify rollout health
+
+Kubernetes provides commands for checking deployment rollout status and inspecting running workload images.
+
+The release pipeline should establish that the intended Pods became ready.
+
+For stronger verification, the application can expose a build or version endpoint reporting its source revision and artifact identity.
+
+That information should be generated during the build and remain tied to the artifact.
+
+### 23.4 Runtime verification is the final identity check
+
+A useful release process compares three things:
+
+The approved artifact.
+
+The deployed desired artifact.
+
+The observed running artifact.
+
+A mismatch is evidence requiring investigation, even if the deployment command exited successfully.
+
+## 24. Build Metadata and Version Endpoints
+
+A backend service can expose build information through a diagnostic endpoint.
+
+For example, it might return a source commit, build identifier, and release version.
+
+This helps operations establish which code is currently running.
+
+But an endpoint's response is not automatically a cryptographic attestation.
+
+A build variable can be incorrectly populated.
+
+A reverse proxy can route to an unexpected service.
+
+A load balancer can serve responses from multiple versions during rollout.
+
+### 24.1 Inspect multiple replicas
+
+During a rolling deployment, some replicas may run the new version while others still run the old one.
+
+A single request to a version endpoint may reach only one replica.
+
+It cannot establish the version of every running instance.
+
+Inspect the deployment and Pods directly or collect version metrics across replicas.
+
+### 24.2 Record the build identity once
+
+Ideally, build metadata is generated during the build and packaged with the artifact.
+
+The runtime reads that metadata.
+
+It should not independently substitute the current branch head or another mutable reference.
+
+The aim is to preserve the build's identity throughout the release.
+
+## 25. The CI/CD Incident Investigation Procedure
+
+Let's formalize the diagnosis.
+
+### Step 1 — Establish intended release identity
+
+Which source commit was approved?
+
+Which pipeline run was expected to produce the release?
+
+Which component and target environment were involved?
+
+### Step 2 — Inspect checkout evidence
+
+What source revision did the build job actually check out?
+
+Was a branch name used where a commit should have been recorded?
+
+Did the job run in a persistent workspace?
+
+### Step 3 — Identify the produced artifact
+
+What exact bundle or container image was generated?
+
+What is its digest?
+
+Where was it published?
+
+### Step 4 — Establish what was tested
+
+Did the test jobs operate on the produced artifact?
+
+Or did they independently rebuild from source?
+
+Could the tested output differ from the deployed output?
+
+### Step 5 — Inspect artifact transfer
+
+Did the deployment job retrieve the correct output from the correct run?
+
+Was a dependency cache accidentally treated as a release artifact?
+
+Did a later job overwrite a file with an older version?
+
+### Step 6 — Inspect deployment selection
+
+Did the job reference an immutable digest or a mutable tag?
+
+What did that reference resolve to at deployment time?
+
+Could another pipeline have moved the tag?
+
+### Step 7 — Verify target identity
+
+Which cloud account, cluster, namespace, and service were actually targeted?
+
+Were the credentials appropriate?
+
+### Step 8 — Verify runtime state
+
+Which artifact is configured?
+
+Which artifact is running?
+
+Are all intended replicas ready?
+
+Did traffic reach the expected version?
+
+### Step 9 — Identify the first broken boundary
+
+Do not list every possible issue as though all are equally likely.
+
+Determine where expected identity diverged from observed identity.
+
+### Step 10 — Correct and prevent recurrence
+
+Deploy the intended immutable artifact.
+
+Repair the relevant artifact-selection or transfer logic.
+
+Add validation gates that would catch the same mismatch before production promotion.
+
+## 26. Returning to CICD-01
+
+The build pipeline ran for commit B.
+
+It produced image digest B.
+
+Tests passed.
+
+The image registry contained both A and B.
+
+But the deploy job used the mutable tag `latest`.
+
+At deployment time, the tag resolved to A.
+
+The deployment system successfully applied the reference it received.
+
+Production continued running A.
+
+### 26.1 The immediate correction
+
+Deploy digest B explicitly after verifying its provenance and test status.
+
+Confirm the target environment.
+
+Wait for rollout health.
+
+Inspect the actual running image.
+
+Verify the application build information.
+
+### 26.2 The durable correction
+
+The pipeline should propagate the immutable artifact identity from the build stage to the deployment stage.
+
+Deployment should fail if the selected digest does not match the approved artifact.
+
+Production deployment should use appropriate target-identity and authorization checks.
+
+And overlapping pipelines should not silently replace newer releases with older ones.
+
+### 26.3 What not to do
+
+Do not merely rerun the same deployment job against `latest`.
+
+Do not assume clearing build caches will repair a wrong deployment reference.
+
+Do not rebuild from the moving main branch without establishing the intended revision.
+
+And do not conclude that the pipeline is correct just because all commands returned zero.
+
+The failure lies in the chain of identity.
+
+## 27. The Senior Engineer's Delivery Mentality
+
+A senior engineer doesn't need to have memorized every Jenkins plugin or every GitLab keyword.
+
+They do need to understand the delivery system as executable infrastructure.
+
+They should be able to inspect logs, identify artifacts, follow credentials and environment boundaries, reconstruct the release chain, and explain where it broke.
+
+The most important habit is resisting vague statements such as:
+
+"The build passed."
+
+"The image was pushed."
+
+"The deployment succeeded."
+
+Ask what those statements establish.
+
+Which build?
+
+Which image?
+
+Which digest?
+
+Which environment?
+
+Which runtime?
+
+Those questions turn CI/CD from a collection of green rectangles into a system that can be investigated.
+
+---
+
+# The Oral Examination
+
+Answer aloud before reading the solutions.
+
+## Question 1 — The Green Pipeline
+
+A CI pipeline reports success, but production runs the previous application version.
+
+What identities would you compare before rebuilding anything?
+
+## Question 2 — Workspace Assumptions
+
+A Jenkins build stage runs on Agent A.
+
+The deploy stage runs on Agent B.
+
+Why might a file generated during build be missing from the deploy stage?
+
+What mechanisms could transfer it?
+
+## Question 3 — Cache Versus Artifact
+
+Why is caching a `dist` directory and deploying whatever it contains riskier than explicitly verifying a build artifact?
+
+## Question 4 — GitHub Actions Jobs
+
+A GitHub Actions deploy job declares `needs: build`.
+
+Does that automatically mean the deploy job has the build job's output files?
+
+Explain.
+
+## Question 5 — GitLab `needs`
+
+A GitLab pipeline uses `needs` to accelerate execution.
+
+Why should an engineer inspect how artifacts are fetched?
+
+## Question 6 — Mutable Tags
+
+Build B publishes a new container image.
+
+The deploy job references `latest`.
+
+What can go wrong?
+
+Why does a digest provide stronger release identity?
+
+## Question 7 — Successful `kubectl apply`
+
+A deployment job runs `kubectl apply` and receives exit code zero.
+
+What additional evidence is necessary before claiming production runs the intended version?
+
+## Question 8 — Credentials
+
+A job is named `deploy-production`, but the authenticated cloud account is staging.
+
+What should happen?
+
+Why isn't a descriptive job name sufficient?
+
+## Question 9 — Competing Pipelines
+
+Pipeline B deploys a newer commit.
+
+Pipeline A then completes and deploys an older commit.
+
+How can this happen?
+
+What controls can prevent accidental regression?
+
+## Question 10 — The Senior Diagnosis
+
+You inherit an unfamiliar Jenkins pipeline, and nobody knows why an old image was deployed.
+
+Describe your first investigation without assuming knowledge of the team's plugins or infrastructure.
+
+---
+
+# Solutions and Discussion
+
+## Solution 1 — The Green Pipeline
+
+Compare the intended source commit, produced artifact digest, tested artifact, selected deployment reference, resolved artifact, target environment, and observed running version.
+
+Identify the first divergence.
+
+## Solution 2 — Workspace Assumptions
+
+Separate agents do not automatically share one workspace.
+
+Use an appropriate transfer mechanism such as Jenkins stash/unstash within a run, archived artifacts, or a durable artifact repository.
+
+Verify the received output.
+
+## Solution 3 — Cache Versus Artifact
+
+Caches accelerate builds and may contain stale or incomplete intermediate files.
+
+A release artifact should be produced deliberately and associated with explicit provenance.
+
+The deploy stage should verify its identity rather than trusting a file's existence.
+
+## Solution 4 — GitHub Actions Jobs
+
+No.
+
+`needs` establishes a job dependency.
+
+Output files must be transferred through workflow artifacts, a registry, or another explicit mechanism.
+
+## Solution 5 — GitLab `needs`
+
+Using `needs` affects job dependencies and artifact-fetching behavior.
+
+A job may receive only artifacts from specified upstream dependencies.
+
+Verify the relevant `needs:artifacts` or other artifact configuration.
+
+## Solution 6 — Mutable Tags
+
+The tag can resolve to a different image than expected.
+
+Another pipeline may move it, or the deployment may use an older local image under applicable pull behavior.
+
+A digest pins the intended image content more precisely.
+
+## Solution 7 — Kubernetes Rollout
+
+Verify the configured image, rollout status, Pod readiness, actual running image identities, replica versions, and application-level health.
+
+Successful API submission is not proof that the intended version is serving traffic.
+
+## Solution 8 — Credentials
+
+The deployment should fail closed on a mismatch between the expected and authenticated target.
+
+Actual account, cluster, and namespace identities determine where commands act.
+
+A job name is only a label.
+
+## Solution 9 — Competing Pipelines
+
+Build and deployment completion order can differ from source commit order.
+
+Serialize conflicting deployments where appropriate and reject stale candidate releases unless explicitly authorized as rollbacks.
+
+## Solution 10 — Senior Diagnosis
+
+Establish the intended revision, inspect checkout logs, identify the produced artifact and digest, find its storage location, trace transfer to the deploy stage, inspect credentials and target identity, and verify running state.
+
+Focus on evidence rather than guessing which plugin is broken.
+
+---
+
+# The Mental Model Worth Keeping
+
+A deployment pipeline is a chain of custody.
+
+Source commits identify revisions.
+
+Builds produce artifacts.
+
+Artifacts have content identities.
+
+Caches accelerate work but aren't authoritative release outputs.
+
+Deployment jobs select artifacts and environments.
+
+Runtime systems execute particular artifact versions.
+
+The critical questions are:
+
+**Which source produced these bytes? Which bytes were verified? Which bytes were deployed? Where were they deployed? Which bytes are actually running?**
+
+A green pipeline is useful evidence.
+
+It isn't the final answer.
+
+---
+
+# Next Lecture — SE360-L02: Terraform and Reproducible Infrastructure
+
+We've investigated how application code becomes a release artifact and reaches a target environment.
+
+But the target infrastructure can have its own identity and consistency problems.
+
+A deployment may use the right application artifact while the cloud environment has drifted from its declared configuration.
+
+A Terraform plan may look harmless while depending on stale state.
+
+Two engineers may try to modify the same infrastructure concurrently.
+
+A backend configuration may point to the wrong environment.
+
+And a change that appears small in code may replace a critical infrastructure resource.
+
+In SE360-L02, we'll investigate those mechanisms through Terraform state, plans, remote backends, locking, dependencies, drift, and operational recovery.
+
+*The spoken lecture ends here. The following exercises are for independent investigation rather than continuous audio listening.*
+
+---
+
+# Optional Practical Lab — CICD-01: The Successful Wrong Deployment
+
+## Lab Contract
+
+This laboratory reproduces a release-provenance failure without requiring Jenkins, GitHub Actions, GitLab, a container registry, or a cloud account.
+
+It uses Python's standard library to simulate:
+
+- Two source revisions.
+- Two build artifacts.
+- A content-addressed artifact store.
+- A mutable `latest` tag.
+- A build manifest.
+- A deployment request.
+- A production runtime record.
+
+The scenario is intentionally defective.
+
+Your objective is to find the mismatch before reading the solution.
+
+Afterward, you'll translate the same investigation into Jenkins, GitHub Actions, and GitLab CI terminology.
+
+## 1. Create the Workspace
+
+Create a directory named `se360-release-lab`.
+
+Inside it, create `studio.py`.
+
+The script below has three commands:
+
+`init` creates the deliberately broken release.
+
+`audit` checks its provenance and reports mismatches.
+
+`promote` performs a simulated, verified deployment of the intended artifact.
+
+The simulation writes only into a local `release-lab` directory.
+
+### Release simulation
+
+```python id="j57q8r"
+import hashlib
+import json
+import sys
+
+from pathlib import Path
+
+
+ROOT = Path("release-lab")
+
+OLD_COMMIT = "a" * 40
+NEW_COMMIT = "b" * 40
+
+
+def write_json(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(value, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+
+
+def read_json(path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def make_artifact(commit, version):
+    content = json.dumps(
+        {
+            "commit": commit,
+            "version": version,
+            "application": "booking-api",
+        },
+        sort_keys=True,
+    ).encode("utf-8")
+
+    digest = hashlib.sha256(content).hexdigest()
+
+    path = ROOT / "registry" / "blobs" / f"{digest}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(content)
+
+    return digest
+
+
+def resolve_reference(reference):
+    if reference.startswith("sha256:"):
+        return reference.split(":", 1)[1]
+
+    tags = read_json(ROOT / "registry" / "tags.json")
+    return tags[reference]
+
+
+def init():
+    old_digest = make_artifact(OLD_COMMIT, "1.0.0")
+    new_digest = make_artifact(NEW_COMMIT, "1.1.0")
+
+    write_json(
+        ROOT / "registry" / "tags.json",
+        {
+            "latest": old_digest,
+            "release-1.0.0": old_digest,
+            "release-1.1.0": new_digest,
+        },
+    )
+
+    write_json(
+        ROOT / "ci" / "build.json",
+        {
+            "run": "build-2048",
+            "source_commit": NEW_COMMIT,
+            "artifact_sha256": new_digest,
+            "tests": "passed",
+        },
+    )
+
+    write_json(
+        ROOT / "deploy" / "request.json",
+        {
+            "expected_commit": NEW_COMMIT,
+            "environment": "production",
+            "artifact_reference": "latest",
+            "status": "success",
+        },
+    )
+
+    write_json(
+        ROOT / "environments" / "production.json",
+        {
+            "environment": "production",
+            "running_digest": old_digest,
+            "deployment_status": "success",
+        },
+    )
+
+    print("Created a deliberately broken release.")
+    print("Build artifact:", new_digest)
+    print("Old artifact:", old_digest)
+    print("Deployment reference: latest")
+
+
+def audit():
+    build = read_json(ROOT / "ci" / "build.json")
+    request = read_json(ROOT / "deploy" / "request.json")
+    runtime = read_json(
+        ROOT / "environments" / "production.json"
+    )
+
+    expected_digest = build["artifact_sha256"]
+
+    selected_digest = resolve_reference(
+        request["artifact_reference"]
+    )
+
+    running_digest = runtime["running_digest"]
+
+    blob = ROOT / "registry" / "blobs" / (
+        f"{selected_digest}.json"
+    )
+
+    actual_blob_digest = hashlib.sha256(
+        blob.read_bytes()
+    ).hexdigest()
+
+    selected_artifact = read_json(blob)
+
+    checks = {
+        "Selected blob matches its digest":
+            selected_digest == actual_blob_digest,
+
+        "Build source matches intended commit":
+            build["source_commit"]
+            == request["expected_commit"],
+
+        "Selected artifact matches build":
+            selected_digest == expected_digest,
+
+        "Selected artifact contains intended commit":
+            selected_artifact["commit"]
+            == request["expected_commit"],
+
+        "Running artifact matches selected artifact":
+            running_digest == selected_digest,
+
+        "Correct target environment":
+            request["environment"]
+            == runtime["environment"],
+    }
+
+    print()
+    print("RELEASE AUDIT")
+    print("-" * 50)
+
+    for label, passed in checks.items():
+        print(
+            ("PASS" if passed else "FAIL"),
+            label,
+        )
+
+    print()
+    print("Expected digest:", expected_digest)
+    print("Selected digest:", selected_digest)
+    print("Running digest: ", running_digest)
+
+    return all(checks.values())
+
+
+def promote():
+    build = read_json(ROOT / "ci" / "build.json")
+    request = read_json(ROOT / "deploy" / "request.json")
+
+    if request["environment"] != "production":
+        raise RuntimeError(
+            "Unexpected deployment target."
+        )
+
+    if build["source_commit"] != request["expected_commit"]:
+        raise RuntimeError(
+            "Build source does not match approved commit."
+        )
+
+    digest = build["artifact_sha256"]
+    blob = ROOT / "registry" / "blobs" / f"{digest}.json"
+
+    content = blob.read_bytes()
+
+    if hashlib.sha256(content).hexdigest() != digest:
+        raise RuntimeError("Artifact digest mismatch.")
+
+    artifact = json.loads(content)
+
+    if artifact["commit"] != request["expected_commit"]:
+        raise RuntimeError(
+            "Artifact source metadata mismatch."
+        )
+
+    request["artifact_reference"] = f"sha256:{digest}"
+
+    write_json(
+        ROOT / "deploy" / "request.json",
+        request,
+    )
+
+    write_json(
+        ROOT / "environments" / "production.json",
+        {
+            "environment": "production",
+            "running_digest": digest,
+            "deployment_status": "success",
+        },
+    )
+
+    print("Promoted verified digest:", digest)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        raise SystemExit(
+            "Usage: python studio.py init|audit|promote"
+        )
+
+    command = sys.argv[1]
+
+    if command == "init":
+        init()
+
+    elif command == "audit":
+        if not audit():
+            raise SystemExit(1)
+
+    elif command == "promote":
+        promote()
+
+    else:
+        raise SystemExit("Unknown command.")
+```
+
+## 2. Reproduce the Wrong Deployment
+
+Initialize the fixture.
+
+```bash id="9z07sx"
+python studio.py init
+```
+
+Inspect the generated directory.
+
+The build stage claims to have produced a release from the new commit.
+
+The registry contains both an old and a new artifact.
+
+The mutable tag `latest` points to the old artifact.
+
+The deployment request claims success.
+
+Production is recorded as running the old digest.
+
+### Your first investigation
+
+Before running `audit`, inspect:
+
+`release-lab/ci/build.json`
+
+`release-lab/registry/tags.json`
+
+`release-lab/deploy/request.json`
+
+`release-lab/environments/production.json`
+
+Write down which identities match and which don't.
+
+### Required explanation
+
+What source commit was intended?
+
+Which artifact did the build produce?
+
+What did the deployment select?
+
+Why did the deployment appear successful?
+
+What was running in production?
+
+Do not immediately repair the fixture.
+
+## 3. Run the Audit
+
+Execute:
+
+```bash id="ch4zkd"
+python studio.py audit
+```
+
+The command should report failing provenance checks and exit with a nonzero status.
+
+The failure is intentional.
+
+### Questions
+
+Which exact boundary is broken?
+
+Is the source checkout wrong?
+
+Is the build artifact corrupt?
+
+Is the tag pointing to the expected artifact?
+
+Did production run the artifact selected for deployment?
+
+What does the deployment's `success` field actually establish?
+
+### Acceptance criteria
+
+You can explain the mismatch without blaming the compiler or the deployment platform.
+
+You identify the mutable tag as the relevant selection boundary.
+
+You distinguish the produced artifact from the deployed artifact.
+
+---
+
+# Lab 4 — Repair the Release
+
+Before using the supplied repair command, describe the production-safe correction.
+
+Your proposed solution must identify an immutable artifact and verify that it corresponds to the intended build.
+
+Now run:
+
+```bash id="4ykpu4"
+python studio.py promote
+python studio.py audit
+```
+
+The audit should now pass.
+
+### Investigate the repair
+
+The corrected deployment request uses an immutable digest rather than the mutable `latest` tag.
+
+The simulated runtime record identifies the same artifact.
+
+The audit verifies that the artifact's content matches the expected digest and source metadata.
+
+### Important limitation
+
+The simulation can verify consistency between its local records.
+
+It is not a real supply-chain attestation.
+
+A malicious or compromised build process could fabricate matching metadata.
+
+Real production systems need trusted build infrastructure and appropriate provenance controls according to their risk model.
+
+---
+
+# Lab 5 — A Cache That Restores an Old Bundle
+
+## Starting symptom
+
+A frontend build pipeline reports success.
+
+The deployed bundle contains old JavaScript.
+
+The CI agent uses a persistent workspace.
+
+### Investigation packet
+
+Consider this deliberately defective shell logic.
+
+```bash id="db7zmo"
+if [ -d dist ]; then
+  echo "Using existing build output"
+else
+  npm run build
+fi
+
+tar -czf release.tar.gz dist/
+```
+
+### Task A — Identify the defect
+
+Why does the presence of a `dist` directory fail to prove that the contents were built from the current source revision?
+
+What happens if the directory survived a previous pipeline run?
+
+### Task B — Correct the process
+
+Design a release-build step that:
+
+- Establishes the intended source revision.
+- Uses an appropriately keyed dependency cache.
+- Generates the release output deliberately.
+- Produces a build manifest and digest.
+- Fails if the output doesn't correspond to the expected build.
+
+### Task C — Explain artifact transfer
+
+How would you transfer the verified bundle to another Jenkins agent?
+
+How would you transfer it between GitHub Actions jobs?
+
+How would you transfer it between GitLab CI jobs?
+
+### Acceptance criteria
+
+You distinguish reusable build inputs from authoritative release outputs.
+
+You do not treat a cache hit as proof that a release was built correctly.
+
+---
+
+# Lab 6 — Jenkins Pipeline Forensics
+
+## Starting symptom
+
+A Jenkins pipeline has three stages.
+
+Build executes on Agent A.
+
+Test executes on Agent B.
+
+Deploy executes on Agent C.
+
+The deployment stage sometimes cannot find the bundle.
+
+A developer fixes the missing-file error by configuring Deploy to use the same agent as Build.
+
+The problem disappears temporarily.
+
+### Task A — Explain why that is fragile
+
+What happens if Jenkins schedules the stages on different workspaces?
+
+What happens when another build reuses the same agent?
+
+Why might a stale bundle remain?
+
+### Task B — Propose an explicit transfer
+
+Choose a suitable mechanism for making the build output available to later stages.
+
+Explain whether the mechanism is run-scoped, durable, or externally stored.
+
+### Task C — Add provenance checks
+
+Which fields would you verify before deployment?
+
+Your answer should include commit, build identity, and artifact digest.
+
+### Task D — Inspect shared libraries
+
+Suppose the Jenkinsfile calls:
+
+`deployService("booking-api")`
+
+Where else might the actual deployment behavior be defined?
+
+What library version and credentials would you inspect?
+
+---
+
+# Lab 7 — GitHub Actions Pipeline Forensics
+
+## Starting symptom
+
+A GitHub Actions workflow has a build job and a deploy job.
+
+The deploy job declares `needs: build`.
+
+But the output directory is missing.
+
+### Task A — Explain the problem
+
+Why doesn't `needs` automatically transfer filesystem contents?
+
+### Task B — Design the transfer
+
+Choose either:
+
+- A workflow artifact with explicit upload and download.
+- A container registry with an immutable digest.
+
+Explain how the deploy job verifies that the artifact corresponds to the intended build.
+
+### Task C — Security review
+
+The team proposes changing the workflow trigger to `pull_request_target` so a pull request from a fork can access production credentials.
+
+What is dangerous about that proposal?
+
+What safer separation would you recommend?
+
+### Task D — Environment verification
+
+The deployment job says `production`.
+
+Which actual target identities should it inspect?
+
+---
+
+# Lab 8 — GitLab CI Pipeline Forensics
+
+## Starting symptom
+
+A GitLab pipeline adds `needs` to accelerate job execution.
+
+After the change, the deployment stage fails to retrieve a required bundle.
+
+### Task A — Explain artifact fetching
+
+What changes when a job uses `needs`?
+
+How can the job specify which upstream artifacts it requires?
+
+### Task B — Separate cache and artifact
+
+The team currently caches downloaded dependencies and the entire build directory under one cache key.
+
+Why is this risky?
+
+### Task C — Prevent overlapping production deployments
+
+What mechanism can help serialize jobs targeting one production environment?
+
+Does serialization automatically guarantee source-revision ordering?
+
+### Task D — Protect production
+
+Which permission or environment controls can prevent unauthorized deployment?
+
+Why don't those controls independently guarantee that the correct artifact was selected?
+
+---
+
+# Lab 9 — The Wrong Environment
+
+## Starting symptom
+
+The deploy job successfully updates a Kubernetes Deployment.
+
+The release notification claims production was updated.
+
+But the application serving customers is unchanged.
+
+Investigation reveals that the job's Kubernetes context pointed to staging.
+
+### Your task
+
+Design a deployment preflight check that compares:
+
+- Expected environment.
+- Authenticated cloud account or project.
+- Kubernetes cluster identity.
+- Namespace.
+- Target service.
+- Artifact digest.
+
+The check must fail on a mismatch.
+
+### Required defense
+
+Your interviewer asks:
+
+"But the pipeline already has a job named `deploy-production`. Isn't that enough?"
+
+Explain why labels and names don't establish the identity of the actual external resource.
+
+---
+
+# Lab 10 — The Release Race
+
+## Starting symptom
+
+Two pipelines run concurrently.
+
+Pipeline A builds an older commit.
+
+Pipeline B builds a newer commit.
+
+B finishes first and deploys.
+
+A finishes later and deploys afterward.
+
+Production moves backward.
+
+### Task A — Reconstruct the sequence
+
+Why do both pipelines report success?
+
+Why isn't the latest completed pipeline necessarily the latest source revision?
+
+### Task B — Propose defenses
+
+Consider:
+
+- Deployment serialization.
+- Explicit artifact identity.
+- Comparing desired release revision with current deployment.
+- Stale-release rejection.
+- Explicit authorized rollback procedures.
+
+### Task C — Explain concurrency controls
+
+How would you implement the relevant concept in Jenkins, GitHub Actions, and GitLab CI?
+
+You don't need to memorize every syntax option.
+
+Explain the operational mechanism and the remaining limitations.
+
+---
+
+# Final Incident — CICD-01
+
+## Starting symptom
+
+A release from commit B is approved.
+
+The CI system builds artifact B.
+
+Tests pass.
+
+The registry contains artifact B.
+
+The production deployment reports success.
+
+Production runs artifact A.
+
+### Required incident report
+
+Prepare a concise report containing:
+
+**Business impact:** What did users experience?
+
+**Intended release:** Which commit and artifact were approved?
+
+**Observed state:** What actually ran?
+
+**Evidence chain:** Which records link source, build, registry, deployment, and runtime?
+
+**Broken boundary:** Where did identity diverge?
+
+**Immediate recovery:** How would you safely deploy the intended version?
+
+**Durable prevention:** What pipeline changes prevent future substitution?
+
+**Verification:** How do you prove the new artifact is running and healthy?
+
+### Interviewer challenge
+
+Your interviewer asks:
+
+"The pipeline is green, and every command returned zero. Why are you saying the deployment failed?"
+
+Explain the difference between successful execution of deployment commands and successful delivery of the intended business change.
+
+---
+
+# STOP — Independent Investigation Ends Here
+
+Do not read the following notes until after attempting the release investigation.
+
+The goal is to reconstruct the evidence chain independently.
+
+---
+
+# Diagnostic Notes and Reference Solutions
+
+## CICD-01 — The Wrong Artifact
+
+The build produced an artifact from commit B.
+
+The deployment request used the mutable tag `latest`.
+
+That tag resolved to artifact A.
+
+The deployment successfully selected and ran A.
+
+The problem was not a failed build.
+
+It was a provenance and artifact-selection mismatch.
+
+The correction is to promote an explicitly verified immutable artifact and check the observed runtime identity.
+
+## The Stale Workspace
+
+The existence of an old `dist` directory doesn't establish that its contents correspond to the current commit.
+
+A build cache should accelerate work, not substitute for verifying the produced release.
+
+The output should be generated deliberately and tied to a build identity.
+
+## Jenkins Agent Mismatch
+
+Different Jenkins agents may use different workspaces.
+
+A generated file isn't automatically available across agents.
+
+Use a suitable artifact-transfer mechanism and verify the received output.
+
+Shared libraries may also influence the actual deployment behavior.
+
+## GitHub Actions Artifact Transfer
+
+`needs` establishes job dependencies.
+
+It doesn't automatically share working directories.
+
+Use workflow artifacts or a registry, and verify the transferred or retrieved artifact.
+
+Privilege-sensitive workflows should not execute untrusted pull-request code with production credentials.
+
+## GitLab Artifact Transfer
+
+GitLab's artifact behavior depends on stages, `needs`, and related configuration.
+
+Explicitly declare the required upstream artifacts.
+
+Use caches for reusable dependencies and artifacts for build outputs that later jobs must consume.
+
+## Wrong Environment
+
+A job name or environment variable does not prove the actual target.
+
+The deployment should verify authenticated account, cluster, namespace, and service identities and fail on unexpected values.
+
+## Release Race
+
+Two successful pipelines can deploy in an order different from source revision order.
+
+Serialization controls help avoid overlapping deploys.
+
+Stale-release rejection and explicit rollback authorization prevent accidental regression.
+
+## The Senior-Level Conclusion
+
+CI/CD is not merely a sequence of commands.
+
+It is a system that transfers source identity, artifact identity, and deployment responsibility across execution boundaries.
+
+The engineer's task is to preserve and verify those identities.
+
+A deployment can be operationally successful while semantically wrong.
+
+The correct investigation identifies where the intended release stopped matching the observed system.
+
+---
+
+# Further Reading
+
+1. **Jenkins — Pipeline Documentation**  
+   https://www.jenkins.io/doc/book/pipeline/
+
+2. **Jenkins — Using a Jenkinsfile**  
+   https://www.jenkins.io/doc/book/pipeline/jenkinsfile/
+
+3. **Jenkins — Pipeline Basic Steps**  
+   https://www.jenkins.io/doc/pipeline/steps/workflow-basic-steps/
+
+4. **Jenkins — Credentials**  
+   https://www.jenkins.io/doc/book/using/using-credentials/
+
+5. **GitHub Actions — Workflow Artifacts**  
+   https://docs.github.com/en/actions/concepts/workflows-and-actions/workflow-artifacts
+
+6. **GitHub Actions — Secure Use**  
+   https://docs.github.com/en/actions/reference/security/secure-use
+
+7. **GitHub Actions — OIDC in Cloud Providers**  
+   https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-cloud-providers
+
+8. **GitLab CI — Job Artifacts**  
+   https://docs.gitlab.com/ci/jobs/job_artifacts/
+
+9. **GitLab CI — Caching**  
+   https://docs.gitlab.com/ci/caching/
+
+10. **GitLab CI — YAML Syntax**  
+    https://docs.gitlab.com/ci/yaml/
+
+11. **GitLab CI — Protected Environments**  
+    https://docs.gitlab.com/ci/environments/protected_environments/
+
+12. **Docker — Pulling Images by Digest**  
+    https://docs.docker.com/reference/cli/docker/image/pull/
+
+13. **Kubernetes — Deployments**  
+    https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+
+14. **Kubernetes — Images**  
+    https://kubernetes.io/docs/concepts/containers/images/
+
+Cross-reference SE340-L04 for CI/CD and infrastructure-as-code fundamentals, SE215-L06 for code review and collaborative change control, CS350-L04 for application/schema compatibility, and `production-cases/CICD-01.md` and `RELEASE-01.md` for related release incidents.
+
+---
+
+# Dense Cheatsheet — Interview Glance Card
+
+*Screen-only revision card. The fenced material can be skipped by voice readers.*
+
+```text id="bliv3x"
+SE360-L01 — CI/CD IN THE REAL WORLD
+================================================
+
+CENTRAL QUESTION
+----------------
+Did the intended artifact reach
+the intended environment and
+actually begin running?
+
+CHAIN OF CUSTODY
+----------------
+Source commit
+    ↓
+Build job
+    ↓
+Artifact digest
+    ↓
+Tested artifact
+    ↓
+Registry / artifact store
+    ↓
+Deployment selection
+    ↓
+Target environment
+    ↓
+Observed runtime
+
+IDENTITIES
+----------
+Commit SHA:
+  source revision
+
+Build/run ID:
+  pipeline execution
+
+Artifact digest:
+  exact artifact content
+
+Mutable tag:
+  convenient movable reference
+
+Runtime identity:
+  what actually runs
+
+A green deploy doesn't prove
+these identities match.
+
+JENKINS
+-------
+Controller:
+  orchestrates and manages jobs
+
+Agent:
+  executes work
+
+Workspace:
+  files available to job execution
+
+stash / unstash:
+  transfer files within pipeline run
+
+archiveArtifacts:
+  preserve artifacts for later access
+
+Shared libraries:
+  deployment logic may live elsewhere
+
+GITHUB ACTIONS
+--------------
+Workflow:
+  trigger and job definition
+
+Runner:
+  execution environment
+
+needs:
+  job dependency
+
+upload-artifact / download-artifact:
+  explicit job output transfer
+
+Environments:
+  deployment controls and secrets
+
+Concurrency:
+  manage overlapping jobs
+
+GITLAB CI
+---------
+.gitlab-ci.yml
+Stages
+needs
+Runners
+Artifacts
+Caches
+Protected environments
+Resource groups
+
+ARTIFACT VS CACHE
+-----------------
+CACHE:
+  accelerate regeneration
+
+ARTIFACT:
+  produced release output
+
+A cache hit is not proof of
+current release correctness.
+
+SOURCE DRIFT
+------------
+Branch names move.
+Jobs may queue or rerun.
+Workspaces may retain files.
+
+Record exact source commit.
+
+ARTIFACT PROVENANCE
+-------------------
+Record:
+  repository
+  commit
+  run ID
+  build config
+  component
+  artifact digest
+
+Recompute digest after transfer.
+
+MANIFEST LIMITATION
+-------------------
+A manifest can be forged if
+the build process is compromised.
+
+Higher assurance may need
+trusted builders and attestations.
+
+CONTAINER TAGS
+--------------
+latest:
+  mutable reference
+
+release-1.2:
+  may also be mutable
+
+sha256 digest:
+  content identity
+
+Promote by verified digest.
+
+BUILD ONCE / PROMOTE
+--------------------
+Test the artifact you deploy.
+
+Avoid untracked rebuilds between
+staging and production.
+
+If environment-specific builds
+are required, verify each identity.
+
+SECURITY
+--------
+Least-privilege job permissions.
+Separate build and deploy credentials.
+Protect production environments.
+Prefer short-lived cloud identities.
+Do not execute untrusted PR code
+with privileged credentials.
+
+AUTHORIZATION != PROVENANCE.
+
+TARGET VALIDATION
+-----------------
+Verify actual:
+  cloud account/project
+  cluster
+  namespace
+  service
+  artifact digest
+
+A job name is only a label.
+
+DEPLOYMENT RACE
+---------------
+Old pipeline may finish last.
+Serialization does not always
+guarantee desired revision order.
+
+Reject stale releases unless
+explicitly authorized rollback.
+
+KUBERNETES
+----------
+kubectl apply success:
+  desired state submitted
+
+Still verify:
+  rollout completion
+  Pod readiness
+  image references
+  actual running digests
+  application version
+  production health
+
+WRONG-VERSION INVESTIGATION
+---------------------------
+1. Identify approved commit.
+2. Inspect checkout revision.
+3. Find produced digest.
+4. Verify what was tested.
+5. Trace artifact transfer.
+6. Resolve deployment reference.
+7. Verify target identity.
+8. Inspect running version.
+9. Find first mismatch.
+10. Correct and add guardrails.
+
+ANTI-PATTERNS
+-------------
+"The pipeline is green."
+"latest always means newest code."
+"Same commit means identical rebuild."
+"needs automatically transfers files."
+"Agents share one filesystem."
+"Cache contains the release."
+"kubectl apply means rollout complete."
+"Job name proves target environment."
+"Every successful pipeline can deploy."
+"An approval gate proves artifact identity."
+
+FINAL MODEL
+-----------
+Source identity.
+Artifact identity.
+Target identity.
+Runtime identity.
+
+Preserve and verify all four.
+
+NEXT
+----
+SE360-L02
+Terraform and Reproducible Infrastructure
+```

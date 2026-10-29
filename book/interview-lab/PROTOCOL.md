@@ -394,6 +394,8 @@ Examples:
 | Coding-problem discovery | CS360 |
 | Production incidents | SE440 or SE490 |
 | Team delivery / planning | SE215-L02 |
+| Release / versioning ownership | SE215-L11 |
+| Vague ticket → shipped outcome | SE215-L12 |
 | Files / bulk ops / scheduling / tenant fairness | SE325 |
 | Production page / third-party frontend forensics | SE240-L07 |
 

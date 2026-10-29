@@ -19,6 +19,7 @@ next: null
 
 
 
+
 # SE460 — Performance Engineering
 ## Lecture 07: The Performance Forensics Studio
 

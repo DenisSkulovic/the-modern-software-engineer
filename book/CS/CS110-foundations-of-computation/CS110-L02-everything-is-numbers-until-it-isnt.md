@@ -16,6 +16,7 @@ next: CS110-L03
 
 
 
+
 # CS110 — Foundations of Computation and Algorithms
 ## Lecture 02: Everything Is Numbers — Until It Isn't
 

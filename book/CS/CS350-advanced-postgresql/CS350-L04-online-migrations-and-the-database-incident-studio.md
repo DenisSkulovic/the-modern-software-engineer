@@ -3,12 +3,13 @@ id: CS350-L04
 course: CS350
 title: "Online Migrations and the Database Incident Studio"
 type: elective
-manuscript: manuscript
+manuscript: stub
 edition: "2.0.0"
 legacy_ids: []
 prev: CS350-L03
 next: null
 ---
+
 
 # CS350 — Advanced PostgreSQL Engineering
 ## Lecture 04: Online Migrations and the Database Incident Studio
