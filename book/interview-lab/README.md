@@ -7,7 +7,10 @@ Courses teach. This lab checks whether you can retrieve, explain, apply, and def
 **Default:** practical, job-relevant interviews for **European product companies** (Germany, Netherlands, Sweden, and similar).  
 **Not the default:** Israeli/Tel Aviv market conventions, FAANG-style LeetCode rituals, theatrical pressure, or corporate slogan drills.
 
-Full rules: [`PROTOCOL.md`](PROTOCOL.md).
+Full rules: [`PROTOCOL.md`](PROTOCOL.md).  
+Programme priorities (listen-first refresh; labs optional; mocks as active practice): [`../STUDY-INTENT.md`](../STUDY-INTENT.md).
+
+Lecture oral prompts, challenges, and labs are fair **question inspiration** for sessions here — not homework the candidate must have completed first.
 
 ---
 

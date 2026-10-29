@@ -44,9 +44,11 @@ Open `progress.md` for:
 
 ## Learning statuses
 
-See [`../STATUS.md`](../STATUS.md) for the full model.
+See [`../STATUS.md`](../STATUS.md) for the full model. Programme priorities: [`../STUDY-INTENT.md`](../STUDY-INTENT.md).
 
 Short form: `unopened` → `wandering` → `studying` → `labbing` → `settled` → `fluent`, with `fading` / `encore` for revisits. Those words are a `phase` on an event, not a cell you overwrite.
+
+In the current interview-refresh use of this library, a listen logged as `studying` is a successful expose. `labbing` is optional. Interview Lab is the main active practice; lecture exercises are reference / mock inspiration, not homework.
 
 ## Etiquette
 

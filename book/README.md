@@ -38,6 +38,8 @@ Lecture identity: `CS330-L03`. Frontmatter carries `id`, `manuscript`, `edition`
 1. **Manuscript** — is the text written? (`planned` → `stub` → `draft` → `manuscript` → `revised` → `polished`) + `edition`
 2. **Learning** — have *you* studied it? Personal ledger under [`students/`](students/) (`unopened` → … → `fluent`, with `fading` / `encore` for revisits)
 
+**How this library is used for interview prep** (priorities, stages, optional labs): [`STUDY-INTENT.md`](STUDY-INTENT.md) — agents should follow that over assuming a homework-driven degree path.
+
 Details: [`STATUS.md`](STATUS.md). Topic lookup across the library: [`technology-atlas.md`](technology-atlas.md).
 
 ---
@@ -87,30 +89,34 @@ Active electives today include `SE215`, `CS360`, `SE250`, `CS345`, `CS350`, `SE3
 
 ## How to study a lecture
 
-Aim for roughly **60–100 minutes** of meaningful work (reading, thinking, optional labs). Familiar material can be faster.
+**Default for interview refresh:** listen or read the prose (often voice + optional 1.25–1.5×). That counts. Labs and end-of-lecture tasks are **optional reference** — useful inspiration for Interview Lab questions, not mandatory homework. Full priorities and stages: [`STUDY-INTENT.md`](STUDY-INTENT.md).
 
-Lectures are ordinarily **one file, two progressive parts** (already in place for `CS230`):
+A serious listen is often **~40–70 minutes @1×** of spoken material (less wall-clock at higher speed). Familiar material can be faster. Screen-follow when the manuscript is code-dense.
+
+Lectures are ordinarily **one file, two progressive parts**:
 
 1. **Part I — Intuition** — short mental model, one story, a few diagrams (often 5–15 minutes)
-2. **Part II — Deep Dive** — full mechanisms, trade-offs, oral exam, then lab / cheatsheet after the spoken end
+2. **Part II — Deep Dive** — full mechanisms, trade-offs, then oral prompts / lab / cheatsheet after the spoken end
 
 If Part II starts to blur, return to Part I’s opening picture and narrate one complete journey in your own words before continuing.
 
 **Teaching principles (unchanged from v1):** teach like an excellent lecturer; assume professional experience; open with a real problem; build mental models; explain trade-offs; stay concrete; no padding.
 
-**Typical rhythm:** intuition → deep dive → exploration/lab → challenges → mental model → further reading.
+**Manuscript rhythm (authoring):** intuition → deep dive → exploration/lab → challenges → mental model → further reading.  
+**Learner rhythm (this programme):** intuition → deep dive (listen/read) → optional cheatsheet glance → **Interview Lab** when ready. Skip labs freely.
 
 ---
 
 ## Interview preparation (alongside the catalogue)
 
-Knowledge lives in the courses. **Retrieval under hiring pressure** lives in the [Interview Lab](interview-lab/README.md) — a separate system with profiles, modes (observe / guided / realistic / strict / drill), and an evidence hierarchy so simulations track real invitations rather than generic FAANG question banks.
+Knowledge lives in the courses. **Retrieval under hiring pressure** lives in the [Interview Lab](interview-lab/README.md) — the main *active* practice for this programme (profiles, modes, evidence hierarchy). Lecture exercises may feed mock questions; clearing exercise lists does not.
 
+- **Intent / stages:** [`STUDY-INTENT.md`](STUDY-INTENT.md)
 - **Protocol:** [`interview-lab/PROTOCOL.md`](interview-lab/PROTOCOL.md)
 - **Defaults:** practical European product-company full-stack (P1: Germany / Netherlands / Sweden and similar); algorithm-heavy (P5) only when evidence or you opt in
-- **Technical recall** (10–15 min): explain concepts without notes
-- **Coding** (20–30 min, a few times weekly): practical problems; use CS360 when a role truly needs DSA
-- **Senior discussion / mocks:** run sessions via the Interview Lab; save reports under `interview-lab/sessions/` when useful
+- **Apply in parallel** with listening once the foundation feels less cold — do not wait for curriculum completion
+- **Company-specific** prep when a real invitation/date exists; short DSA bursts only if that process needs them
+- **Mocks:** HR and technical simulations; save reports under `interview-lab/sessions/` only if useful
 
 Interview practice does **not** automatically update Study Ledger fluency.
 
@@ -135,7 +141,7 @@ python tools/progress_log.py --student dskul --lecture CS230-L08 --action listen
 python tools/progress_render.py --student dskul
 ```
 
-History is `students/dskul/activity.yaml` (append events; do not overwrite them). Dashboard: `students/dskul/progress.md` (encore due, activity calendar, status strip, suggested next rooms).
+History is `students/dskul/activity.yaml` (append events; do not overwrite them). Short-term listen shortlist: `students/dskul/queue.yaml`. Dashboard: `students/dskul/progress.md` (listen queue, encore due, activity calendar, status strip).
 
 ---
 

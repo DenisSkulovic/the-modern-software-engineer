@@ -61,10 +61,12 @@ Metaphor: the lectures are museum rooms. Your ledger records how you walked them
 | --- | --- | --- |
 | `unopened` | Never started | Open when the study order (or curiosity) says so |
 | `wandering` | Skimmed / half-attention pass | Return for a serious `studying` pass |
-| `studying` | Active first serious read | Finish prose → `labbing` |
-| `labbing` | Working exercises, challenges, labs | Pocket the mental model → `settled` |
+| `studying` | Active first serious read / listen | Optional labs, or move on — listening is enough for refresh |
+| `labbing` | Working exercises, challenges, labs (**optional**) | Pocket the mental model → `settled` |
 | `settled` | Finished once; sticky-note mental model held | Use in work/interviews; schedule encore |
 | `fluent` | Can explain cold, teach, or defend in interview | Maintain with light encored |
+
+For interview-prep priorities (listen-first, labs as reference, Interview Lab as active practice), see [`STUDY-INTENT.md`](STUDY-INTENT.md). Do not treat `labbing` → `settled` as required.
 | `fading` | Confidence dropping; details blurring | Promote to `encore` soon |
 | `encore` | Scheduled revisit (spaced refresh) | Re-read hot spots → back to `settled`/`fluent` |
 

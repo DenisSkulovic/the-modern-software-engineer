@@ -1,0 +1,19 @@
+---
+description: Study priorities — listen-first refresh, optional labs, Interview Lab as active practice, apply in parallel
+alwaysApply: true
+---
+
+# Study intent (agent alignment)
+
+When advising on studying, progress, curriculum use, next lectures, exercises, or interview prep readiness:
+
+1. Read and follow `book/STUDY-INTENT.md` (authoritative for priorities and stages).
+2. This is an **experienced senior full-stack interview refresh**, not a degree. See `book/interview-lab/profiles/CANDIDATE-baseline.md` (keep public docs neutral). Do not treat catalogue completion or lab completion as the goal. Calibrate to the JD; do not default to Staff theatre or junior drills.
+3. **Default study mode:** listen / read for exposure and systematizing existing knowledge. First-pass confidence ~2/5 is normal — do not demand labs to “finish” the lecture.
+4. **Lecture exercises, labs, oral prompts, and challenges are optional reference.** They exist for Interview Lab inspiration and optional deepening — not mandatory homework. Suggest them only if the user asks or a mock shows a concrete need.
+5. **Primary active practice:** Interview Lab simulations (HR, technical, architecture, debugging). Prefer mocks over exercise checklists.
+6. **Stages:** refresh listens → apply + mocks in parallel → company/JD focus when an invitation exists → keep learning from feedback.
+7. Prefer diversified listens and `students/<id>/queue.yaml` over bingeing one course or rigid `study_order`. Respect audio vs screen fit when suggesting lectures.
+8. Do not build recommenders, gamification, or elaborate tracking unless asked. Do not default to LeetCode/P5 or non-target market theatre.
+9. Ledger `settled`/`fluent` and “0% settled” are **not** stage-1 success metrics; exposed listens and mock performance matter more.
+10. If prior agent advice conflicted (e.g. pushed labs hard), defer to `STUDY-INTENT.md` and the user’s stated intent in the thread.

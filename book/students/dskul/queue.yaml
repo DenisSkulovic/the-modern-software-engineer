@@ -51,7 +51,7 @@ items:
   why: Runtime performance workshop — surprisingly listen-friendly for CS220
 - lecture: SE330-L01
   mode: either
-  why: Architecture vocabulary for mid/senior product interviews
+  why: Architecture vocabulary for product-engineering interviews
 - lecture: SE215-L10
   mode: audio
   why: Product/design/analytics collaboration — excellent headphones spare
@@ -63,7 +63,7 @@ items:
   why: Data architecture workshop — very audio-friendly; skip if CS340 feels same-day
 - lecture: SE250-L01
   mode: screen
-  why: React mental model — known interview gap; save for screen time
+  why: React mental model refresh (Vue-heavier path); save for screen time
 - lecture: CS220-L02
   mode: screen
   why: JS/TS semantics after CS220-L01; examples repay looking
@@ -87,7 +87,7 @@ items:
 overflow:
 - lecture: SE250-L02
   mode: screen
-  why: Effects/closures — only after L01, or after a React mock exposes the gap
+  why: Effects/closures — natural follow-on after L01 or a React-focused mock
 - lecture: SE310-L01
   mode: screen
   why: Frontend–backend contract — very fence-dense; pick when sitting down

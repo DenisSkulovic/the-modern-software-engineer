@@ -38,9 +38,8 @@ events:
   action: listen
   phase: wandering
   confidence: 1
-  note: 'Voice listen-through once — attentive but dense/networky; useful as shallow map-of-existence
-    refresher, not grasp. Skipped CS110-L05 to diversify. Candidate: keep L01 as tour + deepen via L02/L03
-    (or new zoom-ins) rather than inflate L01.'
+  note: Voice listen-through once — dense overview pass; diversified away from CS110-L05. Prefer
+    deepening via later CS230 lectures rather than expanding L01.
   source: backfill
 - at: '2026-10-27'
   lecture: CS230-L02
@@ -120,11 +119,29 @@ events:
   action: skim
   phase: wandering
   confidence: 1
-  note: Partial voice pass (~half lecture, half attention); closed mid-way. Hard to focus without hands-on
-    cloud practice; deferring until/if pursuing AWS or GCP certification.
+  note: Partial voice pass (~half lecture); paused. Prefer returning with hands-on cloud context if/when
+    pursuing AWS or GCP certification.
 - at: '2026-10-29'
   lecture: CS340-L01
   action: listen
   phase: studying
   confidence: 2
   note: Full voice listen-through; one session. Prose done; labs not started.
+- at: '2026-10-29'
+  lecture: SE215-L06
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Walk listen @~1.5x; prose done; labs not started.
+- at: '2026-10-29'
+  lecture: CS220-L08
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Walk listen @~1.5x; prose done; labs not started.
+- at: '2026-10-29'
+  lecture: SE330-L01
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Walk listen @~1.5x; prose done; labs not started.
