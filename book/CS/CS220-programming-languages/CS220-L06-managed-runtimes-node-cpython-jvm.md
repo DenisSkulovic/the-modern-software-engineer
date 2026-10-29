@@ -10,10 +10,6 @@ prev: CS220-L05
 next: CS220-L07
 ---
 
-
-
-
-
 # CS220 — Languages, Types, Memory, and Runtimes
 
 ## Lecture 06: Managed Runtimes — Node.js, CPython, and the JVM

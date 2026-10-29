@@ -10,8 +10,6 @@ prev: SE240-L05
 next: SE240-L07
 ---
 
-
-
 <!--
 EDITORIAL-TODO: P2 / SCOPE_AND_DEDUPLICATE / SE215-L07
 Keep the conceptual treatment of unit, component, integration, and E2E testing,

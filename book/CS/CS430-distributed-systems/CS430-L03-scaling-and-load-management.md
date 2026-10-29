@@ -10,8 +10,6 @@ prev: CS430-L02
 next: CS430-L04
 ---
 
-
-
 <!--
 EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE325-L06
 Preserve connection pools, overload, load shedding, and capacity fundamentals here.

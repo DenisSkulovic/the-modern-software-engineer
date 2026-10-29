@@ -10,7 +10,6 @@ prev: SE215-L06
 next: SE215-L08
 ---
 
-
 # SE215 — The Software Engineering Ecosystem
 
 ## Lecture 07: Owning End-to-End Testing

@@ -10,7 +10,6 @@ prev: CS350-L03
 next: null
 ---
 
-
 # CS350 — Advanced PostgreSQL Engineering
 ## Lecture 04: Online Migrations and the Database Incident Studio
 

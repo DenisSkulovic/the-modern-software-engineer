@@ -10,13 +10,6 @@ prev: CS340-L01
 next: CS340-L03
 ---
 
-
-
-
-
-
-
-
 # CS340 — Data Systems Beyond Relational Databases
 
 ## Lecture 02: Inside a Storage Engine

@@ -10,7 +10,6 @@ prev: SE335-L01
 next: SE335-L03
 ---
 
-
 # SE335 — Queues, Caches, and Worker Production Diagnostics
 ## Lecture 02: RabbitMQ and Worker Failure Forensics
 

@@ -10,8 +10,6 @@ prev: CS430-L04
 next: null
 ---
 
-
-
 <!--
 EDITORIAL-TODO: P2 / PRESERVE_PRIMARY / SE325-L05
 Keep this as the primary payment and durable business-workflow lecture

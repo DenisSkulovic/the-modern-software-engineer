@@ -10,13 +10,6 @@ prev: CS230-L02
 next: CS230-L04
 ---
 
-
-
-
-
-
-
-
 # CS230 — Computer Networks and Web Protocols
 
 ## Lecture 03: HTTP: The Protocol That Runs the Web

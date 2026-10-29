@@ -10,8 +10,6 @@ prev: SE240-L06
 next: null
 ---
 
-
-
 # SE240 — Browser and Frontend Engineering
 ## Lecture 07: Anatomy of a Production Web Page: Resource Loading, Third-Party Scripts, and Browser Forensics
 

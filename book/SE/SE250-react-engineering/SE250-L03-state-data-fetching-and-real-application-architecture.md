@@ -10,7 +10,6 @@ prev: SE250-L02
 next: SE250-L04
 ---
 
-
 # SE250 — React Engineering for Experienced Developers
 ## Lecture 03: State, Data Fetching, and Real Application Architecture
 

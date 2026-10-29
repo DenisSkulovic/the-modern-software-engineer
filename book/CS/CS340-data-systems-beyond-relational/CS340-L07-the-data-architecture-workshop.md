@@ -10,8 +10,6 @@ prev: CS340-L06
 next: null
 ---
 
-
-
 <!--
 EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE215-L09
 Retain the architectural workshop and its source-of-truth, data synchronization,

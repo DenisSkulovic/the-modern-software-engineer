@@ -10,7 +10,6 @@ prev: SE250-L01
 next: SE250-L03
 ---
 
-
 # SE250 — React Engineering for Experienced Developers
 ## Lecture 02: Effects, Closures, and Component Lifecycles
 

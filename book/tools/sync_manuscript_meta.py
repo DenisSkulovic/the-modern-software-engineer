@@ -20,6 +20,7 @@ from curriculum_lib import (
     iter_lectures,
     lecture_destination,
     load_manifest,
+    normalize_newlines,
     strip_existing_frontmatter,
 )
 
@@ -117,7 +118,7 @@ def sync_frontmatter(manifest: dict) -> int:
         dest = lecture_destination(course, lec)
         if not dest.is_file():
             continue
-        raw = dest.read_text(encoding="utf-8")
+        raw = normalize_newlines(dest.read_text(encoding="utf-8"))
         body = strip_existing_frontmatter(raw)
         # Preserve H1 if present; only refresh frontmatter
         new = frontmatter_block(course, lec) + body

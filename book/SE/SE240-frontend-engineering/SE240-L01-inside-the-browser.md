@@ -10,16 +10,6 @@ prev: null
 next: SE240-L02
 ---
 
-
-
-
-
-
-
-
-
-
-
 # SE240 — Browser and Frontend Engineering
 
 ## Lecture 01: Inside the Browser

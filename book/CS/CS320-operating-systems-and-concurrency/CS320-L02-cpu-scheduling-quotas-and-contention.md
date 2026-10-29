@@ -10,9 +10,6 @@ prev: CS320-L01
 next: CS320-L03
 ---
 
-
-
-
 # CS320 — Operating Systems and Concurrency
 
 ## Lecture 02: CPU Scheduling, Quotas, and Contention

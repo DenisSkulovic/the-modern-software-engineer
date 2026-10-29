@@ -10,7 +10,6 @@ prev: null
 next: SE360-L02
 ---
 
-
 # SE360 — Practical Terraform and Cloud Delivery
 ## Lecture 01: CI/CD in the Real World: Jenkins, GitHub Actions, and GitLab CI
 

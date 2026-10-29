@@ -10,7 +10,6 @@ prev: CS350-L01
 next: CS350-L03
 ---
 
-
 # CS350 — Advanced PostgreSQL Engineering
 ## Lecture 02: PostgreSQL Query Plan Forensics
 

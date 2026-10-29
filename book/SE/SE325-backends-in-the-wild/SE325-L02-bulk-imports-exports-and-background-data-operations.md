@@ -10,8 +10,6 @@ prev: SE325-L01
 next: SE325-L03
 ---
 
-
-
 # SE325 — Backends in the Wild: Production Field Guide
 ## Lecture 02: Bulk Imports, Exports, and Background Data Operations
 

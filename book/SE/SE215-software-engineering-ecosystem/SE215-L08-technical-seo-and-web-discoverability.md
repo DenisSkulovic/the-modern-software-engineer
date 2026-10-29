@@ -10,7 +10,6 @@ prev: SE215-L07
 next: SE215-L09
 ---
 
-
 # SE215 — The Software Engineering Ecosystem
 
 ## Lecture 08: Technical SEO and Web Discoverability

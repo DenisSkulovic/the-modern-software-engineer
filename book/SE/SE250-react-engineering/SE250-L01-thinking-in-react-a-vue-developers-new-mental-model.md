@@ -10,7 +10,6 @@ prev: null
 next: SE250-L02
 ---
 
-
 # SE250 — React Engineering for Experienced Developers
 ## Lecture 01: Thinking in React — A Vue Developer's New Mental Model
 

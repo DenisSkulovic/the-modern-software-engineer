@@ -10,7 +10,6 @@ prev: SE215-L04
 next: SE215-L06
 ---
 
-
 # SE215 — The Software Engineering Ecosystem
 
 ## Lecture 05: Cloud Platforms and Service Models

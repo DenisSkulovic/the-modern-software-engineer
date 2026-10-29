@@ -10,13 +10,6 @@ prev: CS110-L02
 next: CS110-L04
 ---
 
-
-
-
-
-
-
-
 # CS110 — Foundations of Computation and Algorithms
 ## Lecture 03: Algorithms and the Cost of Computation
 

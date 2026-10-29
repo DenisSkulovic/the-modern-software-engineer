@@ -10,8 +10,6 @@ prev: SE240-L01
 next: SE240-L03
 ---
 
-
-
 <!--
 EDITORIAL-TODO: P3 / CROSS_REFERENCE / SE215-L10, SE215-L04
 Preserve feature organization, dependency direction, composables, stores, services,

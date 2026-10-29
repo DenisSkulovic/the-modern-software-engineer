@@ -10,8 +10,6 @@ prev: CS340-L03
 next: CS340-L05
 ---
 
-
-
 <!--
 EDITORIAL-TODO: P2 / CROSS_REFERENCE / CS345
 Preserve conceptual coverage of aggregation cost, deep pagination, $lookup/$unwind,

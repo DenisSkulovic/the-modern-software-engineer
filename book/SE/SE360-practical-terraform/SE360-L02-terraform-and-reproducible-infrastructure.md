@@ -10,7 +10,6 @@ prev: SE360-L01
 next: SE360-L03
 ---
 
-
 # SE360 — Practical Terraform and Cloud Delivery
 ## Lecture 02: Terraform and Reproducible Infrastructure
 

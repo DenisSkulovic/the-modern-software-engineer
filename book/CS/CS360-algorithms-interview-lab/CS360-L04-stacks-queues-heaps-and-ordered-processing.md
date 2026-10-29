@@ -10,16 +10,6 @@ prev: CS360-L03
 next: CS360-L05
 ---
 
-
-
-
-
-
-
-
-
-
-
 # CS360 — Algorithms and Coding Interview Lab
 ## Lecture 04: Stacks, Queues, Heaps, and Ordered Processing
 

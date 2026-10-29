@@ -10,8 +10,6 @@ prev: SE440-L01
 next: SE440-L03
 ---
 
-
-
 <!--
 EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE325-L04
 Preserve incident response, SLOs, runbooks, and backup/recovery theory here.

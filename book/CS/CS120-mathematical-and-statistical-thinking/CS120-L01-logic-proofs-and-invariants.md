@@ -10,13 +10,6 @@ prev: null
 next: CS120-L02
 ---
 
-
-
-
-
-
-
-
 # CS120 — Mathematical and Statistical Thinking for Software Engineers
 
 ## Lecture 01: Logic, Proofs, and Invariants

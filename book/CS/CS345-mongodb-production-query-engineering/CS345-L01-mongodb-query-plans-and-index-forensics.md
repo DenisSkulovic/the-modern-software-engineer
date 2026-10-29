@@ -10,7 +10,6 @@ prev: null
 next: CS345-L02
 ---
 
-
 # CS345 — MongoDB Production Query Engineering
 ## Lecture 01: MongoDB Query Plans and Index Forensics
 

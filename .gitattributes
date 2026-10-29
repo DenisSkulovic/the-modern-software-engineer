@@ -1,0 +1,22 @@
+# Keep text files LF in the working tree and in git so Windows autocrlf
+# and Python tools that write newline="\n" do not thrash every lecture.
+* text=auto eol=lf
+
+*.md text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.py text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.txt text eol=lf
+*.svg text eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

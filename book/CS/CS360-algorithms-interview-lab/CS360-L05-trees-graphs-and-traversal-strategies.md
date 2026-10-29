@@ -10,16 +10,6 @@ prev: CS360-L04
 next: CS360-L06
 ---
 
-
-
-
-
-
-
-
-
-
-
 # CS360 — Algorithms and Coding Interview Lab
 ## Lecture 05: Trees, Graphs, and Traversal Strategies
 

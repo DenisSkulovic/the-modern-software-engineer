@@ -10,7 +10,6 @@ prev: SE215-L09
 next: SE215-L11
 ---
 
-
 # SE215 — The Software Engineering Ecosystem
 
 ## Lecture 10: Working With Product, Design, and Analytics

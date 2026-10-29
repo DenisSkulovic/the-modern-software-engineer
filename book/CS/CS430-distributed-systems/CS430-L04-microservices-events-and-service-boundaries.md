@@ -10,8 +10,6 @@ prev: CS430-L03
 next: CS430-L05
 ---
 
-
-
 <!--
 EDITORIAL-TODO: P2 / CLARIFY_BOUNDARY / SE215-L04
 This manuscript should remain the primary treatment of microservice architecture,

@@ -10,8 +10,6 @@ prev: CS230-L10
 next: null
 ---
 
-
-
 <!--
 EDITORIAL-TODO: P3 / AUDIT_DENSITY
 Previously measured at approximately 60 spoken minutes.

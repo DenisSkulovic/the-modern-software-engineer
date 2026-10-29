@@ -10,8 +10,6 @@ prev: CS230-L06
 next: CS230-L08
 ---
 
-
-
 <!--
 EDITORIAL-TODO: P3 / AUDIT_DENSITY
 Original spoken length previously measured at approximately 69 minutes.

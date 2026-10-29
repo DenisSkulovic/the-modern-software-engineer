@@ -10,7 +10,6 @@ prev: SE335-L02
 next: null
 ---
 
-
 # SE335 — Queues, Caches, and Worker Production Diagnostics
 ## Lecture 03: The Asynchronous System Incident Studio
 

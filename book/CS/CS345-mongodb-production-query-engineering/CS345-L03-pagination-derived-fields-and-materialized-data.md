@@ -10,7 +10,6 @@ prev: CS345-L02
 next: CS345-L04
 ---
 
-
 # CS345 — MongoDB Production Query Engineering
 ## Lecture 03: Pagination, Derived Fields, and Materialized Data
 

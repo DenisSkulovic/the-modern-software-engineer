@@ -10,7 +10,6 @@ prev: SE360-L02
 next: null
 ---
 
-
 # SE360 — Practical Terraform and Cloud Delivery
 ## Lecture 03: The Broken Release Studio
 

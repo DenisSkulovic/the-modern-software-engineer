@@ -10,7 +10,6 @@ prev: CS345-L01
 next: CS345-L03
 ---
 
-
 # CS345 — MongoDB Production Query Engineering
 ## Lecture 02: Aggregation Pipelines Under Pressure
 

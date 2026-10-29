@@ -10,8 +10,6 @@ prev: SE320-L01
 next: SE320-L03
 ---
 
-
-
 <!--
 EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE335-L01
 Preserve cache concepts (invalidation, stampedes, TTLs, keys) here.

@@ -10,13 +10,6 @@ prev: CS120-L04
 next: null
 ---
 
-
-
-
-
-
-
-
 # CS120 — Mathematical and Statistical Thinking for Software Engineers
 
 ## Lecture 05: Mathematical Models of Real Systems

@@ -20,6 +20,7 @@ from curriculum_lib import (
     iter_lectures,
     lecture_destination,
     load_manifest,
+    normalize_newlines,
     strip_existing_frontmatter,
 )
 
@@ -78,7 +79,7 @@ def validate(strict_body: bool = True) -> int:
                 "(use stub+ or keep course type:planned)"
             )
 
-        text = dest.read_text(encoding="utf-8")
+        text = normalize_newlines(dest.read_text(encoding="utf-8"))
         if not text.startswith("---\n"):
             errors.append(f"{lid}: missing YAML frontmatter")
         else:

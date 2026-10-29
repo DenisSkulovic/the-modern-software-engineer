@@ -10,7 +10,6 @@ prev: SE215-L08
 next: SE215-L10
 ---
 
-
 # SE215 — The Software Engineering Ecosystem
 
 ## Lecture 09: Data Engineering for Application Developers

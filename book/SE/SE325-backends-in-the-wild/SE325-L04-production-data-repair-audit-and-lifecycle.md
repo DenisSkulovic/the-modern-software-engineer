@@ -10,8 +10,6 @@ prev: SE325-L03
 next: SE325-L05
 ---
 
-
-
 # SE325 — Backends in the Wild: Production Field Guide
 ## Lecture 04: Production Data Repair, Audit, and Lifecycle
 

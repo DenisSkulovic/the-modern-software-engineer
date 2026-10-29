@@ -10,7 +10,6 @@ prev: null
 next: SE215-L02
 ---
 
-
 # SE215 — The Software Engineering Ecosystem
 
 ## Lecture 01: The People and Teams Behind Software

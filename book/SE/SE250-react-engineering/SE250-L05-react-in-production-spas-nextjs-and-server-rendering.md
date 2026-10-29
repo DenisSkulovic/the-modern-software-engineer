@@ -10,7 +10,6 @@ prev: SE250-L04
 next: SE250-L06
 ---
 
-
 # SE250 — React Engineering for Experienced Developers
 ## Lecture 05: React in Production — SPAs, Next.js, and Server Rendering
 

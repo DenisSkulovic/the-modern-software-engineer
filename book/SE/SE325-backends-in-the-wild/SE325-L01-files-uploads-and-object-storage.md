@@ -10,8 +10,6 @@ prev: null
 next: SE325-L02
 ---
 
-
-
 # SE325 — Backends in the Wild: Production Field Guide
 ## Lecture 01: Files, Uploads, and Object Storage
 

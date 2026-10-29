@@ -10,7 +10,6 @@ prev: CS350-L02
 next: CS350-L04
 ---
 
-
 # CS350 — Advanced PostgreSQL Engineering
 ## Lecture 03: PostgreSQL Under Production Pressure
 

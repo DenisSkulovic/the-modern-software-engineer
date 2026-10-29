@@ -10,7 +10,6 @@ prev: SE250-L03
 next: SE250-L05
 ---
 
-
 # SE250 — React Engineering for Experienced Developers
 ## Lecture 04: React Performance, Testing, and Debugging
 

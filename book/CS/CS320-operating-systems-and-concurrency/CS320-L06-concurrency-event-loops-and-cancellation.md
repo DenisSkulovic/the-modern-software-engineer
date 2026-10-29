@@ -10,9 +10,6 @@ prev: CS320-L05
 next: CS320-L07
 ---
 
-
-
-
 # CS320 — Operating Systems and Concurrency
 
 ## Lecture 06: Concurrency, Event Loops, and Cancellation

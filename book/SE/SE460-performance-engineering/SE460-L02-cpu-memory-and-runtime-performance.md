@@ -10,16 +10,6 @@ prev: SE460-L01
 next: SE460-L03
 ---
 
-
-
-
-
-
-
-
-
-
-
 # SE460 — Performance Engineering
 ## Lecture 02: CPU, Memory, and Runtime Performance
 

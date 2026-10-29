@@ -10,7 +10,6 @@ prev: CS345-L03
 next: null
 ---
 
-
 # CS345 — MongoDB Production Query Engineering
 ## Lecture 04: The MongoDB Performance Incident Studio
 

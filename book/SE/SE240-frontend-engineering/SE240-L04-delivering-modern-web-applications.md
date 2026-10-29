@@ -10,8 +10,6 @@ prev: SE240-L03
 next: SE240-L05
 ---
 
-
-
 <!--
 EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE215-L08
 Existing section teaches rendering strategy and introductory SEO.

@@ -10,7 +10,6 @@ prev: SE250-L05
 next: null
 ---
 
-
 # SE250 — React Engineering for Experienced Developers
 ## Lecture 06: The React Debugging Interview Studio
 

@@ -10,7 +10,6 @@ prev: SE215-L01
 next: SE215-L03
 ---
 
-
 # SE215 — The Software Engineering Ecosystem
 
 ## Lecture 02: How Engineering Work Gets Planned and Delivered

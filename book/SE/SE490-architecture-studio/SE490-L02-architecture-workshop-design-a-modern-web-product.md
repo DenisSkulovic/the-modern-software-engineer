@@ -10,16 +10,6 @@ prev: SE490-L01
 next: SE490-L03
 ---
 
-
-
-
-
-
-
-
-
-
-
 # SE490 — Architecture and Systems Design Studio
 
 ## Lecture 02: Architecture Workshop: Design a Modern Web Product

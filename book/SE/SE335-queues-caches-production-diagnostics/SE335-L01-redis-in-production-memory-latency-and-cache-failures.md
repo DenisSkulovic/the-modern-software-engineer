@@ -10,7 +10,6 @@ prev: null
 next: SE335-L02
 ---
 
-
 # SE335 — Queues, Caches, and Worker Production Diagnostics
 ## Lecture 01: Redis in Production — Memory, Latency, and Cache Failures
 

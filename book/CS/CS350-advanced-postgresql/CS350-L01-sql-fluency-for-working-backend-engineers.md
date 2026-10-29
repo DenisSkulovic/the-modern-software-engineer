@@ -10,7 +10,6 @@ prev: null
 next: CS350-L02
 ---
 
-
 # CS350 — Advanced PostgreSQL Engineering
 ## Lecture 01: SQL Fluency for Working Backend Engineers
 

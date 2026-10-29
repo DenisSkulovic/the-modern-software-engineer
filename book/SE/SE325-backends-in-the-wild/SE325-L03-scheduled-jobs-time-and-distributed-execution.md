@@ -10,8 +10,6 @@ prev: SE325-L02
 next: SE325-L04
 ---
 
-
-
 # SE325 — Backends in the Wild: Production Field Guide
 ## Lecture 03: Scheduled Jobs, Time, and Distributed Execution
 

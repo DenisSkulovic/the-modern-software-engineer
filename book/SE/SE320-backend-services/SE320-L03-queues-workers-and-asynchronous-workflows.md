@@ -10,8 +10,6 @@ prev: SE320-L02
 next: null
 ---
 
-
-
 <!--
 EDITORIAL-TODO: P2 / CROSS_REFERENCE / SE325-L02, SE325-L03
 Keep queue fundamentals, retries, duplicate delivery, and DLQs here.

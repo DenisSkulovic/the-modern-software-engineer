@@ -119,6 +119,11 @@ def parse_legacy_id(legacy_id: str) -> tuple[str, int]:
     return m.group(1), int(m.group(2))
 
 
+def normalize_newlines(text: str) -> str:
+    """Force LF so Windows CRLF checkouts do not break frontmatter tools."""
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
 def frontmatter_block(course: dict, lec: dict) -> str:
     legacy = lec.get("legacy_ids") or []
     legacy_yaml = "[" + ", ".join(legacy) + "]"
@@ -129,6 +134,8 @@ def frontmatter_block(course: dict, lec: dict) -> str:
     title = lec["title"].replace('"', '\\"')
     manuscript = lec.get("manuscript", "manuscript")
     edition = lec.get("edition", "2.0.0")
+    # Exactly one blank line after the closing fence. strip_existing_frontmatter
+    # must lstrip body newlines so sync_frontmatter stays idempotent.
     return (
         "---\n"
         f"id: {lec['id']}\n"
@@ -145,10 +152,17 @@ def frontmatter_block(course: dict, lec: dict) -> str:
 
 
 def strip_existing_frontmatter(text: str) -> str:
-    if text.startswith("---\n"):
-        end = text.find("\n---\n", 4)
-        if end != -1:
-            return text[end + 5 :]
+    """Return body after YAML frontmatter, with leading blank lines removed.
+
+    Older sync runs appended an extra blank line on every pass because the
+    rewriter ended with ``---\\n\\n`` while the stripper left the previous
+    separator newline in the body. Collapsing leading blanks makes rewrites
+    idempotent.
+    """
+    text = normalize_newlines(text)
+    match = re.match(r"^---\n.*?\n---(?:\n|$)", text, re.DOTALL)
+    if match:
+        return text[match.end() :].lstrip("\n")
     return text
 
 
