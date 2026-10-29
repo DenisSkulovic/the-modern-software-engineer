@@ -3,7 +3,7 @@ id: CS350-L03
 course: CS350
 title: "PostgreSQL Under Production Pressure"
 type: elective
-manuscript: stub
+manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: CS350-L02

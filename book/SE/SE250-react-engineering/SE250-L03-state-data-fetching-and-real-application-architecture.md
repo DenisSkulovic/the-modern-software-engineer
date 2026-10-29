@@ -3,7 +3,7 @@ id: SE250-L03
 course: SE250
 title: "State, Data Fetching, and Real Application Architecture"
 type: elective
-manuscript: stub
+manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: SE250-L02

@@ -17,15 +17,6 @@ After SE215-L05 is authored, cross-reference it for the AWS/GCP/Azure conceptual
 Do not duplicate the AWS-specific service explanations in the new survey lecture.
 -->
 
-
-
-
-
-
-
-
-
-
 # SE340 — Linux, Cloud Infrastructure, and Delivery
 
 ## Lecture 03: Cloud Infrastructure and AWS Architecture
@@ -33,6 +24,519 @@ Do not duplicate the AWS-specific service explanations in the new survey lecture
 *How the cloud made computing resources elastic, infrastructure programmable, and architectural mistakes spectacularly scalable.*
 
 ---
+
+# Part I — Intuition
+
+*A hotel-booking app that works on your laptop still needs compute, storage, networking, identity, and observability before customers can use it. AWS is a set of building blocks for those jobs — not a catalogue of unrelated product names.*
+
+This pass builds one mental picture. Part II develops the same picture with full technical depth.
+
+### The picture to carry in your head
+
+Imagine you've developed a hotel-booking application.
+
+It has a frontend written in Vue, a Node.js backend, a PostgreSQL database, and a background worker that sends booking confirmations.
+
+On your laptop, everything works beautifully.
+
+You run Docker Compose, open the browser, and create a reservation.
+
+Now your manager asks a perfectly reasonable question:
+
+"Great. How do we make this available to customers across Europe?"
+
+Suddenly, writing the application is no longer enough.
+
+Your customers need a public address where they can reach it.
+
+The backend needs computers on which to execute.
+
+Those computers need a network.
+
+The database needs somewhere to store information reliably.
+
+Customer-uploaded photographs need persistent storage.
+
+The application needs credentials and permissions.
+
+And somebody needs to make sure the service keeps running when machines fail.
+
+AWS provides services for these different jobs.
+
+But the names can initially sound like a collection of unrelated products: EC2, ECS, Fargate, Lambda, RDS, S3, VPC, IAM, API Gateway, CloudWatch, Route 53.
+
+They're much easier to understand once you stop treating them as separate technologies to memorize.
+
+**Think of AWS as a collection of building blocks for operating an application, with different degrees of responsibility delegated to the cloud provider.**
+
+Let's build one small production system and discover where the pieces fit.
+
+---
+
+### 1. EC2 — Rent a computer
+
+Start with the simplest requirement.
+
+Your Node.js backend needs somewhere to run.
+
+On your laptop, it's a process executing on your own computer.
+
+In production, you could rent a virtual computer from AWS.
+
+That's essentially what Amazon EC2 provides.
+
+EC2 stands for Elastic Compute Cloud.
+
+You select a virtual machine configuration with a particular amount of CPU, memory, storage, and networking capability.
+
+AWS provides the underlying infrastructure.
+
+You generally remain responsible for configuring the operating system, installing your application and dependencies, managing patches, and arranging deployment and monitoring.
+
+Imagine renting an apartment rather than building a house.
+
+The landlord provides the building.
+
+You're still responsible for much of what happens inside your apartment.
+
+That's the EC2 mental model.
+
+Your application can run there just as it runs on another Linux server.
+
+### 2. ECS and Fargate — Run your container without managing the host
+
+Now imagine your backend already runs in a Docker container.
+
+You don't particularly want to manage virtual machines, install Docker on them, handle operating-system updates, or decide where each container should run.
+
+You primarily want to say:
+
+"Run three copies of this container image."
+
+Amazon ECS, or Elastic Container Service, is an AWS service for orchestrating containerized applications.
+
+ECS manages tasks and services.
+
+When you use ECS with Fargate, AWS manages the underlying compute infrastructure needed to execute those containers.
+
+You still specify the application image, resource requirements, networking, configuration, and permissions.
+
+But you don't manage the underlying EC2 fleet.
+
+This doesn't mean AWS becomes responsible for the correctness of your application.
+
+If your backend leaks memory, opens too many database connections, or returns incorrect reservations, that's still your problem.
+
+**Fargate removes much of the host-management responsibility, not the responsibility for the software running inside the container.**
+
+### 3. Lambda — Run code when something happens
+
+Now imagine a small operation.
+
+A booking confirmation event arrives.
+
+You need to generate a document or perform a short processing task.
+
+You could maintain a continuously running backend worker for this.
+
+But perhaps the workload is intermittent.
+
+AWS Lambda provides serverless compute capabilities.
+
+In its event-driven model, you supply a handler and arrange for an event or request to invoke it.
+
+AWS manages the underlying execution environments and much of their scaling.
+
+You don't directly manage a permanent server process for that handler.
+
+Lambda can also support web application and HTTP-serving workloads, depending on the chosen compute model.
+
+Why is this useful?
+
+Because some workloads are naturally driven by events rather than continuously running processes.
+
+But serverless doesn't mean unlimited execution without constraints.
+
+Lambda executions still consume resources, face service limits, interact with other systems, and may scale beyond what a downstream dependency can sustain.
+
+A hundred Lambda executions simultaneously opening PostgreSQL connections can overwhelm a small database just as surely as a badly configured container fleet.
+
+That's a production concern we'll investigate later in the lecture.
+
+### Visual anchor 1 — Three ways to run backend code
+
+The first important AWS distinction is how much of the execution environment you want to manage yourself.
+
+```text
+YOUR APPLICATION
+      |
+      +── EC2
+      |     Virtual machine
+      |     You manage much of the OS/runtime
+      |
+      +── ECS + Fargate
+      |     Containerized application
+      |     AWS manages underlying compute
+      |
+      +── Lambda
+            AWS-managed execution
+            for supported request/event patterns
+```
+
+These approaches solve overlapping problems.
+
+They're not stages of maturity that every company must follow.
+
+A well-managed EC2 deployment can be perfectly appropriate.
+
+A container platform can be excellent for continuously running APIs and workers.
+
+Lambda may suit event-driven processing or other workloads whose constraints fit its execution model.
+
+The right choice depends on the application's behavior and the operational responsibilities the team wants to retain.
+
+### 4. RDS — Give your application a managed relational database
+
+Our hotel-booking backend uses PostgreSQL.
+
+You could install PostgreSQL on an EC2 instance and operate it yourself.
+
+That means handling backups, upgrades, storage, monitoring, recovery, and availability arrangements.
+
+Alternatively, AWS provides Amazon RDS, or Relational Database Service.
+
+RDS offers managed relational database infrastructure, including PostgreSQL.
+
+AWS handles many underlying infrastructure and database-administration tasks according to the deployment configuration.
+
+You still design schemas, write queries, maintain application-level correctness, decide on capacity, manage access, and understand how your database behaves under load.
+
+An expensive SQL query doesn't become cheap simply because PostgreSQL runs on RDS.
+
+A lost business invariant doesn't become correct because AWS manages backups.
+
+The central distinction is that RDS delegates substantial database operations work while leaving application data modeling and usage responsibilities with your team.
+
+For our booking application, RDS is a plausible place for the authoritative reservation database.
+
+### 5. S3 — Store files without inventing a file server
+
+Our application also manages hotel photographs, invoices, and downloadable documents.
+
+You could put those files on the disk of your application server.
+
+But then what happens when the server is replaced?
+
+What happens when you run three application instances?
+
+Which instance owns a particular file?
+
+Amazon S3, or Simple Storage Service, provides object storage.
+
+You store objects in buckets and retrieve them through supported APIs.
+
+A photograph can remain available even if the application container that uploaded it disappears.
+
+S3 is not simply a remote Linux directory.
+
+It has its own object model, permissions, storage semantics, and lifecycle features.
+
+A common arrangement is to store file metadata and business relationships in PostgreSQL while keeping large binary objects in S3.
+
+For example, the database records which photograph belongs to which hotel.
+
+S3 stores the photograph itself.
+
+The application must still handle authorization and data consistency between these systems.
+
+### 6. VPC — Give your infrastructure a private network
+
+We've chosen where the backend executes and where the data lives.
+
+Now those resources need to communicate.
+
+Your customers must reach the application.
+
+The backend must reach PostgreSQL.
+
+But PostgreSQL shouldn't automatically be reachable by arbitrary people on the internet.
+
+AWS provides a networking abstraction called a Virtual Private Cloud, or VPC.
+
+Think of a VPC as a logically isolated network environment in which you organize compatible cloud resources and their network connections.
+
+Inside a VPC, you can define subnets.
+
+A subnet is an IP address range associated with one Availability Zone.
+
+You can use routing and network controls to determine how traffic moves.
+
+For our example, an internet-facing load balancer might occupy public subnets, while application containers and database resources use private subnets.
+
+A subnet is called public when its associated route table has a route to an internet gateway.
+
+But that alone doesn't make every resource in it publicly accessible. Addressing and security controls still matter.
+
+#### What is a security group?
+
+A security group is a virtual firewall controlling permitted network traffic for associated AWS resources.
+
+For example, we may permit the application to connect to PostgreSQL on the database's listening port while denying arbitrary connections from the public internet.
+
+It's important not to confuse security groups with IAM.
+
+Security groups concern network traffic.
+
+IAM concerns AWS identity and API permissions.
+
+### Visual anchor 2 — A small AWS application
+
+Here's a simplified architecture for the hotel-booking platform.
+
+```text
+             Internet
+                |
+                v
+          DNS / Route 53
+                |
+                v
+       Application Load Balancer
+                |
+     +----------+----------+
+     |                     |
+     v                     v
+  App container A      App container B
+   Private subnet       Private subnet
+     |                     |
+     +----------+----------+
+                |
+                v
+          PostgreSQL / RDS
+
+  Hotel photos and documents
+                |
+                v
+                S3
+```
+
+The application containers and database might live inside one VPC.
+
+S3 is a separately managed object-storage service, not simply a disk attached to our private subnet.
+
+The diagram deliberately omits many real components—security groups, routing tables, credentials, replication, and monitoring—but it shows the fundamental relationships.
+
+### 7. Load balancers and API Gateway — Give customers a front door
+
+Suppose we have three backend application instances.
+
+Customers shouldn't need to know which instance handles their request.
+
+An Application Load Balancer can accept incoming HTTP or HTTPS traffic and distribute requests among eligible backend targets.
+
+It can also perform health checks and help route traffic according to configured rules.
+
+This solves the problem of presenting one public application entry point while multiple instances perform the work.
+
+Now consider API Gateway.
+
+API Gateway is another AWS service that provides managed API entry points with capabilities such as routing, authorization integration, throttling, and other API-management features.
+
+It is often used with Lambda and can integrate with other backend types.
+
+An Application Load Balancer and API Gateway overlap in certain HTTP-routing scenarios.
+
+But they are not identical products, and an application doesn't automatically need both.
+
+Choose the entry-point mechanism based on the requirements of the API and deployment architecture.
+
+### 8. Route 53 — Give your application a name
+
+Customers don't want to type an IP address.
+
+They want to visit something like `booking.example.com`.
+
+DNS translates names into information that helps clients reach the appropriate service.
+
+Amazon Route 53 provides managed DNS capabilities.
+
+It can associate the application domain with its public entry point.
+
+This is the name-resolution layer.
+
+It is distinct from running the application and distinct from authorizing access.
+
+A DNS record can point to a perfectly healthy load balancer.
+
+It doesn't prove the backend application is working.
+
+### 9. IAM — Decide who is allowed to do what
+
+Our application needs to retrieve hotel photographs from S3.
+
+A deployment pipeline may need to publish images or modify infrastructure.
+
+An engineer may need permission to inspect logs.
+
+These operations require identities and permissions.
+
+AWS Identity and Access Management, or IAM, controls access to AWS resources and API operations.
+
+A workload can use an IAM role to obtain temporary credentials with defined permissions.
+
+For example, our application might be allowed to retrieve objects from a particular S3 bucket without receiving broad permission to modify unrelated cloud resources.
+
+Think of IAM as the authority system governing AWS operations.
+
+It is not a substitute for your application's customer authorization.
+
+An IAM role allowing a backend to access S3 doesn't determine which customer may download another customer's private invoice.
+
+Your application still needs to enforce its own business and security rules.
+
+### 10. CloudWatch — Know whether everything is working
+
+We've now created infrastructure.
+
+But how do we know whether it works?
+
+An application may start successfully and later become slow.
+
+A database may approach its connection limit.
+
+A worker may repeatedly fail.
+
+Memory and CPU consumption may increase.
+
+Amazon CloudWatch provides monitoring and observability capabilities, including metrics, logs, alarms, and related tooling.
+
+Our application can also use other monitoring systems such as Datadog, Prometheus, or Grafana-based stacks.
+
+The exact product is secondary.
+
+The key idea is that running software requires visibility into its behavior.
+
+A successful deployment isn't proof of a healthy application.
+
+The infrastructure must expose enough evidence to investigate problems.
+
+### 11. Regions and Availability Zones — Where does all this live?
+
+AWS operates infrastructure in geographically distributed Regions.
+
+A Region is a distinct geographic area.
+
+For example, a company serving European customers might choose AWS's Frankfurt Region.
+
+Each Region contains multiple Availability Zones, or AZs.
+
+Availability Zones are separate infrastructure locations designed to reduce dependence on a single physical failure domain.
+
+Why does this matter?
+
+Imagine placing three application instances in one Availability Zone.
+
+If that zone experiences a significant problem, all three may become unavailable together.
+
+Distributing instances across several AZs can reduce the risk of one-zone failures.
+
+But that only helps if the rest of the application is also designed appropriately.
+
+Three application replicas across multiple zones still depend on their database.
+
+If the database is a single point of failure, the architecture may remain fragile.
+
+And even a multi-zone design doesn't protect against every kind of application defect, deployment mistake, data corruption, or regional outage.
+
+### Visual anchor 3 — One region, multiple failure domains
+
+```text
+AWS Region: Frankfurt
+
+    Availability Zone A
+       App instance
+            |
+            |
+      +-----+-----+
+      |           |
+      v           v
+    Shared managed database
+      ^           ^
+      |           |
+      +-----+-----+
+            |
+       App instance
+    Availability Zone B
+```
+
+This is a conceptual picture, not a precise multi-AZ database topology.
+
+The important point is that location and redundancy are architectural choices.
+
+Adding replicas is useful only when the overall system can tolerate the failure modes we're trying to address.
+
+### 12. Managed doesn't mean somebody else owns your application
+
+At this point, AWS looks rather impressive.
+
+It provides virtual computers, container execution, functions, databases, storage, networking, identity, and monitoring.
+
+A developer can operate a sophisticated production application without owning physical servers.
+
+But the cloud provider doesn't know your business.
+
+It doesn't know whether your booking workflow double-charges customers.
+
+It doesn't know whether your API uses the correct tenant authorization rules.
+
+It doesn't know whether a database schema change breaks an older application.
+
+And it doesn't automatically prevent your workers from overwhelming PostgreSQL with connections.
+
+Cloud services transfer selected operational responsibilities.
+
+They don't transfer accountability for the software's behavior.
+
+### 13. What an ordinary full-stack developer should know
+
+You don't need to memorize every AWS product.
+
+You don't even need to be capable of configuring all of them independently.
+
+But you should be able to recognize the important categories.
+
+**Compute:** Where does my code execute?
+
+**Networking:** How does traffic reach it, and which services can communicate?
+
+**Storage:** Where do files and durable business records live?
+
+**Identity and permissions:** Which workloads and people can access which resources?
+
+**Delivery:** How does a new application version reach the environment?
+
+**Observability:** How do we detect and investigate failures?
+
+**Reliability:** Which failures can the architecture tolerate?
+
+If you understand those questions, unfamiliar AWS services become much easier to place within an application architecture.
+
+And you can collaborate productively with the platform engineers who configure them.
+
+#### Three questions before the Deep Dive
+
+1. You're running an API in ECS with Fargate, and PostgreSQL becomes overloaded. Is AWS responsible for fixing the application's database query patterns? **No. Fargate manages underlying container execution infrastructure, but application behavior and database workload design remain engineering responsibilities.**
+2. Your application runs on a private-subnet container and must access a database. Does it necessarily need a public IP address? **No. Appropriate VPC networking and security rules can allow private communication.**
+3. You have an S3 bucket containing private invoices. Does granting your backend an IAM role automatically ensure customers can access only their own invoices? **No. IAM controls the workload's AWS permissions. The application must still enforce customer-level authorization.**
+
+You now have a useful map of AWS.
+
+The deep dive will follow the same application through cloud geography, VPC networking, IAM, compute choices, managed databases, storage, scaling, deployment, costs, and the production failures caused by misunderstanding how these systems interact.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
 
 ## 1. The Serverless Application That Scaled Itself to Death
 

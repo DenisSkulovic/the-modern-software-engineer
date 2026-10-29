@@ -3,7 +3,7 @@ id: CS345-L01
 course: CS345
 title: "MongoDB Query Plans and Index Forensics"
 type: elective
-manuscript: stub
+manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: null

@@ -5,7 +5,8 @@ Desktop.ini
 *.swp
 *~
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
 *.code-workspace
 
 # Python

@@ -4,7 +4,7 @@
 
 version: '2.0'
 title: The Modern Software Engineer
-updated: '2026-10-28'
+updated: '2026-10-29'
 manuscript_statuses:
   planned: Catalogue only — no file yet
   stub: File exists; outline / placeholder
@@ -922,7 +922,7 @@ courses:
   discipline: CS
   level: 300
   type: elective
-  status: in_progress
+  status: complete
   slug: mongodb-production-query-engineering
   dir: CS/CS345-mongodb-production-query-engineering
   builds_on:
@@ -933,28 +933,28 @@ courses:
     slug: mongodb-query-plans-and-index-forensics
     legacy_ids: []
     source: CS/CS345-mongodb-production-query-engineering/CS345-L01-mongodb-query-plans-and-index-forensics.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS345-L02
     title: Aggregation Pipelines Under Pressure
     slug: aggregation-pipelines-under-pressure
     legacy_ids: []
     source: CS/CS345-mongodb-production-query-engineering/CS345-L02-aggregation-pipelines-under-pressure.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS345-L03
     title: Pagination, Derived Fields, and Materialized Data
     slug: pagination-derived-fields-and-materialized-data
     legacy_ids: []
     source: CS/CS345-mongodb-production-query-engineering/CS345-L03-pagination-derived-fields-and-materialized-data.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS345-L04
     title: The MongoDB Performance Incident Studio
     slug: the-mongodb-performance-incident-studio
     legacy_ids: []
     source: CS/CS345-mongodb-production-query-engineering/CS345-L04-the-mongodb-performance-incident-studio.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   notes: 'Diagnostic studio elective on top of CS340. Plans, aggregation under pressure,
     pagination/materialization, incident studio. Diagnosis before solution. Opening case
@@ -964,7 +964,7 @@ courses:
   discipline: CS
   level: 300
   type: elective
-  status: in_progress
+  status: complete
   slug: advanced-postgresql
   dir: CS/CS350-advanced-postgresql
   builds_on:
@@ -975,28 +975,28 @@ courses:
     slug: sql-fluency-for-working-backend-engineers
     legacy_ids: []
     source: CS/CS350-advanced-postgresql/CS350-L01-sql-fluency-for-working-backend-engineers.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS350-L02
     title: PostgreSQL Query Plan Forensics
     slug: postgresql-query-plan-forensics
     legacy_ids: []
     source: CS/CS350-advanced-postgresql/CS350-L02-postgresql-query-plan-forensics.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS350-L03
     title: PostgreSQL Under Production Pressure
     slug: postgresql-under-production-pressure
     legacy_ids: []
     source: CS/CS350-advanced-postgresql/CS350-L03-postgresql-under-production-pressure.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: CS350-L04
     title: Online Migrations and the Database Incident Studio
     slug: online-migrations-and-the-database-incident-studio
     legacy_ids: []
     source: CS/CS350-advanced-postgresql/CS350-L04-online-migrations-and-the-database-incident-studio.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   notes: 'Diagnostic studio elective on top of CS330. L01 builds unaided SQL fluency before
     plan/ops studios. Does not regenerate CS330 theory. See book/production-cases/PG-*.'
@@ -1080,7 +1080,7 @@ courses:
   discipline: SE
   level: 200
   type: elective
-  status: in_progress
+  status: complete
   slug: software-engineering-ecosystem
   dir: SE/SE215-software-engineering-ecosystem
   builds_on: []
@@ -1160,14 +1160,14 @@ courses:
     slug: release-management-versioning-and-change-ownership
     legacy_ids: []
     source: SE/SE215-software-engineering-ecosystem/SE215-L11-release-management-versioning-and-change-ownership.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE215-L12
     title: From Vague Business Idea to Shipped Product
     slug: from-vague-business-idea-to-shipped-product
     legacy_ids: []
     source: SE/SE215-software-engineering-ecosystem/SE215-L12-from-vague-business-idea-to-shipped-product.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   notes: 'Short orientation elective (~18–30 min lectures) on adjacent disciplines and professional
     workflows. Not a mandatory core prerequisite. Gateway into deeper SE/CS coverage rather than a
@@ -1177,7 +1177,7 @@ courses:
   discipline: SE
   level: 200
   type: elective
-  status: in_progress
+  status: complete
   slug: react-engineering
   dir: SE/SE250-react-engineering
   builds_on:
@@ -1188,42 +1188,42 @@ courses:
     slug: thinking-in-react-a-vue-developers-new-mental-model
     legacy_ids: []
     source: SE/SE250-react-engineering/SE250-L01-thinking-in-react-a-vue-developers-new-mental-model.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE250-L02
     title: Effects, Closures, and Component Lifecycles
     slug: effects-closures-and-component-lifecycles
     legacy_ids: []
     source: SE/SE250-react-engineering/SE250-L02-effects-closures-and-component-lifecycles.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE250-L03
     title: State, Data Fetching, and Real Application Architecture
     slug: state-data-fetching-and-real-application-architecture
     legacy_ids: []
     source: SE/SE250-react-engineering/SE250-L03-state-data-fetching-and-real-application-architecture.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE250-L04
     title: React Performance, Testing, and Debugging
     slug: react-performance-testing-and-debugging
     legacy_ids: []
     source: SE/SE250-react-engineering/SE250-L04-react-performance-testing-and-debugging.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE250-L05
     title: 'React in Production: SPAs, Next.js, and Server Rendering'
     slug: react-in-production-spas-nextjs-and-server-rendering
     legacy_ids: []
     source: SE/SE250-react-engineering/SE250-L05-react-in-production-spas-nextjs-and-server-rendering.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE250-L06
     title: The React Debugging Interview Studio
     slug: the-react-debugging-interview-studio
     legacy_ids: []
     source: SE/SE250-react-engineering/SE250-L06-the-react-debugging-interview-studio.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   notes: 'Practical React elective for engineers strong in Vue/TS/SE240 but weak in
     independent React reasoning. ~25–35 min spoken per lecture plus prediction→investigation→correction
@@ -1294,7 +1294,7 @@ courses:
   discipline: SE
   level: 300
   type: elective
-  status: in_progress
+  status: complete
   slug: queues-caches-production-diagnostics
   dir: SE/SE335-queues-caches-production-diagnostics
   builds_on:
@@ -1305,21 +1305,21 @@ courses:
     slug: redis-in-production-memory-latency-and-cache-failures
     legacy_ids: []
     source: SE/SE335-queues-caches-production-diagnostics/SE335-L01-redis-in-production-memory-latency-and-cache-failures.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE335-L02
     title: RabbitMQ and Worker Failure Forensics
     slug: rabbitmq-and-worker-failure-forensics
     legacy_ids: []
     source: SE/SE335-queues-caches-production-diagnostics/SE335-L02-rabbitmq-and-worker-failure-forensics.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   - id: SE335-L03
     title: The Asynchronous System Incident Studio
     slug: the-asynchronous-system-incident-studio
     legacy_ids: []
     source: SE/SE335-queues-caches-production-diagnostics/SE335-L03-the-asynchronous-system-incident-studio.md
-    manuscript: stub
+    manuscript: manuscript
     edition: 2.0.0
   notes: 'Short diagnostic elective on top of SE320. Redis and RabbitMQ-class forensics
     plus a cross-service async incident studio. Does not duplicate SE325 or SE460. See

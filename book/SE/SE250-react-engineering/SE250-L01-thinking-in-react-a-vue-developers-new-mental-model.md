@@ -3,7 +3,7 @@ id: SE250-L01
 course: SE250
 title: "Thinking in React: A Vue Developer's New Mental Model"
 type: elective
-manuscript: stub
+manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: null

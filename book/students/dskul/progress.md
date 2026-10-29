@@ -8,9 +8,9 @@ Personal learning tracker (not manuscript status). History is the append-only [`
 
 | Status | Count |
 | --- | ---: |
-| `unopened` · | 80 |
+| `unopened` · | 79 |
 | `wandering` ~ | 1 |
-| `studying` > | 10 |
+| `studying` > | 11 |
 | `labbing` * | 0 |
 | `settled` ✓ | 0 |
 | `fluent` ★ | 0 |
@@ -45,7 +45,7 @@ Current phase of each lecture, in catalogue order. This is not a timeline — th
 | `CS220` | `underway` | `>·······` |
 | `CS230` | `underway` | `~>>>··>>···` |
 | `CS320` | `unopened` | `········` |
-| `SE240` | `unopened` | `·······` |
+| `SE240` | `underway` | `·>·····` |
 | `SE310` | `unopened` | `···` |
 | `SE320` | `unopened` | `···` |
 | `CS330` | `unopened` | `···` |
@@ -66,11 +66,11 @@ Each cell is how many events fell on that day. The glyph is intensity; the digit
 
 | Week of | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2026-10-26 | █5 | █5 | ▓3 | · | · | · | · |
+| 2026-10-26 | █5 | █5 | ▓3 | ▓4 | · | · | · |
 
 Intensity: `·` 0, `░` 1, `▒` 2, `▓` 3–4, `█` 5+.
 
-13 events across 3 days, from 2026-10-26.
+17 events across 4 days, from 2026-10-26.
 
 ## Course by week
 
@@ -81,7 +81,8 @@ Session counts per course (listen, read, skim, lab, oral, review). `note` events
 | `CS110` | 4 |
 | `CS220` | 1 |
 | `CS230` | 6 |
-| `SE215` | 2 |
+| `SE240` | 1 |
+| `SE215` | 5 |
 
 Week labels are ISO weeks. 2026-W44 starts 2026-10-26.
 
@@ -91,6 +92,10 @@ Newest day first. A later session does not replace an earlier one.
 
 | When | Lecture | Action | Phase | Conf | Note |
 | --- | --- | --- | --- | ---: | --- |
+| 2026-10-29 | `SE215-L05` Cloud Platforms and Service Models | `skim` | wandering | 1 | Partial voice pass (~half lecture, half attention); closed mid-way. Hard to focus without hands-on cloud practice; deferring until/if pursuing AWS or GCP certification. |
+| 2026-10-29 | `SE215-L04` Repositories, Monorepos, and Build Systems | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
+| 2026-10-29 | `SE215-L03` Git, Pull Requests, and Collaborative Delivery | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
+| 2026-10-29 | `SE240-L02` Frontend Architecture Beyond Components | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
 | 2026-10-28 | `SE215-L02` How Engineering Work Gets Planned and Delivered | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
 | 2026-10-28 | `SE215-L01` The People and Teams Behind Software | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
 | 2026-10-28 | `CS220-L01` What a Programming Language Actually Promises | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
@@ -175,7 +180,7 @@ Folded snapshot. Passes count listen, read, skim, lab, oral, and review events. 
 | `CS430-L04` | `unopened` | 0 | 0 | — | — |  |
 | `CS430-L05` | `unopened` | 0 | 0 | — | — |  |
 | `SE240-L01` | `unopened` | 0 | 0 | — | — |  |
-| `SE240-L02` | `unopened` | 0 | 0 | — | — |  |
+| `SE240-L02` | `studying` | 2 | 1 | 2026-10-29 | — | Full voice listen-through; one session.… |
 | `SE240-L03` | `unopened` | 0 | 0 | — | — |  |
 | `SE240-L04` | `unopened` | 0 | 0 | — | — |  |
 | `SE240-L05` | `unopened` | 0 | 0 | — | — |  |

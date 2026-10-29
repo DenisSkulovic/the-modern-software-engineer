@@ -3,7 +3,7 @@ id: SE335-L01
 course: SE335
 title: "Redis in Production: Memory, Latency, and Cache Failures"
 type: elective
-manuscript: stub
+manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: null

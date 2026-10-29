@@ -3,7 +3,7 @@ id: CS345-L02
 course: CS345
 title: "Aggregation Pipelines Under Pressure"
 type: elective
-manuscript: stub
+manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: CS345-L01

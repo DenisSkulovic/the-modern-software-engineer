@@ -3,7 +3,7 @@ id: CS345-L04
 course: CS345
 title: "The MongoDB Performance Incident Studio"
 type: elective
-manuscript: stub
+manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: CS345-L03

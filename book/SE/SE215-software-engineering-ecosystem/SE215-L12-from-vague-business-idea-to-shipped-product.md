@@ -3,7 +3,7 @@ id: SE215-L12
 course: SE215
 title: "From Vague Business Idea to Shipped Product"
 type: elective
-manuscript: stub
+manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: SE215-L11

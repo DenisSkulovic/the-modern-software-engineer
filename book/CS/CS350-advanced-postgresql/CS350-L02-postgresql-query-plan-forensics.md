@@ -3,7 +3,7 @@ id: CS350-L02
 course: CS350
 title: "PostgreSQL Query Plan Forensics"
 type: elective
-manuscript: stub
+manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: CS350-L01

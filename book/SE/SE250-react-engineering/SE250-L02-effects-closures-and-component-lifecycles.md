@@ -3,7 +3,7 @@ id: SE250-L02
 course: SE250
 title: "Effects, Closures, and Component Lifecycles"
 type: elective
-manuscript: stub
+manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: SE250-L01

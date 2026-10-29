@@ -3,7 +3,7 @@ id: SE215-L11
 course: SE215
 title: "Release Management, Versioning, and Change Ownership"
 type: elective
-manuscript: stub
+manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: SE215-L10

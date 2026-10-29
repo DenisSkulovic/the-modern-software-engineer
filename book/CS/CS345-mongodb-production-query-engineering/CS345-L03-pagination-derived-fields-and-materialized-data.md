@@ -3,7 +3,7 @@ id: CS345-L03
 course: CS345
 title: "Pagination, Derived Fields, and Materialized Data"
 type: elective
-manuscript: stub
+manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: CS345-L02

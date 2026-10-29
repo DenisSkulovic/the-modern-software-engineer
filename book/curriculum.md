@@ -1,6 +1,6 @@
 # The Modern Software Engineer — Course Catalogue
 
-**Version:** 2.0 — 2026-10-28  
+**Version:** 2.0 — 2026-10-29  
 **Default manuscript edition:** `2.0.0`  
 **Machine-readable source of truth:** [`curriculum.yaml`](curriculum.yaml)  
 **Programme guide / study order:** [`README.md`](README.md)  
@@ -268,25 +268,25 @@ Active electives have on-disk lecture stubs or manuscripts and are validated lik
 
 #### CS345 — MongoDB Production Query Engineering
 
-300-level · 4 lectures · course status `in_progress` · `CS/CS345-mongodb-production-query-engineering/`
+300-level · 4 lectures · course status `complete` · `CS/CS345-mongodb-production-query-engineering/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
-| `CS345-L01` | MongoDB Query Plans and Index Forensics | `stub` | `2.0.0` | `` |
-| `CS345-L02` | Aggregation Pipelines Under Pressure | `stub` | `2.0.0` | `` |
-| `CS345-L03` | Pagination, Derived Fields, and Materialized Data | `stub` | `2.0.0` | `` |
-| `CS345-L04` | The MongoDB Performance Incident Studio | `stub` | `2.0.0` | `` |
+| `CS345-L01` | MongoDB Query Plans and Index Forensics | `manuscript` | `2.0.0` | `` |
+| `CS345-L02` | Aggregation Pipelines Under Pressure | `manuscript` | `2.0.0` | `` |
+| `CS345-L03` | Pagination, Derived Fields, and Materialized Data | `manuscript` | `2.0.0` | `` |
+| `CS345-L04` | The MongoDB Performance Incident Studio | `manuscript` | `2.0.0` | `` |
 
 #### CS350 — Advanced PostgreSQL Engineering
 
-300-level · 4 lectures · course status `in_progress` · `CS/CS350-advanced-postgresql/`
+300-level · 4 lectures · course status `complete` · `CS/CS350-advanced-postgresql/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
-| `CS350-L01` | SQL Fluency for Working Backend Engineers | `stub` | `2.0.0` | `` |
-| `CS350-L02` | PostgreSQL Query Plan Forensics | `stub` | `2.0.0` | `` |
-| `CS350-L03` | PostgreSQL Under Production Pressure | `stub` | `2.0.0` | `` |
-| `CS350-L04` | Online Migrations and the Database Incident Studio | `stub` | `2.0.0` | `` |
+| `CS350-L01` | SQL Fluency for Working Backend Engineers | `manuscript` | `2.0.0` | `` |
+| `CS350-L02` | PostgreSQL Query Plan Forensics | `manuscript` | `2.0.0` | `` |
+| `CS350-L03` | PostgreSQL Under Production Pressure | `manuscript` | `2.0.0` | `` |
+| `CS350-L04` | Online Migrations and the Database Incident Studio | `manuscript` | `2.0.0` | `` |
 
 #### CS360 — Algorithms and Coding Interview Lab
 
@@ -306,7 +306,7 @@ Active electives have on-disk lecture stubs or manuscripts and are validated lik
 
 #### SE215 — The Software Engineering Ecosystem
 
-200-level · 12 lectures · course status `in_progress` · `SE/SE215-software-engineering-ecosystem/`
+200-level · 12 lectures · course status `complete` · `SE/SE215-software-engineering-ecosystem/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
@@ -320,21 +320,21 @@ Active electives have on-disk lecture stubs or manuscripts and are validated lik
 | `SE215-L08` | Technical SEO and Web Discoverability | `manuscript` | `2.0.0` | `` |
 | `SE215-L09` | Data Engineering for Application Developers | `manuscript` | `2.0.0` | `` |
 | `SE215-L10` | Working With Product, Design, and Analytics | `manuscript` | `2.0.0` | `` |
-| `SE215-L11` | Release Management, Versioning, and Change Ownership | `stub` | `2.0.0` | `` |
-| `SE215-L12` | From Vague Business Idea to Shipped Product | `stub` | `2.0.0` | `` |
+| `SE215-L11` | Release Management, Versioning, and Change Ownership | `manuscript` | `2.0.0` | `` |
+| `SE215-L12` | From Vague Business Idea to Shipped Product | `manuscript` | `2.0.0` | `` |
 
 #### SE250 — React Engineering for Experienced Developers
 
-200-level · 6 lectures · course status `in_progress` · `SE/SE250-react-engineering/`
+200-level · 6 lectures · course status `complete` · `SE/SE250-react-engineering/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
-| `SE250-L01` | Thinking in React: A Vue Developer's New Mental Model | `stub` | `2.0.0` | `` |
-| `SE250-L02` | Effects, Closures, and Component Lifecycles | `stub` | `2.0.0` | `` |
-| `SE250-L03` | State, Data Fetching, and Real Application Architecture | `stub` | `2.0.0` | `` |
-| `SE250-L04` | React Performance, Testing, and Debugging | `stub` | `2.0.0` | `` |
-| `SE250-L05` | React in Production: SPAs, Next.js, and Server Rendering | `stub` | `2.0.0` | `` |
-| `SE250-L06` | The React Debugging Interview Studio | `stub` | `2.0.0` | `` |
+| `SE250-L01` | Thinking in React: A Vue Developer's New Mental Model | `manuscript` | `2.0.0` | `` |
+| `SE250-L02` | Effects, Closures, and Component Lifecycles | `manuscript` | `2.0.0` | `` |
+| `SE250-L03` | State, Data Fetching, and Real Application Architecture | `manuscript` | `2.0.0` | `` |
+| `SE250-L04` | React Performance, Testing, and Debugging | `manuscript` | `2.0.0` | `` |
+| `SE250-L05` | React in Production: SPAs, Next.js, and Server Rendering | `manuscript` | `2.0.0` | `` |
+| `SE250-L06` | The React Debugging Interview Studio | `manuscript` | `2.0.0` | `` |
 
 #### SE325 — Backends in the Wild: Production Field Guide
 
@@ -351,13 +351,13 @@ Active electives have on-disk lecture stubs or manuscripts and are validated lik
 
 #### SE335 — Queues, Caches, and Worker Production Diagnostics
 
-300-level · 3 lectures · course status `in_progress` · `SE/SE335-queues-caches-production-diagnostics/`
+300-level · 3 lectures · course status `complete` · `SE/SE335-queues-caches-production-diagnostics/`
 
 | ID | Lecture | Manuscript | Edition | Legacy |
 | --- | --- | --- | --- | --- |
-| `SE335-L01` | Redis in Production: Memory, Latency, and Cache Failures | `stub` | `2.0.0` | `` |
-| `SE335-L02` | RabbitMQ and Worker Failure Forensics | `stub` | `2.0.0` | `` |
-| `SE335-L03` | The Asynchronous System Incident Studio | `stub` | `2.0.0` | `` |
+| `SE335-L01` | Redis in Production: Memory, Latency, and Cache Failures | `manuscript` | `2.0.0` | `` |
+| `SE335-L02` | RabbitMQ and Worker Failure Forensics | `manuscript` | `2.0.0` | `` |
+| `SE335-L03` | The Asynchronous System Incident Studio | `manuscript` | `2.0.0` | `` |
 
 #### SE450 — Kubernetes and Platform Engineering
 

@@ -3,7 +3,7 @@ id: SE250-L04
 course: SE250
 title: "React Performance, Testing, and Debugging"
 type: elective
-manuscript: stub
+manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: SE250-L03

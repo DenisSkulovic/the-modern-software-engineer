@@ -97,3 +97,28 @@ events:
   phase: studying
   confidence: 2
   note: Full voice listen-through; one session. Prose done; labs not started.
+- at: '2026-10-29'
+  lecture: SE240-L02
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through; one session. Prose done; labs not started.
+- at: '2026-10-29'
+  lecture: SE215-L03
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through; one session. Prose done; labs not started.
+- at: '2026-10-29'
+  lecture: SE215-L04
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through; one session. Prose done; labs not started.
+- at: '2026-10-29'
+  lecture: SE215-L05
+  action: skim
+  phase: wandering
+  confidence: 1
+  note: Partial voice pass (~half lecture, half attention); closed mid-way. Hard to focus without hands-on
+    cloud practice; deferring until/if pursuing AWS or GCP certification.

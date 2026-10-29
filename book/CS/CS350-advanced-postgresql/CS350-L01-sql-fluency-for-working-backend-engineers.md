@@ -3,7 +3,7 @@ id: CS350-L01
 course: CS350
 title: "SQL Fluency for Working Backend Engineers"
 type: elective
-manuscript: stub
+manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: null

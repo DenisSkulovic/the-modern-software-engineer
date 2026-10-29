@@ -3,7 +3,7 @@ id: SE335-L03
 course: SE335
 title: "The Asynchronous System Incident Studio"
 type: elective
-manuscript: stub
+manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: SE335-L02

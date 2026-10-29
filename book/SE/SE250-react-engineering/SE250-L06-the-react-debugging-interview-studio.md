@@ -3,7 +3,7 @@ id: SE250-L06
 course: SE250
 title: "The React Debugging Interview Studio"
 type: elective
-manuscript: stub
+manuscript: manuscript
 edition: "2.0.0"
 legacy_ids: []
 prev: SE250-L05

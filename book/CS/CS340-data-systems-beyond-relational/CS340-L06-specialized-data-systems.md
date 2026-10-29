@@ -20,12 +20,6 @@ Do not repeat the Elasticsearch introduction in the SEO lecture. Search-engine
 infrastructure and search-engine optimization are distinct subjects.
 -->
 
-
-
-
-
-
-
 # CS340 — Data Systems Beyond Relational Databases
 
 ## Lecture 06: Specialized Data Systems
@@ -33,6 +27,405 @@ infrastructure and search-engine optimization are distinct subjects.
 *Why Redis, DynamoDB, Elasticsearch, and analytical databases exist, what their architectures make possible, and why adding another database can be both a brilliant engineering decision and a spectacular mistake.*
 
 ---
+
+# Part I — Intuition
+
+*The same product can need a correct booking write, a reused hotel summary, a known-key lookup, a relevance search, and a historical aggregate. Those are different questions — and often different systems.*
+
+This pass builds one mental picture. Part II develops the same picture with the mechanisms underneath.
+
+### The picture to carry in your head
+
+Imagine you're responsible for the backend of a hotel-booking website.
+
+A customer opens the application and searches for a quiet hotel near the center of Berlin.
+
+They compare several properties, open one hotel's details, examine the available rooms, and complete a reservation.
+
+Later, the marketing team wants to know which countries generated the most booking revenue last month.
+
+These activities belong to the same product, but they ask very different questions of its data.
+
+The customer wants to find something relevant.
+
+The hotel-details page wants information that has probably been retrieved thousands of times before.
+
+The booking operation needs to modify important business records correctly.
+
+The application may need to record enormous numbers of independent user events.
+
+And the marketing report needs to summarize millions of historical facts.
+
+You could try handling everything with PostgreSQL.
+
+For many applications, that would be an excellent starting point.
+
+But as workloads grow, particular operations may become sufficiently demanding that another kind of data system offers meaningful advantages.
+
+That's why Redis, DynamoDB, Elasticsearch, and ClickHouse exist.
+
+**They aren't simply four competitors trying to replace PostgreSQL. They are systems designed around different ways of storing, finding, and processing information.**
+
+---
+
+### 1. Begin with the ordinary database
+
+Let's start with the booking itself.
+
+The customer selects a room for three nights.
+
+The application must verify availability, create a reservation, and record the relevant payment state.
+
+This operation involves important relationships and business constraints.
+
+The booking belongs to a customer.
+
+It reserves particular inventory.
+
+It may have payments, refunds, and cancellation policies.
+
+If the operation fails halfway through, the application must not invent a successful booking or lose track of committed money.
+
+A relational database such as PostgreSQL is a strong default for this kind of operational work.
+
+MongoDB can also be suitable for many operational applications, particularly where document-oriented modeling fits the data and access patterns.
+
+The important point is that we need a **reliable home for authoritative business facts**.
+
+That database is our starting point.
+
+We introduce specialized systems only when there is a concrete reason.
+
+### 2. Redis — Don't do the same work a thousand times
+
+Now imagine the customer opening a popular hotel's details page.
+
+Its name, address, description, and amenities haven't changed since this morning.
+
+Yet ten thousand users may request the same information.
+
+Without caching, the application could repeatedly ask its primary database for the same result.
+
+Wouldn't it be convenient to keep a reusable copy somewhere fast?
+
+That's a common reason to use Redis.
+
+Redis is an in-memory data store that provides operations over structures such as strings, hashes, sets, counters, and sorted sets.
+
+One of its most familiar uses is caching.
+
+The application can ask Redis whether it already has a hotel summary.
+
+If the value exists and is valid, return it.
+
+Otherwise, retrieve the information from the authoritative source and populate the cache.
+
+Redis can also support rate limiting, session-related state, counters, and other low-latency coordination patterns.
+
+But there's an important distinction.
+
+**Redis is not synonymous with cache, and a cached value is not automatically an authoritative business fact.**
+
+If a hotel description disappears from Redis, perhaps the application can regenerate it.
+
+If an authoritative booking disappears, the consequences are far more serious.
+
+That difference determines how we think about persistence, eviction, failure recovery, and data ownership.
+
+### 3. DynamoDB — Find a known item at enormous scale
+
+Now imagine Mercury begins collecting customer activity.
+
+Every customer performs actions: opening properties, viewing offers, saving preferences, and starting booking sessions.
+
+The platform records millions of these events.
+
+Suppose an important access pattern is straightforward:
+
+"Retrieve the activity associated with customer 482, ordered by time."
+
+You already know which customer's records you need.
+
+You aren't searching through natural-language descriptions.
+
+You're accessing data through a predictable key.
+
+Amazon DynamoDB is a managed, distributed NoSQL database designed for workloads built around key-value and document access patterns.
+
+You define keys that determine how data can be distributed and retrieved efficiently.
+
+AWS manages much of the database infrastructure, including partitioning and operational scaling.
+
+This can be extremely useful when a workload grows very large and its access patterns are well understood.
+
+But DynamoDB doesn't make every possible database query automatically fast.
+
+If you've organized data for efficient access by customer ID, that doesn't automatically make an arbitrary report joining many unrelated entities easy.
+
+The way you design the keys matters enormously.
+
+Here's the distinction worth remembering:
+
+**Redis is often used to keep useful values and data structures immediately accessible. DynamoDB can serve as a durable primary data store for applications built around well-designed distributed key access.**
+
+They overlap in certain capabilities, but they are not interchangeable.
+
+And a conventional database might still be entirely sufficient for Mercury's activity workload.
+
+### 4. Elasticsearch — Find relevant things, not just matching records
+
+Return to the customer's original hotel search.
+
+They enter:
+
+"Quiet boutique hotel near the center of Berlin with a balcony."
+
+This isn't a request for a record with a known ID.
+
+The customer is expressing an intention.
+
+Perhaps the hotel's description uses the word *peaceful* rather than *quiet*.
+
+Perhaps it describes a *private terrace* rather than a *balcony*.
+
+Perhaps several hotels match, but some are much more relevant than others.
+
+An ordinary relational database can perform text search, filtering, and ranking. PostgreSQL, for example, has useful full-text search capabilities.
+
+But sophisticated search workloads may justify a dedicated search engine.
+
+Elasticsearch and OpenSearch are systems built around indexing and retrieving information using techniques such as text analysis, relevance scoring, filtering, and other search methods.
+
+One of the central techniques is the *inverted index*.
+
+Instead of merely finding a document by its identifier, the search engine maintains structures that help find documents associated with particular terms.
+
+It can then rank results according to relevance.
+
+This is a fundamentally different question from:
+
+"Retrieve booking 482."
+
+The booking query asks for a particular business fact.
+
+The search query asks which documents are the best matches for an expression of user intent.
+
+And a search engine's indexed representation may be updated asynchronously from the authoritative source.
+
+**Elasticsearch is often a specialized way to find and rank information, not the place where you should automatically store the only authoritative copy of a customer's reservation.**
+
+### 5. ClickHouse — Ask questions about millions of historical facts
+
+Now imagine the marketing manager opens an analytics dashboard.
+
+They want to know:
+
+"Which countries generated the most booking revenue over the past ninety days, broken down by week, traffic source, and device type?"
+
+The answer may involve millions or billions of event records.
+
+The database must examine large amounts of historical information, group records, and calculate aggregates.
+
+This is different from processing one customer's reservation.
+
+A normal transactional query might retrieve or update a handful of related records.
+
+An analytical query may scan enormous datasets to calculate a comparatively small result.
+
+ClickHouse is a column-oriented analytical database designed for this second category of work.
+
+To understand why that's useful, imagine a table containing fifty fields per event.
+
+Our report needs only four of them.
+
+A row-oriented storage design generally keeps the fields of a record together.
+
+A column-oriented storage design keeps values belonging to the same column together.
+
+That allows the analytical engine to read the relevant columns without treating every full record as the natural unit of storage.
+
+At large scale, this can substantially reduce the amount of data processed.
+
+ClickHouse also uses execution techniques intended to make aggregation over large datasets efficient.
+
+But those strengths don't mean it should automatically replace a transactional booking database.
+
+**A system optimized for examining a billion historical events is solving a different problem from one optimized for safely modifying a single reservation.**
+
+### Visual anchor 1 — One product, different questions
+
+The following picture summarizes the distinct workloads we've encountered.
+
+```text
+Hotel-booking platform
+         |
+         +-- Save a booking correctly
+         |      PostgreSQL / operational DB
+         |
+         +-- Reuse a popular hotel summary
+         |      Redis
+         |
+         +-- Retrieve activity by known key
+         |      DynamoDB
+         |
+         +-- Find relevant hotels from text
+         |      Elasticsearch / OpenSearch
+         |
+         +-- Aggregate enormous event histories
+                ClickHouse
+```
+
+These are examples of possible responsibilities, not a requirement to deploy five different systems.
+
+The same application may handle several of these workloads perfectly well using PostgreSQL alone.
+
+The question is whether the specialized system solves an important problem worth the additional complexity.
+
+### 6. Different kinds of fast
+
+There's a subtle idea hiding behind these technologies.
+
+They can all be described as fast databases.
+
+But *fast at what?*
+
+Redis might retrieve a known cached value extremely quickly.
+
+DynamoDB might access a well-partitioned record using a known key at enormous scale.
+
+Elasticsearch might find and rank relevant documents from a large catalogue.
+
+ClickHouse might calculate a revenue report across billions of events.
+
+Those are different operations.
+
+A database can be extremely fast for one and comparatively inefficient for another.
+
+That's why choosing a data system by a general benchmark or marketing claim is dangerous.
+
+You must know the operation you're optimizing.
+
+### Visual anchor 2 — Three ways to access information
+
+This picture separates the questions that specialized systems are designed to answer.
+
+```text
+KNOWN ID OR KEY
+"Give me customer 482's activity"
+                |
+                v
+         Key-based retrieval
+
+
+SEARCH EXPRESSION
+"Quiet hotel near Berlin"
+                |
+                v
+      Find and rank matches
+
+
+ANALYTICAL QUESTION
+"Revenue by country and week"
+                |
+                v
+    Scan, group, and aggregate
+```
+
+These access patterns may overlap in real products.
+
+The distinction is about what each system emphasizes, not which features it exclusively possesses.
+
+### 7. The hidden cost: now your systems must agree
+
+Imagine the customer changes their reservation.
+
+The authoritative booking record updates successfully.
+
+But the related search index still contains the earlier availability.
+
+The analytics system hasn't yet received the modification event.
+
+Redis still holds an old summary.
+
+Each system may be behaving correctly according to its own update schedule.
+
+Yet the information they expose is temporarily inconsistent.
+
+Now the company needs to decide which value is authoritative, how changes propagate, how long derived representations may be stale, and what happens when synchronization fails.
+
+This is the hidden cost of introducing specialized data systems.
+
+You aren't merely adding another database.
+
+You're adding another representation of information that must be updated, monitored, and sometimes rebuilt.
+
+### Visual anchor 3 — One source, several useful copies
+
+```text
+     Authoritative booking database
+                  |
+          Booking changes
+                  |
+        +---------+---------+
+        |         |         |
+        v         v         v
+      Redis     Search    Analytics
+      cache     index     database
+
+   Different access patterns
+   Different freshness policies
+   Different recovery procedures
+```
+
+The architecture should be able to answer what happens if any of these update paths fails.
+
+Some derived copies can be discarded and regenerated.
+
+Others may need durable processing, reconciliation, or controlled backfills.
+
+The source-of-truth relationship should be clear before the system becomes complicated.
+
+### 8. Don't collect databases like trophies
+
+Imagine an engineer presents an architecture containing PostgreSQL, MongoDB, Redis, DynamoDB, Elasticsearch, and ClickHouse.
+
+It might be an excellent architecture for a sufficiently large and demanding system.
+
+It might also be an unnecessary operational nightmare.
+
+Every additional system has configuration, security, backups, monitoring, resource limits, failure modes, costs, and specialist knowledge.
+
+Every additional derived representation can create synchronization responsibilities.
+
+A strong engineer doesn't reject specialized technology on principle.
+
+But they shouldn't introduce it merely because it is popular.
+
+Before adding another data system, ask:
+
+**What important workload cannot our existing system handle adequately?**
+
+**Why does this particular technology handle that workload better?**
+
+**What new consistency and operational responsibilities will it create?**
+
+Those questions are more valuable than memorizing vendor comparisons.
+
+#### Three questions before the Deep Dive
+
+1. A hotel-details page repeatedly retrieves the same description. Which technology might help, and would you necessarily make it the source of truth? **Redis could provide fast reusable access. The authoritative information can remain elsewhere.**
+2. A customer searches for hotels using a natural-language description. Why might a dedicated search engine be useful? **Because finding and ranking relevant text matches is a different access pattern from retrieving a known record by its key.**
+3. A company introduces ClickHouse for analytics. Does that mean every booking write should now go directly to ClickHouse? **No. The analytical workload can use a derived representation of authoritative operational data, with an appropriate ingestion and consistency contract.**
+
+You now have the conceptual map.
+
+The deep dive will explain the mechanisms underneath it: Redis data structures and persistence, DynamoDB partition keys, Elasticsearch indexing, ClickHouse's column-oriented execution, and the synchronization problems created when these systems coexist.
+
+*The intuition pass ends here.*
+
+---
+
+# Part II — Deep Dive
 
 # 1. Five Databases, Three of Them Unnecessary
 
