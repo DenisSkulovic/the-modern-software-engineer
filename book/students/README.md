@@ -8,14 +8,18 @@ Each student (or future clone of yourself-before-an-interview) gets a folder:
 students/
 ├── _template/
 │   ├── ledger.yaml         ← profile only (no lecture snapshot)
-│   └── activity.yaml       ← empty log
+│   ├── activity.yaml       ← empty log
+│   └── queue.yaml          ← optional curated short-term listen queue
 └── <student-id>/
     ├── ledger.yaml         ← who you are, status vocabulary, encore intervals
     ├── activity.yaml       ← append-only history; this is the source of truth
+    ├── queue.yaml          ← curated next listens for the current stretch
     └── progress.md         ← generated dashboard
 ```
 
 Do not edit past events, and do not keep a per-lecture status map. A later session is a new event. Current phase, confidence, and pass counts are a fold of the log.
+
+`queue.yaml` is the short-term study plan: a shuffled shortlist of lectures with preferred mode (`audio` / `screen` / `either`) and a one-line why. It is not a calendar and not Duolingo. Edit it when your stretch goal changes. A logged pass marks the matching queue item done on the next render.
 
 ## Quick start
 
@@ -32,11 +36,11 @@ python tools/progress_render.py --student dskul
 Open `progress.md` for:
 
 - counts by current phase
+- **Listen queue** — curated next listens from `queue.yaml` (falls back to catalogue study order if missing)
 - **Encore due** (spaced refresh, derived from the log)
 - **Course status strip** — where each lecture stands now
 - **Activity calendar** and **course by week** — when the work happened
 - **Recent events** — the log itself, newest day first
-- suggested next rooms from the recommended study order
 
 ## Learning statuses
 

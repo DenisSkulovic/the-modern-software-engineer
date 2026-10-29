@@ -91,6 +91,10 @@ def activity_path(student: str) -> Path:
     return student_dir(student) / "activity.yaml"
 
 
+def queue_path(student: str) -> Path:
+    return student_dir(student) / "queue.yaml"
+
+
 def load_yaml(path: Path) -> dict:
     if not path.is_file():
         raise SystemExit(f"Missing {path}")
@@ -330,3 +334,60 @@ def md_cell(text: str, limit: int | None = None) -> str:
     if limit is not None and len(collapsed) > limit:
         collapsed = collapsed[: limit - 1] + "…"
     return collapsed.replace("|", "\\|")
+
+
+QUEUE_ITEM_STATUSES = frozenset({"open", "done", "skipped"})
+QUEUE_MODES = frozenset({"audio", "screen", "either"})
+
+
+def load_queue(student: str) -> dict | None:
+    """Curated short-term listen queue, or None if the student has no queue.yaml."""
+    path = queue_path(student)
+    if not path.is_file():
+        return None
+    data = load_yaml(path)
+    if not data:
+        return None
+    return data
+
+
+def events_by_lecture(events: list[dict]) -> dict[str, list[dict]]:
+    grouped: dict[str, list[dict]] = {}
+    for event in events:
+        grouped.setdefault(event["lecture"], []).append(event)
+    return grouped
+
+
+def queue_item_state(item: dict, by_lecture: dict[str, list[dict]]) -> str:
+    """Resolve open/done/skipped. Explicit status wins; else any pass action → done."""
+    explicit = item.get("status")
+    if explicit:
+        if explicit not in QUEUE_ITEM_STATUSES:
+            raise SystemExit(f"queue item {item.get('lecture')!r} has bad status {explicit!r}")
+        return str(explicit)
+    lid = item.get("lecture")
+    if not lid:
+        raise SystemExit("queue item needs lecture")
+    for event in by_lecture.get(str(lid), []):
+        if event["action"] in PASS_ACTIONS:
+            return "done"
+    return "open"
+
+
+def normalize_queue_item(item, *, where: str) -> dict:
+    if not isinstance(item, dict):
+        raise SystemExit(f"{where} must be a mapping")
+    lid = item.get("lecture")
+    if not lid:
+        raise SystemExit(f"{where} needs lecture")
+    mode = item.get("mode") or "either"
+    if mode not in QUEUE_MODES:
+        raise SystemExit(f"{where} has unknown mode {mode!r}")
+    out = {
+        "lecture": str(lid),
+        "mode": str(mode),
+        "why": str(item.get("why") or "").strip(),
+    }
+    if item.get("status"):
+        out["status"] = str(item["status"])
+    return out

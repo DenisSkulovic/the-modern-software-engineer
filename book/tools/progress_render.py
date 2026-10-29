@@ -18,6 +18,7 @@ from progress_lib import (
     STUDENTS,
     activity_path,
     course_of,
+    events_by_lecture,
     fold_core,
     heat_cell,
     intervals_from,
@@ -25,9 +26,12 @@ from progress_lib import (
     lecture_index,
     ledger_path,
     load_events,
+    load_queue,
     load_yaml,
     md_cell,
+    normalize_queue_item,
     parse_day,
+    queue_item_state,
     week_start,
 )
 
@@ -107,7 +111,6 @@ def main() -> None:
         if st == "fading" or st == "encore" or (due and due <= today):
             encore_due.append((lid, entry))
 
-    suggested: list[str] = []
     code_to_lectures: dict[str, list[str]] = {}
     for course in manifest["courses"]:
         if course.get("type") != "core":
@@ -115,18 +118,31 @@ def main() -> None:
         ids = [lec["id"] for lec in (course.get("lectures") or [])]
         code_to_lectures[course["code"]] = ids
 
-    for block in manifest.get("study_order") or []:
-        for code in block.get("courses") or []:
-            for lid in code_to_lectures.get(code, []):
-                st = (lectures.get(lid) or {}).get("status", "unopened")
-                if st in {"unopened", "wandering", "studying", "labbing", "encore", "fading"}:
-                    suggested.append(lid)
+    queue = load_queue(args.student)
+    by_lecture = events_by_lecture(events)
+
+    # Fallback only when there is no curated queue: walk catalogue study_order.
+    suggested: list[str] = []
+    if queue is None:
+        for block in manifest.get("study_order") or []:
+            for code in block.get("courses") or []:
+                for lid in code_to_lectures.get(code, []):
+                    st = (lectures.get(lid) or {}).get("status", "unopened")
+                    if st in {
+                        "unopened",
+                        "wandering",
+                        "studying",
+                        "labbing",
+                        "encore",
+                        "fading",
+                    }:
+                        suggested.append(lid)
+                    if len(suggested) >= 5:
+                        break
                 if len(suggested) >= 5:
                     break
             if len(suggested) >= 5:
                 break
-        if len(suggested) >= 5:
-            break
 
     latest_event = max((e["at"] for e in events), default=None)
     updated = parse_day(ledger.get("updated"))
@@ -160,17 +176,21 @@ def main() -> None:
     lines.append("")
 
     settled_ish = counts.get("settled", 0) + counts.get("fluent", 0)
+    exposed = sum(1 for e in lectures.values() if (e.get("passes") or 0) > 0)
     total = sum(counts.values()) or 1
     lines.append(
-        f"Progress through core lectures (settled+fluent): "
-        f"**{settled_ish}/{total}** ({100 * settled_ish // total}%)."
+        f"Exposed (any pass logged): **{exposed}/{total}**. "
+        f"Settled+fluent: **{settled_ish}/{total}** "
+        f"({100 * settled_ish // total}%) — optional for a listen-first refresh."
     )
     lines.append("")
     lines.append(
         "Counts cover every core lecture currently in the catalogue. "
-        "A lecture with no events is `unopened`."
+        "A lecture with no events is `unopened`. Electives appear in the queue and activity log."
     )
     lines.append("")
+
+    append_listen_queue(lines, queue, by_lecture, catalog, lectures, suggested)
 
     lines.append("## Encore due")
     lines.append("")
@@ -190,18 +210,6 @@ def main() -> None:
             )
     lines.append("")
 
-    lines.append("## Suggested next rooms")
-    lines.append("")
-    if not suggested:
-        lines.append("_Study order looks clear — consider electives or fluent maintenance._")
-    else:
-        for lid in suggested:
-            e = lectures[lid]
-            lines.append(
-                f"- `{lid}` — {e.get('title')} "
-                f"(`{e.get('status')}`, confidence {e.get('confidence', 0)})"
-            )
-    lines.append("")
 
     lines.append("## Course status strip")
     lines.append("")
@@ -260,6 +268,109 @@ def main() -> None:
     out = STUDENTS / args.student / "progress.md"
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"Wrote {out.relative_to(BOOK_ROOT)}")
+
+
+def append_listen_queue(
+    lines: list[str],
+    queue: dict | None,
+    by_lecture: dict,
+    catalog: dict,
+    lectures: dict,
+    suggested: list[str],
+) -> None:
+    lines.append("## Listen queue")
+    lines.append("")
+
+    if queue is None:
+        lines.append(
+            "_No curated [`queue.yaml`](queue.yaml). "
+            "Falling back to catalogue study order — add a queue for interview-focused picks._"
+        )
+        lines.append("")
+        if not suggested:
+            lines.append("_Study order looks clear — consider electives or fluent maintenance._")
+        else:
+            for lid in suggested:
+                e = lectures[lid]
+                lines.append(
+                    f"- `{lid}` — {e.get('title')} "
+                    f"(`{e.get('status')}`, confidence {e.get('confidence', 0)})"
+                )
+        lines.append("")
+        return
+
+    goal = " ".join((queue.get("goal") or "").split())
+    if goal:
+        lines.append(goal)
+        lines.append("")
+
+    updated = parse_day(queue.get("updated"))
+    if updated:
+        lines.append(f"_Queue updated {updated.isoformat()}. Not a calendar — pick by mood/mode._")
+        lines.append("")
+
+    walk = queue.get("walk_pack") or []
+    items = queue.get("items") or []
+    overflow = queue.get("overflow") or []
+    if not walk and not items and not overflow:
+        lines.append("_Queue is empty — add lectures to `queue.yaml`._")
+        lines.append("")
+        return
+
+    def render_section(title: str, raw_items: list) -> tuple[int, int]:
+        lines.append(f"### {title}")
+        lines.append("")
+        if not raw_items:
+            lines.append("_None._")
+            lines.append("")
+            return 0, 0
+        lines.append("| # | State | Mode | Lecture | Why |")
+        lines.append("| ---: | --- | --- | --- | --- |")
+        open_n = 0
+        done_n = 0
+        for i, raw in enumerate(raw_items, start=1):
+            item = normalize_queue_item(raw, where=f"queue {title} item {i}")
+            state = queue_item_state(item, by_lecture)
+            if state == "open":
+                open_n += 1
+                glyph = "○"
+            elif state == "skipped":
+                glyph = "—"
+            else:
+                done_n += 1
+                glyph = "●"
+            meta = catalog.get(item["lecture"]) or {}
+            title_text = meta.get("title") or ""
+            lecture_cell = f"`{item['lecture']}`"
+            if title_text:
+                lecture_cell += f" {md_cell(title_text, 42)}"
+            why = item.get("why") or ""
+            approx = raw.get("approx_min_at_1_5x") if isinstance(raw, dict) else None
+            if approx is not None:
+                why = f"~{approx}m@1.5× — {why}" if why else f"~{approx}m@1.5×"
+            lines.append(
+                f"| {i} | {glyph} `{state}` | `{item['mode']}` | "
+                f"{lecture_cell} | {md_cell(why, 72)} |"
+            )
+        lines.append("")
+        return open_n, done_n
+
+    open_walk, done_walk = render_section("Walk pack (audio-first)", walk)
+    open_main, done_main = render_section("Priority listens", items)
+    open_over, done_over = render_section("Overflow (extra appetite)", overflow)
+    open_n = open_walk + open_main + open_over
+    done_n = done_walk + done_main + done_over
+    total = len(walk) + len(items) + len(overflow)
+    lines.append(
+        f"{done_n} done · {open_n} open · {total} listed. "
+        "Glyphs: `○` open, `●` done (logged pass or `status: done`), `—` skipped."
+    )
+    lines.append("")
+    lines.append(
+        "Edit [`queue.yaml`](queue.yaml) to reshuffle. "
+        "Logging a listen/read/skim marks the matching item done on next render."
+    )
+    lines.append("")
 
 
 def append_calendar(lines: list[str], events: list[dict], today: date) -> None:

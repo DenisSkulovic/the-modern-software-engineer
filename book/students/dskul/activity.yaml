@@ -122,3 +122,9 @@ events:
   confidence: 1
   note: Partial voice pass (~half lecture, half attention); closed mid-way. Hard to focus without hands-on
     cloud practice; deferring until/if pursuing AWS or GCP certification.
+- at: '2026-10-29'
+  lecture: CS340-L01
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through; one session. Prose done; labs not started.

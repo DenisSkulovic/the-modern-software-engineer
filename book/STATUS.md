@@ -134,10 +134,12 @@ book/
 │   ├── README.md             ← how to use ledgers
 │   ├── _template/
 │   │   ├── ledger.yaml       ← profile only
-│   │   └── activity.yaml     ← empty log
+│   │   ├── activity.yaml     ← empty log
+│   │   └── queue.yaml        ← optional curated short-term listen queue
 │   └── dskul/                ← example / primary student
 │       ├── ledger.yaml       ← profile (not a snapshot of lectures)
 │       ├── activity.yaml     ← append-only learning history
+│       ├── queue.yaml        ← curated next listens (mood/mode, not calendar)
 │       └── progress.md       ← rendered dashboard (optional commit)
 └── tools/
     ├── sync_manuscript_meta.py
@@ -161,9 +163,12 @@ book/
 **Studying**
 
 1. `python tools/progress_init.py --student <your-id>` if the folder does not exist yet
-2. Append what you did: `python tools/progress_log.py --student <your-id> --lecture <id> --action listen --phase studying`
-3. `python tools/progress_render.py --student <your-id>`
-4. Check **Encore due** and the activity calendar before picking tonight’s room
+2. Keep a short curated [`students/<id>/queue.yaml`](students/_template/queue.yaml) for the current stretch (interview refresh listens, etc.) — not a day-by-day schedule
+3. Append what you did: `python tools/progress_log.py --student <your-id> --lecture <id> --action listen --phase studying`
+4. `python tools/progress_render.py --student <your-id>`
+5. Check **Listen queue**, **Encore due**, and the activity calendar before picking tonight’s room
+
+Listening / reading is enough for an interview refresh pass. Labs (`labbing`) are optional unless you want them. Mock interviews in [`interview-lab/`](interview-lab/README.md) are how “exposed” becomes “interview-ready.”
 
 **Interview practice**
 

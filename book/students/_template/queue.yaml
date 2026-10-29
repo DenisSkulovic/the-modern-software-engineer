@@ -1,0 +1,23 @@
+# Short-term listen queue — curated picks, not a calendar and not auto-generated.
+# Order is preference among open items; skip or reshuffle freely.
+# Diversify subjects across sessions (university-style), don't binge one course.
+#
+# mode: audio | screen | either
+# status: optional override — open | done | skipped
+#   Otherwise a listen/read/skim/lab/oral/review event marks the item done.
+#
+# Copy this file into students/<id>/queue.yaml and fill items for the current stretch.
+# progress_render.py surfaces open items on the dashboard.
+
+goal: >
+  Describe the stretch goal here (e.g. interview refresh listens, then Interview Lab).
+
+updated: '2026-10-29'
+
+items: []
+# - lecture: CS330-L01
+#   mode: either
+#   why: Why this belongs in the current rotation
+
+overflow: []
+# Extra appetite only — not required for the current stretch.

@@ -1,0 +1,99 @@
+# Short-term listen queue — curated picks, not a calendar and not auto-generated.
+# Order is preference among open items; skip or reshuffle freely.
+# Diversify subjects across sessions (university-style), don't binge one course.
+#
+# mode: audio | screen | either
+#   audio  — prose carries without staring at fences (headphones / walking OK)
+#   screen — code/diagrams matter; listen while looking, or read
+#   either — fine either way
+# status: optional override — open | done | skipped
+#   Otherwise a listen/read/skim/lab/oral/review event marks the item done.
+#
+# Goal for this stretch: expose interview-critical topics by listening.
+# Labs are optional. Interview Lab proves readiness; listening only marks exposed.
+
+goal: >
+  ~1 more week of diversified listens for interview refresh, then shift
+  weight to Interview Lab + real applications. No labbing required.
+  Networking (CS230) already covered enough for now — don't binge more of it.
+
+updated: '2026-10-29'
+
+# ~2h walk @ 1.5× ≈ four ~30–40 min slots. Prefer low fence density; diversify courses.
+# Durations are rough wall-clock at 1.5× from word count (~150 wpm @1×).
+walk_pack:
+- lecture: CS330-L01
+  mode: audio
+  approx_min_at_1_5x: 33
+  why: Relational design — highest interview value still untouched; prose-led
+- lecture: SE215-L06
+  mode: audio
+  approx_min_at_1_5x: 26
+  why: DevOps/platform ownership — light fences; different from git/cloud skim
+- lecture: CS220-L08
+  mode: audio
+  approx_min_at_1_5x: 38
+  why: Runtime performance / language choice — workshop prose, few fences
+- lecture: SE330-L01
+  mode: either
+  approx_min_at_1_5x: 31
+  why: Architecture vocabulary — slightly denser fences but concepts carry on audio
+
+items:
+- lecture: CS330-L01
+  mode: audio
+  why: Relational design — high interview value; walk-friendly
+- lecture: SE215-L06
+  mode: audio
+  why: DevOps/platform ownership — among the most audio-friendly manuscripts
+- lecture: CS220-L08
+  mode: audio
+  why: Runtime performance workshop — surprisingly listen-friendly for CS220
+- lecture: SE330-L01
+  mode: either
+  why: Architecture vocabulary for mid/senior product interviews
+- lecture: SE215-L10
+  mode: audio
+  why: Product/design/analytics collaboration — excellent headphones spare
+- lecture: SE215-L11
+  mode: either
+  why: Release/versioning ownership — fine on a walk; a bit longer
+- lecture: CS340-L07
+  mode: audio
+  why: Data architecture workshop — very audio-friendly; skip if CS340 feels same-day
+- lecture: SE250-L01
+  mode: screen
+  why: React mental model — known interview gap; save for screen time
+- lecture: CS220-L02
+  mode: screen
+  why: JS/TS semantics after CS220-L01; examples repay looking
+- lecture: SE320-L01
+  mode: screen
+  why: Backend service anatomy — organizes what you already ship; code-heavy
+- lecture: CS340-L01
+  mode: audio
+  why: Non-relational models tour — done
+- lecture: SE310-L02
+  mode: screen
+  why: Auth and browser security — common fullstack grill; follow examples
+- lecture: SE320-L03
+  mode: screen
+  why: Queues/workers — matches production experience; good interview stories
+- lecture: CS330-L02
+  mode: either
+  why: SQL and query performance — after L01; semi walk-ok (~14 fences)
+
+# Extra appetite only — not required for the refresh week.
+overflow:
+- lecture: SE250-L02
+  mode: screen
+  why: Effects/closures — only after L01, or after a React mock exposes the gap
+- lecture: SE310-L01
+  mode: screen
+  why: Frontend–backend contract — very fence-dense; pick when sitting down
+- lecture: SE490-L03
+  mode: either
+  why: 100× traffic system-design workshop — useful before architecture mocks
+- lecture: SE240-L03
+  mode: screen
+  why: State management — continues SE240-L02; skip if energy is low this week
