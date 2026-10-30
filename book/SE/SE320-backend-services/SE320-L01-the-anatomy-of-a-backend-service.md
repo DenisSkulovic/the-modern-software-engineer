@@ -38,7 +38,7 @@ Do not expand this lecture into those operational deep-dives.
 
 It's 14:37 on a Tuesday. A customer is booking a hotel room through your SaaS platform. She selects her dates, enters her details, and clicks **Confirm Reservation**.
 
-The frontend sends a request:
+The frontend sends one booking. It is a POST to `/api/reservations`, with a bearer token, naming hotel 482, the deluxe room type, check-in on 12 November 2026, and checkout on the 15th.
 
 ```http
 POST /api/reservations
@@ -53,7 +53,7 @@ Authorization: Bearer eyJ...
 }
 ```
 
-The request reaches your Node.js backend. The controller is remarkably straightforward:
+The controller that receives it does almost nothing. It hands the raw body to `reservationService.create` and, if that call returns, responds with status 201 and the reservation as JSON.
 
 ```typescript
 app.post("/api/reservations", async (req, res) => {
@@ -65,7 +65,7 @@ app.post("/api/reservations", async (req, res) => {
 });
 ```
 
-Underneath it, the service performs three operations:
+The service treats three steps as one success. It inserts the reservation, waits until a confirmation email is accepted, and only then returns the reservation to the controller.
 
 ```typescript
 async function create(input: CreateReservationInput) {
@@ -81,7 +81,7 @@ Reasonable code. An experienced developer could write it in five minutes. But so
 
 The database successfully inserts the reservation. The reservation receives ID `R-10842`. Then the notification service attempts to contact an external email provider.
 
-The email provider accepts the message, but its response is lost because the connection times out. Your backend sees the timeout, throws an exception, and returns:
+The email provider accepts the message, but its response is lost because the connection times out. Your backend sees the timeout, throws an exception, and returns HTTP 500, Internal Server Error.
 
 ```http
 HTTP/1.1 500 Internal Server Error
@@ -115,7 +115,7 @@ And, more importantly, why their boundaries matter.
 
 In the web engineering courses (CS230, SE240, SE310), we followed a request across the internet: DNS, connections, TLS, HTTP, proxies, and browser behavior. Now imagine that journey has finished.
 
-An HTTP request has reached our application. What happens? A typical production backend might contain the following logical path:
+An HTTP request has reached our application. What happens? Read the path as one column. The HTTP framework accepts the request. Middleware assigns an id, applies security checks, and parses the body. Then come routing, authentication, authorization and validation, the controller, and an application service. Domain rules sit beside the dependencies they need. A repository talks to PostgreSQL or Redis. The result is serialized and leaves as an HTTP response. The drawing is that column, not a law about the order of every check.
 
 ```text
                  INCOMING HTTP REQUEST
@@ -242,7 +242,7 @@ A request consumes resources even while waiting:
 - File descriptors and network resources.
 - Capacity in downstream systems.
 
-And CPU-intensive synchronous JavaScript can still monopolize the event loop. Imagine adding this innocent-looking operation:
+And CPU-intensive synchronous JavaScript can still monopolize the event loop. Imagine one innocent-looking line: a call to `calculateSomethingExpensive`, with no `await`, so the thread cannot leave it until the function returns.
 
 ```typescript
 const result = calculateSomethingExpensive();
@@ -266,7 +266,7 @@ Imagine a factory manufacturing cars. Before a car leaves the factory, it passes
 
 One station installs doors. Another checks electrical systems. Another verifies safety requirements. A backend request-processing pipeline works somewhat similarly.
 
-Middleware functions inspect or transform the request, establish context, reject invalid operations, or pass control onward. In Express:
+Middleware functions inspect or transform the request, establish context, reject invalid operations, or pass control onward. In this Express registration the order is a request logger, then JSON body parsing, then authentication, and only then the POST that creates a reservation.
 
 ```typescript
 app.use(requestLogger);
@@ -278,7 +278,7 @@ app.post("/reservations", createReservation);
 
 Order matters. A request passes through the applicable middleware in registration order, subject to how each middleware chooses to continue, respond, or raise an error.
 
-For example:
+The logger in this sketch writes the HTTP method and the path, then calls `next` so the pipeline continues. If it neither calls `next` nor sends a response, the request hangs. A middleware that instead sends status 401 and a JSON body ends the request there.
 
 ```typescript
 function requestLogger(req, res, next) {
@@ -286,8 +286,6 @@ function requestLogger(req, res, next) {
   next();
 }
 ```
-
-Calling `next()` passes control onward. Calling `res.status(401).json(...)` instead terminates the request-response path. And failing to do either can leave the request hanging.
 
 This simple pipeline model is extremely powerful. It allows shared infrastructure concerns to be separated from business-specific concerns.
 
@@ -307,7 +305,7 @@ There are exceptions, particularly around security. The distinction is conceptua
 
 ### The security boundary
 
-Suppose you implement authentication:
+Suppose authentication middleware reads the bearer token, verifies it, stores the resulting identity on the request, and calls `next`. That answers who is calling. It does not answer whether that person may change this reservation.
 
 ```typescript
 app.use(async (req, res, next) => {
@@ -337,13 +335,13 @@ That second question depends on the specific operation and resource. This separa
 
 Suppose your SaaS supports multiple hotels. An employee of Hotel A can manage Hotel A's reservations. An employee of Hotel B can manage Hotel B's reservations.
 
-Your backend exposes:
+Your backend exposes a GET for one reservation, here `R-10842`.
 
 ```http
 GET /api/reservations/R-10842
 ```
 
-The route verifies that the caller has a valid authentication token. Then the controller executes:
+The route verifies that the caller has a valid authentication token. Then the controller loads that reservation by id alone, with no hotel and no actor in the query.
 
 ```typescript
 const reservation = await repository.findById(
@@ -351,13 +349,13 @@ const reservation = await repository.findById(
 );
 ```
 
-Can you see the problem? The user is authenticated. The reservation exists.
+The user is authenticated. The reservation exists.
 
 The database query succeeds. But nothing established that the reservation belongs to a hotel the user may access.
 
 An employee from Hotel B might retrieve Hotel A's reservation simply by changing the identifier. This is a form of broken object-level authorization.
 
-And it's particularly nasty because the application can behave completely correctly according to its implementation. A better interface makes the authorization scope explicit:
+And it's particularly nasty because the application can behave completely correctly according to its implementation. A better call passes three facts together: which reservation, which actor, and which tenant. The caller cannot ask for an object without naming who is asking.
 
 ```typescript
 const reservation = await reservationService.getById({
@@ -367,7 +365,7 @@ const reservation = await reservationService.getById({
 });
 ```
 
-The application service must enforce the relevant permissions, potentially with a tenant-scoped query:
+The application service must enforce the relevant permissions. One way is a query that matches both the reservation id and the hotel id. A row that exists under another hotel does not come back.
 
 ```sql
 SELECT *
@@ -382,7 +380,7 @@ The key principle remains the same.
 
 **Identity alone does not confer permission over every object reachable through the API.**
 
-Notice something else: we must not blindly accept the tenant identifier from the HTTP request body.
+Notice something else: we must not blindly accept the tenant identifier from the HTTP request body. The dangerous line reads `tenantId` from `req.body` and treats the client as the authority on which hotel it may enter.
 
 ```typescript
 // Dangerous if accepted as authoritative:
@@ -409,7 +407,7 @@ If the answer is yes, your boundary deserves attention.
 
 # 6. Validation: What Does This Input Actually Mean?
 
-Our incoming booking request contains dates, hotel identifiers, and a room type. We could validate its structure using a library such as Zod.
+Our incoming booking request contains dates, hotel identifiers, and a room type. A Zod schema can demand a non-empty hotel id, a non-empty room type id, and check-in and check-out as calendar dates. Parsing the body either yields that object or throws. It does not yet know whether the stay is legal.
 
 ```typescript
 import { z } from "zod";
@@ -423,7 +421,7 @@ const createReservationSchema = z.object({
 });
 ```
 
-The controller parses the incoming payload:
+The controller parses the incoming payload with that schema:
 
 ```typescript
 const input = createReservationSchema.parse(req.body);
@@ -445,7 +443,7 @@ This belongs naturally near the transport boundary.
 
 ### Business validation
 
-Does the requested operation make sense according to domain rules? For instance:
+Does the requested operation make sense according to domain rules? Two different rules are easy to confuse because both mention dates. If checkout is not strictly after check-in, the stay itself is nonsense. If the number of nights is below the rate plan's minimum, the stay is well-formed and still forbidden. Both belong with application or domain logic, not in the parser that only checked the shape.
 
 ```typescript
 if (checkOut <= checkIn) {
@@ -453,15 +451,11 @@ if (checkOut <= checkIn) {
 }
 ```
 
-Or:
-
 ```typescript
 if (stayLength < ratePlan.minimumNights) {
   throw new MinimumStayViolationError();
 }
 ```
-
-These rules often belong in application or domain logic.
 
 ### State-dependent validation
 
@@ -475,7 +469,7 @@ Both requests can observe availability before either modifies it. We will dissec
 
 **Validating a snapshot of state is not equivalent to enforcing an invariant against concurrent modification.**
 
-And here's another important design consideration. Never trust client-provided calculations for authoritative business values. If the frontend sends:
+And here's another important design consideration. Never trust client-provided calculations for authoritative business values. The frontend can name a deluxe room and a total price of one euro.
 
 ```json
 {
@@ -484,7 +478,7 @@ And here's another important design consideration. Never trust client-provided c
 }
 ```
 
-the backend should not assume the room actually costs one euro.
+The backend should not assume the room actually costs one euro.
 
 It should derive authoritative pricing from trusted business data, applying appropriate pricing and promotional rules. The frontend describes what the customer wants.
 
@@ -498,7 +492,7 @@ We've authenticated the caller, established the authorization context, and valid
 
 A good controller is essentially an adapter between HTTP and the application's use cases.
 
-It translates request data into an application command, invokes the appropriate operation, and translates the result into an HTTP response. Consider:
+It translates request data into an application command, invokes the appropriate operation, and translates the result into an HTTP response. In this sketch it parses the body, then calls create with the actor id and tenant id from the authenticated user, plus the room type and the dates from that parsed input. Success is status 201 carrying the new id and status, not the whole internal object.
 
 ```typescript
 app.post("/reservations", async (req, res) => {
@@ -575,7 +569,7 @@ Some bookings are refundable up to 48 hours before arrival. Others have tiered p
 
 They could be embedded directly in the application service. For simple domains, that might be perfectly reasonable.
 
-But as the rules become more complicated and reusable, they deserve their own domain concepts.
+But as the rules become more complicated and reusable, they deserve their own domain concepts. One function can take the reservation, the cancellation policy, and the moment of cancellation, and return an amount of money. It does not take an HTTP request or a database connection.
 
 ```typescript
 function calculateCancellationPenalty(
@@ -637,7 +631,7 @@ The objective is to isolate genuinely meaningful responsibilities, not maximize 
 
 # 9. The Persistence Boundary: Why Repositories Exist
 
-At some point, the application must retrieve or modify data. A repository provides an interface for persistence-related operations. For example:
+At some point, the application must retrieve or modify data. A useful reservation repository can find a reservation by id within a tenant, and it can save a reservation. It does not have to pretend it is a generic table.
 
 ```typescript
 interface ReservationRepository {
@@ -652,7 +646,7 @@ interface ReservationRepository {
 
 The application service can depend on this interface without knowing whether it is implemented through TypeORM, raw PostgreSQL queries, or something else. That sounds attractive.
 
-But repositories are also frequently overengineered. Consider this generic abstraction:
+But repositories are also frequently overengineered. The generic version offers create, update, delete, and find-all, for whatever type you plug in.
 
 ```typescript
 interface Repository<T> {
@@ -951,7 +945,7 @@ A good boundary exists because it protects a meaningful design decision. Not bec
 
 # 13. Organizing a Backend: Layers Versus Features
 
-Imagine a growing SaaS application. It contains reservations, hotels, billing, users, notifications, and integrations. One possible directory structure is:
+Imagine a growing SaaS application. It contains reservations, hotels, billing, users, notifications, and integrations. One layout groups files by technical job. Controllers for reservations, hotels, and billing live in one folder. Services for those same three live in another. Repositories live in a third. Models, validators, and utils sit beside them. A single reservation change walks all of those folders.
 
 ```text
 src/
@@ -977,7 +971,7 @@ src/
 
 This groups files by technical responsibility. It works reasonably well when the application is small.
 
-But as it grows, implementing one reservation feature may require editing files scattered across six directories. Another structure groups code by business capability:
+But as it grows, implementing one reservation feature may require editing files scattered across six directories. The other layout is a `modules` folder. Reservations keep their own routes and controller, application functions such as create and cancel, domain types such as the reservation and its cancellation policy, and a Postgres repository. Billing, hotels, users, and notifications are sibling modules. Shared database, logging, and errors sit beside the modules, and a bootstrap file wires the process.
 
 ```text
 src/
@@ -1022,13 +1016,13 @@ Dependencies between business capabilities become easier to identify. But direct
 
 If every module imports every other module's internal services and directly modifies every database table, the folder structure is mostly decorative.
 
-A meaningful module boundary controls what other modules are permitted to depend upon. For example, the billing module might expose:
+A meaningful module boundary controls what other modules are permitted to depend upon. Billing might publish one operation, create an invoice for a reservation. Callers use that operation. They do not read billing's invoice tables.
 
 ```typescript
 billingService.createInvoiceForReservation(...)
 ```
 
-It should not require reservation code to know the details of billing's internal invoice tables. This is precisely where the modular monolith from the web engineering courses (CS230, SE240, SE310) becomes interesting.
+Reservation code should not need the shape of those tables. This is precisely where the modular monolith from the web engineering courses (CS230, SE240, SE310) becomes interesting.
 
 **A modular monolith provides meaningful internal boundaries while retaining a single deployable application.**
 
@@ -1040,7 +1034,7 @@ For many business applications, that's a very attractive bargain.
 
 # 14. Request Context: Following One Request Through the Maze
 
-Let's return to production. Your logs contain these messages:
+Let's return to production. Six lines share the same second: a query started, a customer was loaded, reservation validation failed, a query completed, an external API timed out, and something returned 500. With dozens of requests in flight, those lines may belong to six different customers. The clock cannot tell you.
 
 ```text
 14:37:12 Query started
@@ -1051,13 +1045,13 @@ Let's return to production. Your logs contain these messages:
 14:37:12 Response 500
 ```
 
-Which messages belong to the same request? With dozens of concurrent requests, timestamps alone aren't sufficient. A useful technique is to assign each request a unique identifier.
+A useful technique is to assign each request a unique identifier, here `req_82fa91`.
 
 ```text
 requestId = req_82fa91
 ```
 
-Then logs become:
+Every later line for this booking carries that same id: creation started, inventory checked, the database committed, the notification timed out, the response was 500. Five lines, one story.
 
 ```text
 [req_82fa91] Reservation creation started
@@ -1067,7 +1061,7 @@ Then logs become:
 [req_82fa91] Response 500
 ```
 
-Now we have a coherent story. This becomes more useful when the request crosses modules and external services.
+That shared prefix is what makes the story reconstructable. This becomes more useful when the request crosses modules and external services.
 
 But how does a function deep inside the repository obtain the request identifier? We could pass it explicitly through every method.
 
@@ -1075,7 +1069,7 @@ But how does a function deep inside the repository obtain the request identifier
 await reservationService.create(input, context);
 ```
 
-That's clear and often appropriate. Alternatively, Node.js provides `AsyncLocalStorage`, which can associate context with an asynchronous execution chain. A simplified example:
+That's clear and often appropriate. Alternatively, Node.js provides `AsyncLocalStorage`, which can associate context with an asynchronous execution chain. Middleware generates a random request id and runs the rest of the pipeline inside a store that holds that id. A log helper later reads the id from the store. Nothing in between has to receive the id as an argument.
 
 ```typescript
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -1137,25 +1131,15 @@ Consider these failures:
 
 Should all six return HTTP 500? Definitely not. They represent fundamentally different outcomes.
 
-An API should communicate failures in a form that allows callers to make appropriate decisions. A practical mapping might look like this:
+An API should communicate failures in a form that allows callers to make appropriate decisions. A practical mapping, as conventions rather than laws:
 
-| Situation | Typical HTTP response |
-|---|---|
-| Malformed request | `400 Bad Request` |
-| Authentication required or invalid | `401 Unauthorized` |
-| Authenticated but not permitted | `403 Forbidden` |
-| Resource doesn't exist or isn't disclosed | `404 Not Found` |
-| Conflict with current state | `409 Conflict` |
-| Semantically invalid input | `422 Unprocessable Content` |
-| Rate limit exceeded | `429 Too Many Requests` |
-| Unexpected server failure | `500 Internal Server Error` |
-| Temporarily unavailable dependency/service | `503 Service Unavailable` |
+A malformed request is **400 Bad Request**. Missing or invalid authentication is **401 Unauthorized**. The caller is authenticated but not allowed is **403 Forbidden**. The resource does not exist, or you choose not to disclose it, is **404 Not Found**. The request conflicts with current state is **409 Conflict**. The body is well-shaped but semantically invalid is **422 Unprocessable Content**. The caller is over a rate limit is **429 Too Many Requests**. Something unexpected broke inside the server is **500 Internal Server Error**. A dependency is temporarily down is **503 Service Unavailable**.
 
 These mappings are conventions, not substitutes for understanding the semantics of an actual failure.
 
 For example, some systems deliberately return 404 instead of 403 to avoid revealing the existence of protected resources.
 
-The internal application might define meaningful error types:
+The internal application might define meaningful error types, such as a reservation conflict, permission denied, and inventory unavailable. Those are domain facts. They are not HTTP statuses.
 
 ```typescript
 class ReservationConflictError extends Error {}
@@ -1165,7 +1149,7 @@ class PermissionDeniedError extends Error {}
 class InventoryUnavailableError extends Error {}
 ```
 
-Then the HTTP adapter maps them into appropriate responses.
+The HTTP adapter maps them. A reservation conflict becomes status 409 and a stable code, `RESERVATION_CONFLICT`, plus a short message. The domain does not throw an HTTP exception to say that inventory is gone.
 
 ```typescript
 if (error instanceof ReservationConflictError) {
@@ -1184,7 +1168,7 @@ And the frontend shouldn't have to parse arbitrary English error messages to det
 
 Unexpected failures require a different treatment. Log enough information internally to investigate them, including a correlation identifier and relevant safe context.
 
-Return a controlled response to the client. Don't expose database credentials, SQL queries, internal stack traces, or secret values. For example:
+Return a controlled response to the client. Don't expose database credentials, SQL queries, internal stack traces, or secret values. The body the client may see is a code, `INTERNAL_ERROR`, a generic sentence that the operation could not be completed, and the request id. Nothing else.
 
 ```json
 {
@@ -1260,7 +1244,7 @@ Production engineering repeatedly teaches the same lesson:
 
 # 17. Returning to the Original Incident
 
-We can finally reconstruct the booking failure. Our original implementation was:
+We can finally reconstruct the booking failure. The original function inserted the reservation, then waited for the confirmation email, then returned. HTTP success existed only if that email call returned.
 
 ```typescript
 async function create(input: CreateReservationInput) {
@@ -1348,6 +1332,8 @@ When something fails, we have a much clearer idea of which guarantees should sti
 **Clarity about responsibility, ownership, and failure behavior.**
 
 ---
+
+*The spoken lecture ends here. What follows is a practical investigation for the screen: a small program you run, and later a glance card. You can stop the voice reader.*
 
 # 18. Practical Investigation: The Successful Operation That Returns 500
 

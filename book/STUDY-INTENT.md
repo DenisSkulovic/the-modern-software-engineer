@@ -19,6 +19,8 @@ Real production experience is assumed; see [`interview-lab/profiles/CANDIDATE-ba
 
 **Warm up a solid foundation → apply with confidence → keep learning while the pipeline runs → sharpen to a company when a calendar invite appears.**
 
+During the refresh, prefer **breadth and architectural intuition** over indiscriminate memorization. Use [`engineering-decision-map.md`](engineering-decision-map.md) to reconnect siloed topics. The catalogue is a **reference library**, not a completion checklist — listen across domains; let Interview Lab and real job requirements decide where to go deep.
+
 Success is interview competence and continued growth, **not** finishing every course, every lab, or reaching `fluent` on the ledger.
 
 > The curriculum serves the learner. The learner does not serve the curriculum.
@@ -42,7 +44,7 @@ Applications can start **before** the listening queue is empty. Recruitment lag 
 
 ### Primary: expose and systematize
 
-- **Listening** (voice read-aloud, often at 1.25–1.5×) and occasional **screen-follow** for code-heavy lectures is the default study mode.
+- **Listening** (voice read-aloud, often at 1.25–1.5×) is the default study mode. Code in a lecture is an illustration for the screen; the prose around it is supposed to carry the point, so a code-heavy lecture is still a listen once that prose exists. Labs stay screen work. Manuscript authoring: [`.cursor/rules/manuscript-voice-structure.mdc`](../.cursor/rules/manuscript-voice-structure.mdc).
 - Diversify subjects across sessions (university-style). Do not binge one course for days.
 - Prefer a curated **listen queue** over rigid catalogue `study_order` when preparing for interviews.
 - A first-pass confidence around **2/5** is a normal refresh signal, not incomplete work.
@@ -123,6 +125,7 @@ Encore automation is secondary to revisits driven by mocks and real interview fe
 | File | Role |
 | --- | --- |
 | This file | Priorities and stages |
+| [`engineering-decision-map.md`](engineering-decision-map.md) | Cross-discipline architecture navigation |
 | [`students/<id>/queue.yaml`](students/dskul/queue.yaml) | Short-term listen shortlist |
 | [`students/<id>/activity.yaml`](students/dskul/activity.yaml) | What was actually studied |
 | [`interview-lab/PROTOCOL.md`](interview-lab/PROTOCOL.md) | How to run mocks |

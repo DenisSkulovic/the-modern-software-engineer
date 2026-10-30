@@ -1,6 +1,6 @@
 # Study Ledger — dskul
 
-**Student:** `dskul` · **Curriculum:** v2.0 · **Updated:** 2026-10-29 · **Rendered:** 2026-10-29
+**Student:** `dskul` · **Curriculum:** v2.0 · **Updated:** 2026-10-29 · **Rendered:** 2026-10-30
 
 Personal learning tracker (not manuscript status). History is the append-only [`activity.yaml`](activity.yaml); this page folds it. Design: [`../../STATUS.md`](../../STATUS.md).
 
@@ -24,7 +24,7 @@ Counts cover every core lecture currently in the catalogue. A lecture with no ev
 
 ## Listen queue
 
-~1 more week of diversified listens for interview refresh, then shift weight to Interview Lab + real applications. No labbing required. Networking (CS230) already covered enough for now — don't binge more of it.
+Architecture-first refresh: maximize domain breadth this week (data, backend, distributed failure, auth, patterns, React, observability, transactions, AI agents, concurrency). Avoid another networking/DevOps binge. Then weight Interview Lab + applications. Decision map first if concepts feel disconnected.
 
 _Queue updated 2026-10-29. Not a calendar — pick by mood/mode._
 
@@ -32,40 +32,37 @@ _Queue updated 2026-10-29. Not a calendar — pick by mood/mode._
 
 | # | State | Mode | Lecture | Why |
 | ---: | --- | --- | --- | --- |
-| 1 | ○ `open` | `audio` | `CS330-L01` Relational Database Design | ~33m@1.5× — Relational design — highest interview value still untouched… |
-| 2 | ● `done` | `audio` | `SE215-L06` DevOps, Platform Engineering, and Operati… | ~26m@1.5× — DevOps/platform ownership — light fences; different from gi… |
-| 3 | ● `done` | `audio` | `CS220-L08` Runtime Performance and Language Choice W… | ~38m@1.5× — Runtime performance / language choice — workshop prose, few… |
-| 4 | ● `done` | `either` | `SE330-L01` The Art of Software Architecture | ~31m@1.5× — Architecture vocabulary — slightly denser fences but concep… |
+| 1 | ○ `open` | `audio` | `CS330-L01` Relational Database Design | ~33m@1.5× — Relational modeling — core data decisions; prose-led |
+| 2 | ○ `open` | `audio` | `CS340-L07` The Data Architecture Workshop | ~39m@1.5× — Data architecture workshop — joins CS330/CS340 judgment wit… |
+| 3 | ○ `open` | `audio` | `CS320-L06` Concurrency, Event Loops, and Cancellation | ~37m@1.5× — Concurrency / event loops / cancellation — few fences; ties… |
+| 4 | ○ `open` | `either` | `SE215-L11` Release Management, Versioning, and Chang… | ~41m@1.5× — Release/versioning ownership — change management joint with… |
 
 ### Priority listens
 
 | # | State | Mode | Lecture | Why |
 | ---: | --- | --- | --- | --- |
-| 1 | ○ `open` | `audio` | `CS330-L01` Relational Database Design | Relational design — high interview value; walk-friendly |
-| 2 | ● `done` | `audio` | `SE215-L06` DevOps, Platform Engineering, and Operati… | DevOps/platform ownership — among the most audio-friendly manuscripts |
-| 3 | ● `done` | `audio` | `CS220-L08` Runtime Performance and Language Choice W… | Runtime performance workshop — surprisingly listen-friendly for CS220 |
-| 4 | ● `done` | `either` | `SE330-L01` The Art of Software Architecture | Architecture vocabulary for product-engineering interviews |
-| 5 | ○ `open` | `audio` | `SE215-L10` Working With Product, Design, and Analyti… | Product/design/analytics collaboration — excellent headphones spare |
-| 6 | ○ `open` | `either` | `SE215-L11` Release Management, Versioning, and Chang… | Release/versioning ownership — fine on a walk; a bit longer |
-| 7 | ○ `open` | `audio` | `CS340-L07` The Data Architecture Workshop | Data architecture workshop — very audio-friendly; skip if CS340 feels s… |
-| 8 | ○ `open` | `screen` | `SE250-L01` Thinking in React: A Vue Developer's New … | React mental model refresh (Vue-heavier path); save for screen time |
-| 9 | ○ `open` | `screen` | `CS220-L02` JavaScript Semantics and TypeScript Reali… | JS/TS semantics after CS220-L01; examples repay looking |
-| 10 | ○ `open` | `screen` | `SE320-L01` The Anatomy of a Backend Service | Backend service anatomy — organizes what you already ship; code-heavy |
-| 11 | ● `done` | `audio` | `CS340-L01` The Database That Didn't Fit Into Tables | Non-relational models tour — done |
-| 12 | ○ `open` | `screen` | `SE310-L02` Authentication and Browser Security | Auth and browser security — common fullstack grill; follow examples |
-| 13 | ○ `open` | `screen` | `SE320-L03` Queues, Workers, and Asynchronous Workflo… | Queues/workers — matches production experience; good interview stories |
-| 14 | ○ `open` | `either` | `CS330-L02` SQL and Query Performance | SQL and query performance — after L01; semi walk-ok (~14 fences) |
+| 1 | ○ `open` | `audio` | `CS330-L01` Relational Database Design | Relational modeling — foundation for data trade-offs |
+| 2 | ○ `open` | `either` | `SE320-L01` The Anatomy of a Backend Service | Backend service anatomy — spoken path now carries the examples; lab sta… |
+| 3 | ○ `open` | `either` | `CS430-L01` Distributed Systems and Partial Failure | Partial failure — spoken path carries timeouts, retries, idempotency; l… |
+| 4 | ○ `open` | `screen` | `SE310-L02` Authentication and Browser Security | Authentication and browser security — common fullstack grill |
+| 5 | ○ `open` | `audio` | `SE330-L02` Architecture Patterns and Their Consequen… | Architecture patterns — spoken path carries the examples; lab stays on … |
+| 6 | ○ `open` | `screen` | `SE250-L01` Thinking in React: A Vue Developer's New … | React mental model refresh (Vue-heavier path) |
+| 7 | ○ `open` | `screen` | `SE440-L01` Observability: Understanding Production S… | Observability — how you see the system you designed |
+| 8 | ○ `open` | `either` | `CS330-L03` Transactions: When Correct Operations Pro… | Transactions and isolation — correctness under concurrency |
+| 9 | ○ `open` | `screen` | `AI410-L01` Tool Calling and Connecting AI to Software | Tool calling — AI integrated as software, not magic |
+| 10 | ○ `open` | `either` | `AI410-L02` Agents: From Model Calls to Autonomous Wo… | Agents and autonomous workflows — when nondeterminism enters the archit… |
 
 ### Overflow (extra appetite)
 
 | # | State | Mode | Lecture | Why |
 | ---: | --- | --- | --- | --- |
-| 1 | ○ `open` | `screen` | `SE250-L02` Effects, Closures, and Component Lifecycl… | Effects/closures — natural follow-on after L01 or a React-focused mock |
-| 2 | ○ `open` | `screen` | `SE310-L01` The Frontend–Backend Contract | Frontend–backend contract — very fence-dense; pick when sitting down |
-| 3 | ○ `open` | `either` | `SE490-L03` System Design Workshop: Build for 100× Tr… | 100× traffic system-design workshop — useful before architecture mocks |
-| 4 | ○ `open` | `screen` | `SE240-L03` State Management and Reactive Applications | State management — continues SE240-L02; skip if energy is low this week |
+| 1 | ○ `open` | `audio` | `CS120-L04` Experiments, Evidence, and Causality | Experiments and causality — evidence literacy for product/arch debates |
+| 2 | ○ `open` | `screen` | `SE320-L03` Queues, Workers, and Asynchronous Workflo… | Queues and workers — async joint with retries/idempotency |
+| 3 | ○ `open` | `audio` | `CS320-L06` Concurrency, Event Loops, and Cancellation | Also in walk pack — keep if you prefer screen-free concurrency first |
+| 4 | ○ `open` | `either` | `SE215-L11` Release Management, Versioning, and Chang… | Also in walk pack — release ownership spare slot |
+| 5 | ○ `open` | `audio` | `CS340-L07` The Data Architecture Workshop | Also in walk pack — data architecture spare |
 
-7 done · 15 open · 22 listed. Glyphs: `○` open, `●` done (logged pass or `status: done`), `—` skipped.
+0 done · 19 open · 19 listed. Glyphs: `○` open, `●` done (logged pass or `status: done`), `—` skipped.
 
 Edit [`queue.yaml`](queue.yaml) to reshuffle. Logging a listen/read/skim marks the matching item done on next render.
 

@@ -9,91 +9,81 @@
 # status: optional override — open | done | skipped
 #   Otherwise a listen/read/skim/lab/oral/review event marks the item done.
 #
-# Goal for this stretch: expose interview-critical topics by listening.
-# Labs are optional. Interview Lab proves readiness; listening only marks exposed.
+# Orientation: book/engineering-decision-map.md (architecture joints across the catalogue).
+# Labs optional. Interview Lab tests understanding. Activity log is source of truth for done.
 
 goal: >
-  ~1 more week of diversified listens for interview refresh, then shift
-  weight to Interview Lab + real applications. No labbing required.
-  Networking (CS230) already covered enough for now — don't binge more of it.
+  Architecture-first refresh: maximize domain breadth this week (data, backend,
+  distributed failure, auth, patterns, React, observability, transactions, AI agents,
+  concurrency). Avoid another networking/DevOps binge. Then weight Interview Lab + applications.
+  Decision map first if concepts feel disconnected.
 
 updated: '2026-10-29'
 
-# ~2h walk @ 1.5× ≈ four ~30–40 min slots. Prefer low fence density; diversify courses.
-# Durations are rough wall-clock at 1.5× from word count (~150 wpm @1×).
+# Audio-leaning pack for walks (~2h @1.5× across several). Fence-light from the priority set.
 walk_pack:
 - lecture: CS330-L01
   mode: audio
   approx_min_at_1_5x: 33
-  why: Relational design — highest interview value still untouched; prose-led
-- lecture: SE215-L06
+  why: Relational modeling — core data decisions; prose-led
+- lecture: CS340-L07
   mode: audio
-  approx_min_at_1_5x: 26
-  why: DevOps/platform ownership — light fences; different from git/cloud skim
-- lecture: CS220-L08
+  approx_min_at_1_5x: 39
+  why: Data architecture workshop — joins CS330/CS340 judgment without code density
+- lecture: CS320-L06
   mode: audio
-  approx_min_at_1_5x: 38
-  why: Runtime performance / language choice — workshop prose, few fences
-- lecture: SE330-L01
+  approx_min_at_1_5x: 37
+  why: Concurrency / event loops / cancellation — few fences; ties to async backends
+- lecture: SE215-L11
   mode: either
-  approx_min_at_1_5x: 31
-  why: Architecture vocabulary — slightly denser fences but concepts carry on audio
+  approx_min_at_1_5x: 41
+  why: Release/versioning ownership — change management joint with architecture
 
 items:
 - lecture: CS330-L01
   mode: audio
-  why: Relational design — high interview value; walk-friendly
-- lecture: SE215-L06
-  mode: audio
-  why: DevOps/platform ownership — among the most audio-friendly manuscripts
-- lecture: CS220-L08
-  mode: audio
-  why: Runtime performance workshop — surprisingly listen-friendly for CS220
-- lecture: SE330-L01
-  mode: either
-  why: Architecture vocabulary for product-engineering interviews
-- lecture: SE215-L10
-  mode: audio
-  why: Product/design/analytics collaboration — excellent headphones spare
-- lecture: SE215-L11
-  mode: either
-  why: Release/versioning ownership — fine on a walk; a bit longer
-- lecture: CS340-L07
-  mode: audio
-  why: Data architecture workshop — very audio-friendly; skip if CS340 feels same-day
-- lecture: SE250-L01
-  mode: screen
-  why: React mental model refresh (Vue-heavier path); save for screen time
-- lecture: CS220-L02
-  mode: screen
-  why: JS/TS semantics after CS220-L01; examples repay looking
+  why: Relational modeling — foundation for data trade-offs
 - lecture: SE320-L01
-  mode: screen
-  why: Backend service anatomy — organizes what you already ship; code-heavy
-- lecture: CS340-L01
-  mode: audio
-  why: Non-relational models tour — done
+  mode: either
+  why: Backend service anatomy — spoken path now carries the examples; lab stays on screen
+- lecture: CS430-L01
+  mode: either
+  why: Partial failure — spoken path carries timeouts, retries, idempotency; lab stays on screen
 - lecture: SE310-L02
   mode: screen
-  why: Auth and browser security — common fullstack grill; follow examples
+  why: Authentication and browser security — common fullstack grill
+- lecture: SE330-L02
+  mode: audio
+  why: Architecture patterns — spoken path carries the examples; lab stays on screen
+- lecture: SE250-L01
+  mode: screen
+  why: React mental model refresh (Vue-heavier path)
+- lecture: SE440-L01
+  mode: screen
+  why: Observability — how you see the system you designed
+- lecture: CS330-L03
+  mode: either
+  why: Transactions and isolation — correctness under concurrency
+- lecture: AI410-L01
+  mode: screen
+  why: Tool calling — AI integrated as software, not magic
+- lecture: AI410-L02
+  mode: either
+  why: Agents and autonomous workflows — when nondeterminism enters the architecture
+
+overflow:
+- lecture: CS120-L04
+  mode: audio
+  why: Experiments and causality — evidence literacy for product/arch debates
 - lecture: SE320-L03
   mode: screen
-  why: Queues/workers — matches production experience; good interview stories
-- lecture: CS330-L02
+  why: Queues and workers — async joint with retries/idempotency
+- lecture: CS320-L06
+  mode: audio
+  why: Also in walk pack — keep if you prefer screen-free concurrency first
+- lecture: SE215-L11
   mode: either
-  why: SQL and query performance — after L01; semi walk-ok (~14 fences)
-
-# Extra appetite only — not required for the refresh week.
-overflow:
-- lecture: SE250-L02
-  mode: screen
-  why: Effects/closures — natural follow-on after L01 or a React-focused mock
-- lecture: SE310-L01
-  mode: screen
-  why: Frontend–backend contract — very fence-dense; pick when sitting down
-- lecture: SE490-L03
-  mode: either
-  why: 100× traffic system-design workshop — useful before architecture mocks
-- lecture: SE240-L03
-  mode: screen
-  why: State management — continues SE240-L02; skip if energy is low this week
+  why: Also in walk pack — release ownership spare slot
+- lecture: CS340-L07
+  mode: audio
+  why: Also in walk pack — data architecture spare

@@ -1,12 +1,14 @@
 ---
-description: Keep lecture manuscripts paced and enjoyable without rewriting substance
+description: Pacing inserts by default; listenability may rewrite prose around code that stays in place
 globs: book/**/*-L*.md
 alwaysApply: false
 ---
 
 # Manuscript readability (pacing)
 
-When editing lecture manuscripts (`book/**/*-L*.md`), improve attention retention. Do **not** rewrite educational meaning, strip exercises/solutions, or change YAML unless asked.
+When editing lecture manuscripts (`book/**/*-L*.md`) for pacing, improve attention retention. Do **not** rewrite educational meaning, strip exercises/solutions, or change YAML unless asked.
+
+A **listenability** pass is a different job, and it is allowed to restructure paragraphs. Follow **manuscript-voice-structure**: code blocks stay as illustrations; the prose around them must carry the point so a voice reader that skips fences still leaves the listener understanding the idea. Do not change what is taught, and do not delete the code.
 
 Follow **manuscript-voice-structure** for overall architecture (including **Part I — Intuition** / **Part II — Deep Dive**). This rule covers pacing aids that stay compatible with voice listening.
 
@@ -25,11 +27,11 @@ Use when a lecture is dense or the user asks for a readability pass:
 
 ## Editing rules
 
-- Prefer inserts (callouts, diagrams, checkpoints) over rewrites
+- For a pacing pass, prefer inserts (callouts, diagrams, checkpoints) over rewrites. For a listenability pass, rewrite the paragraphs around a fence or table when that is what makes the idea graspable in speech
 - Match the lecture’s existing voice; no emoji clutter or gimmicky filler
 - One job per visual: clarify one idea the surrounding text already teaches
 - Keep screen-heavy labs *after* the spoken lecture ends
-- Follow **manuscript-voice-structure** for fences: voice readers often skip code-block contents, so don’t hide spoken facts inside micro-fences; caption real samples
+- Follow **manuscript-voice-structure** for fences: code stays; voice readers skip it; the surrounding prose is the lecture. Do not hide the only statement of a fact inside a fence or a one-line caption that merely points at the fence
 
 ## Anti-patterns
 

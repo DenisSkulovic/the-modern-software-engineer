@@ -39,7 +39,7 @@ lecture as a vendor field guide.
 
 It's 21:43. A customer in Berlin has just booked a hotel room in Stockholm.
 
-Your Node.js backend creates a pending reservation and sends a payment request to an external provider:
+Your Node.js backend creates a pending reservation and asks the payment provider to charge reservation R-10842 for 450 euros, recorded as 45000 minor units.
 
 ```typescript
 const payment = await paymentProvider.charge({
@@ -49,9 +49,7 @@ const payment = await paymentProvider.charge({
 });
 ```
 
-The payment provider receives the request, validates the payment method, contacts the relevant financial systems, and successfully authorizes the charge.
-
-Then it sends a response:
+The provider does the work. It validates the payment method, contacts the financial systems, and authorizes the charge. The response it tries to send back names payment `pay_82934` and status succeeded.
 
 ```json
 {
@@ -60,9 +58,7 @@ Then it sends a response:
 }
 ```
 
-Unfortunately, somewhere between the provider and your backend, the connection breaks.
-
-Your application waits three seconds and receives:
+That response never arrives. After three seconds the client gives up. The error it records is a timeout, `ETIMEDOUT`.
 
 ```text
 ETIMEDOUT
@@ -102,23 +98,17 @@ This is why distributed systems aren't merely ordinary software deployed across 
 
 # 2. The Difference Between a Local Call and a Remote Call
 
-Consider two TypeScript functions:
+Consider two calls that look almost identical. One is an ordinary `calculatePrice(input)` in this process. The other is `await pricingService.calculatePrice(input)`. If that second call goes over HTTP, it has left the process.
 
 ```typescript
 const result = calculatePrice(input);
 ```
 
-And:
-
 ```typescript
 const result = await pricingService.calculatePrice(input);
 ```
 
-They look almost identical.
-
-But suppose the second function communicates with another process over HTTP.
-
-The local calculation primarily depends on code execution, memory, and the process environment. The remote operation depends on a chain of independently failing components.
+The local calculation primarily depends on code execution, memory, and the process environment. The remote call leaves the process. Between the two machines sit the operating system, the network stack, a load balancer or proxy, the remote service, and often that service's own database. Any part of that chain may experience delay, failure, or resource exhaustion.
 
 ```text
 Application Process
@@ -138,8 +128,6 @@ Remote Service
         v
 Remote Database
 ```
-
-Any part of that chain may experience delay, failure, or resource exhaustion.
 
 The request itself might be lost. The response might be lost. The remote process might crash before processing, during processing, or after committing its result.
 
@@ -173,7 +161,7 @@ From A's perspective, these situations can be indistinguishable.
 
 A timeout therefore establishes something about **the caller's waiting period**, not necessarily about the remote operation's final outcome.
 
-This is why distributed systems often need explicit states such as:
+This is why distributed systems often need explicit states: pending, processing, succeeded, failed, and unknown.
 
 ```text
 PENDING
@@ -191,7 +179,7 @@ The goal is to design a mechanism that eventually resolves uncertainty without i
 
 # 3. A Request Has More Possible Outcomes Than Success and Failure
 
-Let's examine the payment operation as a timeline.
+Let's examine the payment operation as a timeline. On the happy path the client sends the payment request, the provider validates it, processes it, commits the result, and sends success back.
 
 ```text
 CLIENT                              PAYMENT PROVIDER
@@ -210,15 +198,9 @@ CLIENT                              PAYMENT PROVIDER
 
 Now imagine a failure occurring at different points.
 
-| Failure point | Provider may have charged? | Caller knows result? |
-|---|---|---|
-| Before request is transmitted | No, if definitely never sent | Sometimes |
-| Request lost in transit | No | Usually cannot distinguish |
-| During remote processing | Possibly | No |
-| After remote commit, before response | Yes | No |
-| Response lost in transit | Yes | No |
+The critical distinction is between *what happened* and *what the caller observed*. Walk the same payment along the path and the knowledge changes.
 
-The critical distinction is between *what happened* and *what the caller observed*.
+If the request was definitely never transmitted, the provider did not charge, and the caller sometimes knows that. If the request was lost in transit, the provider did not charge, and the caller usually cannot tell this case from the others. If the failure happens during remote processing, the provider may already have charged, and the caller does not know. If the provider committed and then failed before answering, the customer was charged, and the caller does not know. If the success response was lost on the way back, the customer was charged, and the caller does not know.
 
 An HTTP timeout is an observation about communication. It is not a business result such as payment declined.
 
@@ -233,9 +215,11 @@ Attempt 1: Charge €450 -> Timeout
 Attempt 2: Charge €450 -> Success
 ```
 
-What actually happened?
+What actually happened? The client saw the same two lines either way: the first charge of 450 euros timed out, the second charge of 450 euros succeeded. The money is not the same.
 
-There are at least two possibilities:
+Possibility A: the first attempt never reached the provider. Only the second charge landed. The customer paid 450 euros.
+
+Possibility B: the first attempt charged 450 euros and the response was lost. The second attempt charged another 450. The customer paid 900 euros.
 
 ```text
 Possibility A:
@@ -373,7 +357,7 @@ Each layer retries failed calls three times in total.
 
 If C is unavailable, one original request from A may cause up to nine attempts from B to C, depending on where retries are applied.
 
-Now add another retrying layer above A, and the number can multiply again.
+Now add another retrying layer above A. One user request, three attempts at the first layer, three at the next for each of those, three at the last for each of those: twenty-seven calls against a dependency that is already down.
 
 ```text
 1 user request
@@ -410,7 +394,7 @@ Often it's better to concentrate retries at one deliberate architectural layer r
 
 ### Exponential backoff
 
-Instead of immediately repeating failed requests, we can increase the delay between attempts.
+Instead of immediately repeating failed requests, we can increase the delay between attempts. The first try goes immediately. The next waits about 200 milliseconds, then about 400, then about 800, doubling until a cap. A common cap in this sketch is five seconds: take 200 milliseconds times two to the power of the retry number, and do not exceed 5000 milliseconds.
 
 For example:
 
@@ -432,7 +416,7 @@ const cap = Math.min(
 
 But if 10,000 clients encounter the same failure simultaneously, they'll potentially retry on the same schedule.
 
-That's where **jitter** comes in.
+That's where **jitter** comes in. Take that capped delay and multiply it by a random fraction between zero and one, so the clients do not wake up together.
 
 ```typescript
 const delay = Math.random() * cap;
@@ -470,7 +454,7 @@ The business intent is:
 
 That intent must remain the same even if the HTTP request is transmitted several times.
 
-One solution is to assign a stable operation identifier:
+One solution is to assign a stable operation identifier: an operation id such as `payop_92831`, tied to reservation R-10842, amount 45000 minor units, currency EUR. Every retry carries that same identity. On the wire it is often a header, `Idempotency-Key: payop_92831`, with the reservation, amount, and currency repeated in the body.
 
 ```text
 payment-operation: payop_92831
@@ -478,8 +462,6 @@ reservation: R-10842
 amount: 45000
 currency: EUR
 ```
-
-Then every retry carries the same identifier.
 
 ```http
 POST /payments
@@ -495,7 +477,7 @@ Content-Type: application/json
 
 The receiving system uses the key to recognize multiple requests representing the same intended operation.
 
-A simplified server-side state model is:
+On the server, that key has a short life. Record the new identity, mark it processing, then later mark it succeeded or failed. A second request with the same key returns the existing result, or says the work is still underway. It does not start another payment.
 
 ```text
                  NEW OPERATION
@@ -510,9 +492,7 @@ A simplified server-side state model is:
              SUCCEEDED      FAILED
 ```
 
-When another request arrives with the same key, the service can return the existing result, indicate that processing remains underway, or otherwise follow its documented idempotency contract.
-
-It should not casually create a new payment.
+When another request arrives with the same key, follow the documented idempotency contract rather than inventing a second payment.
 
 ### What must an idempotency record contain?
 
@@ -530,7 +510,7 @@ Enough information to recover the result after a process crash.
 
 And an appropriate retention policy.
 
-The parameter fingerprint matters because the same idempotency key shouldn't silently authorize incompatible operations.
+The parameter fingerprint matters because the same idempotency key shouldn't silently authorize incompatible operations. Key `payop_92831` was first used for 450 euros. A later request presents the same key and 900 euros. That is not a harmless retry of the same request.
 
 Imagine:
 
@@ -601,7 +581,7 @@ One possibility is to query the provider for payments associated with the reserv
 
 If the provider supports reliable lookup by a stable reference, the backend can investigate whether the operation succeeded before deciding what to do next.
 
-A durable local record might contain:
+A durable local record keeps the operation id `payop_92831`, reservation R-10842, a provider reference such as `merchant-92831`, and status unknown.
 
 ```text
 payment_operation_id = payop_92831
@@ -610,7 +590,7 @@ provider_reference   = merchant-92831
 status               = UNKNOWN
 ```
 
-A reconciliation process then attempts to resolve the uncertain state:
+A reconciliation process then tries to move the local record out of unknown. If the provider confirms the charge, mark succeeded. If the provider confirms a rejection, mark failed. If the provider is still processing, or cannot be reached, leave the record unknown. A failed lookup is not evidence that the payment failed.
 
 ```text
 UNKNOWN
@@ -623,8 +603,6 @@ UNKNOWN
    |
    +-- Provider unreachable ---------> UNKNOWN
 ```
-
-Notice that a failed status lookup doesn't prove the original payment failed.
 
 It's another communication failure.
 
@@ -680,7 +658,7 @@ A **circuit breaker** is a mechanism for preventing this kind of failure propaga
 
 It tracks failures and temporarily refuses new calls when a dependency appears unhealthy.
 
-A common state model is:
+A common state model has three names. **Closed** means requests are allowed. **Open** means requests are rejected immediately because recent failures say the dependency is unhealthy. **Half-open** means a few probe calls are allowed, and their results move the circuit back to closed or to open.
 
 ```text
                   CLOSED
@@ -832,7 +810,7 @@ Some operations genuinely depend on earlier results.
 
 For example, a payment request may require an already calculated authoritative amount.
 
-But many independent calls can execute concurrently:
+But many independent calls can execute concurrently. Here, hotel details, amenities, and the review summary are requested together, and the handler waits until all three settle or one of them rejects.
 
 ```typescript
 const [hotel, amenities, reviews] = await Promise.all([
@@ -935,32 +913,20 @@ Customer support asks:
 
 > Did Reservation R-10842 actually get charged?
 
-Your logs contain:
+Your logs show a payment request starting at 21:43:02 and a timeout at 21:43:05. That pair of lines is not enough to say whether reservation R-10842 was charged.
 
 ```text
 21:43:02 Payment request started
 21:43:05 Payment timeout
 ```
 
-That's not enough.
-
 You need to identify the exact operation across systems.
 
-A useful architecture distinguishes several identifiers:
+A useful architecture distinguishes several identifiers, and they are not interchangeable.
 
-| Identifier | Purpose |
-|---|---|
-| Request ID | One incoming HTTP request |
-| Trace ID | One distributed execution path |
-| Operation ID | One intended business effect |
-| Reservation ID | One business entity |
-| Provider reference | One external provider operation |
+A **request id** names one incoming HTTP request. A **trace id** names one distributed execution path. An **operation id** names one intended business effect, such as this payment. A **reservation id** names the business entity. A **provider reference** names the external system's own operation.
 
-These identifiers may be related, but they are not interchangeable.
-
-A retry normally creates a new network attempt. It may have a new request ID while preserving the same business operation ID.
-
-For example:
+A retry normally creates a new network attempt. It may have a new request id while preserving the same business operation id. In the example, reservation R-10842 and operation `payop_92831` stay put. Attempt one has request `req_a91` and times out. Attempt two has request `req_b52` and succeeds. Two requests, one intended payment.
 
 ```text
 reservationId = R-10842
@@ -974,8 +940,6 @@ Attempt 2:
   requestId = req_b52
   result    = success
 ```
-
-The two attempts represent one intended payment.
 
 Distributed tracing can connect the execution path across services. Structured logs can record the operation identity and relevant status transitions.
 
@@ -993,7 +957,7 @@ We now have enough concepts to redesign the opening scenario.
 
 Suppose a customer submits a booking request.
 
-Rather than treating a payment timeout as a definitive failure, the system establishes a durable payment operation.
+Rather than treating a payment timeout as a definitive failure, the system establishes a durable payment operation. It records a booking intent and a payment operation, then submits to the provider. A definite success or a definite rejection is stored as such. A timeout leaves the operation pending, and a later workflow reconciles or retries under that same identity.
 
 ```text
 POST /reservations
@@ -1061,6 +1025,8 @@ The architectural foundation, however, is already clear.
 **A remote operation's state belongs in durable business records, not solely in the success or failure of one HTTP call.**
 
 ---
+
+*The spoken lecture ends here. What follows is a practical lab for the screen, then interview prompts and a glance card. You can stop the voice reader.*
 
 # 14. Practical Lab: Reproduce an Unknown Payment Outcome
 

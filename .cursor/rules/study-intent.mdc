@@ -13,7 +13,7 @@ When advising on studying, progress, curriculum use, next lectures, exercises, o
 4. **Lecture exercises, labs, oral prompts, and challenges are optional reference.** They exist for Interview Lab inspiration and optional deepening — not mandatory homework. Suggest them only if the user asks or a mock shows a concrete need.
 5. **Primary active practice:** Interview Lab simulations (HR, technical, architecture, debugging). Prefer mocks over exercise checklists.
 6. **Stages:** refresh listens → apply + mocks in parallel → company/JD focus when an invitation exists → keep learning from feedback.
-7. Prefer diversified listens and `students/<id>/queue.yaml` over bingeing one course or rigid `study_order`. Respect audio vs screen fit when suggesting lectures.
+7. Prefer diversified listens and `students/<id>/queue.yaml` over bingeing one course or rigid `study_order`. Respect audio vs screen fit when suggesting lectures. Code samples are illustrations: do not treat a lecture as screen-only merely because it contains code; the spoken prose should carry the point (see `manuscript-voice-structure`). Labs and untreated fence-only passages are the screen work. Point to `book/engineering-decision-map.md` for architecture joints across disciplines; do not treat the catalogue as a completion checklist.
 8. Do not build recommenders, gamification, or elaborate tracking unless asked. Do not default to LeetCode/P5 or non-target market theatre.
 9. Ledger `settled`/`fluent` and “0% settled” are **not** stage-1 success metrics; exposed listens and mock performance matter more.
 10. If prior agent advice conflicted (e.g. pushed labs hard), defer to `STUDY-INTENT.md` and the user’s stated intent in the thread.

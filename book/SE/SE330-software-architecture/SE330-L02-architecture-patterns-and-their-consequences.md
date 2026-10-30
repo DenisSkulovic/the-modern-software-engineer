@@ -41,7 +41,7 @@ Cross-reference CS430-L04 for distributed service boundaries and microservices.
 
 A software company is building a subscription management platform. Its application handles customers, subscription plans, billing cycles, payments, and account cancellations.
 
-Initially, the backend is beautifully simple:
+Initially, the backend is a small set of folders: controllers, services, repositories, and a database directory.
 
 ```text
 src/
@@ -123,7 +123,7 @@ The important distinction is between applying a principle and adopting all the m
 
 Layered architecture is probably the most familiar pattern in enterprise development.
 
-A typical backend separates responsibilities into:
+A typical backend separates responsibilities into four bands. HTTP controllers on the outside, then application logic, then data access, then the database. A request walks that same order: controller, service, repository, PostgreSQL.
 
 ```text
 ┌─────────────────────────────┐
@@ -152,6 +152,8 @@ PostgreSQL
 ```
 
 The controller handles HTTP concerns. The service coordinates business operations. The repository encapsulates database access.
+
+Read the three functions as one story. The controller takes the customer id from the authenticated user and the plan id from the body, calls the service, and returns status 201. The service loads the plan, refuses the call if the plan is missing or inactive, and inserts a subscription with status pending. The repository's only job in this sketch is to save that row through the ORM. None of the three tries to do the others' work.
 
 Consider a straightforward subscription endpoint:
 
@@ -210,7 +212,7 @@ Now imagine that the platform grows to 150 endpoints.
 
 Its directories contain 30 controllers, 45 services, and 25 repositories. A single feature may require modifications across several large, shared files.
 
-Worse, services begin calling other services:
+Worse, services begin calling other services. Subscription service calls billing, billing calls the customer service, and the customer service calls back into subscriptions. The technical folders still look tidy. The ownership is a loop.
 
 ```text
 SubscriptionService
@@ -252,7 +254,7 @@ Vertical-slice architecture approaches the same application from another directi
 
 Instead of organizing everything according to technical roles, it groups implementation around particular features or business operations.
 
-Consider:
+Under subscriptions there is a create slice, with a handler, a schema, and tests; a cancel slice, with a handler and tests; and a get-details slice, with a handler. Billing has generate-invoice and collect-payment. Customers has update-profile. The person changing cancellation starts in `subscriptions/cancel` instead of hunting through shared controller, service, and repository files.
 
 ```text
 src/
@@ -273,11 +275,7 @@ src/
     └── update-profile/
 ```
 
-Each feature contains much of the implementation needed to accomplish one operation.
-
 This can dramatically improve navigation and change locality.
-
-A developer implementing subscription cancellation can begin in `subscriptions/cancel` rather than searching across controllers, services, repositories, validators, and miscellaneous utilities.
 
 ### The deeper idea: minimize the cost of change
 
@@ -294,7 +292,7 @@ Statistics may involve an optimized SQL query returning an aggregate result.
 
 Why should both operations use an identical stack of controllers, domain objects, repository interfaces, and service abstractions?
 
-A vertical-slice approach allows each operation to use the structure appropriate to its complexity.
+A vertical-slice approach allows each operation to use the structure appropriate to its complexity. Statistics can be one query: count rows whose status is active, grouped by plan id. Creation can still be a richer workflow.
 
 For example, the statistics endpoint might use a direct query:
 
@@ -370,7 +368,7 @@ Alistair Cockburn introduced the architectural pattern commonly known as **Ports
       Adapter    Adapter
 ```
 
-The hexagon is conceptual. There aren't necessarily six interfaces, and no geometric properties make the architecture work.
+The drawing is ports and adapters, not a shape you must build. HTTP and a scheduled worker both enter the application. The application calls out through two ports, a repository port and a payment port. PostgreSQL and Stripe are adapters behind those ports. There are not necessarily six sides.
 
 The essential distinction is between application behavior and external mechanisms.
 
@@ -399,7 +397,7 @@ Examples include:
 - Email providers.
 - Object-storage implementations.
 
-Let's construct a small example.
+Let's construct a small example. The application declares two needs. A subscription store can find a subscription by id and save one. A payment processor can charge a customer an amount in cents, and it must be given an idempotency key, because a renewal that is retried must not become a second charge. `RenewSubscription` is built with those two dependencies. When it runs, it loads the subscription, stops if the subscription is missing, stops if `canRenew` says no, and only then would coordinate payment. The payment, the retries, and the reconciliation are left out of the sketch on purpose. The use case names what it needs. It does not name Express, TypeORM, or Stripe.
 
 ```typescript
 // subscriptions/application/ports.ts
@@ -458,7 +456,7 @@ At runtime, the application still performs concrete database and payment operati
 
 Without a port, an application service might import `StripePaymentClient` directly.
 
-With a port, the Stripe adapter implements an application-defined contract:
+With a port, the Stripe adapter implements that payment contract. Its `charge` method takes the same customer, amount in cents, and idempotency key, and translates them into Stripe's API. The use case still does not import Stripe.
 
 ```typescript
 export class StripePaymentAdapter
@@ -538,9 +536,7 @@ You should not feel obligated to implement both as separate architectural framew
 
 ### The dependency injection misconception
 
-Developers sometimes mistake dependency injection for Clean Architecture itself.
-
-Consider:
+Developers sometimes mistake dependency injection for Clean Architecture itself. You can inject a dependency and still depend on the wrong thing. This constructor receives TypeORM's `DataSource`. The service no longer constructs the database, but its source code still names TypeORM.
 
 ```typescript
 class SubscriptionService {
@@ -550,19 +546,13 @@ class SubscriptionService {
 }
 ```
 
-A dependency was injected, but the service still depends directly on TypeORM's `DataSource`.
-
-Dependency injection helps supply dependencies from outside. Dependency inversion concerns **which abstractions the business logic depends on**.
-
-These are related ideas, not synonyms.
-
-Similarly, adopting NestJS or another dependency-injection framework does not automatically produce clean architectural boundaries. A neatly injected dependency can still be the wrong dependency.
+Injection supplies a dependency from outside. Inversion is a different question: which abstractions the business logic is allowed to name. A neatly injected dependency can still be the wrong dependency, and adopting NestJS does not by itself draw a clean boundary.
 
 ### The cost of architectural purity
 
 Imagine a simple internal application where employees update contact information.
 
-A developer implements every operation through:
+A developer implements every operation as a corridor of types. A controller, then a request DTO, an input mapper, a command, a use case, a domain entity, a repository port, a repository adapter, an ORM entity, and on the way out a response mapper and a response DTO. Some of those translations are justified when the outside contract really differs from the inside model. Creating all of them for an employee updating a phone number turns a small change into a tour of the repository.
 
 ```text
 Controller
@@ -588,10 +578,6 @@ Response Mapper
 Response DTO
 ```
 
-There may be valid reasons for some of these transformations, particularly when external contracts differ from internal models.
-
-But creating all of them mechanically can turn straightforward functionality into a navigation exercise.
-
 The principle worth preserving is separation of important policies from volatile mechanisms.
 
 The ceremony is optional.
@@ -616,7 +602,7 @@ For the hotel integration team, it means a booking acknowledged by an external p
 
 These definitions overlap, but they are not identical.
 
-Trying to represent every meaning through one enormous `ReservationEntity` can lead to fields such as:
+Trying to represent every meaning through one enormous reservation entity produces a row with many statuses that do not belong to one process: an overall status, a payment status, a supplier status, an inventory status, an invoice status, and a confirmation status. Those are several businesses sharing one type.
 
 ```typescript
 interface ReservationEntity {
@@ -656,7 +642,7 @@ If developers cannot agree on what `CONFIRMED` means, there may be a missing dis
 
 A **bounded context** establishes a boundary within which a particular domain model and vocabulary are internally consistent.
 
-Consider:
+The reservation context owns the booking lifecycle and the cancellation rules. The billing context owns invoices and outstanding balances. An arrow from reservations to billing is enough to show they collaborate. They may both mention a customer. They do not have to share one customer model, and the drawing is not a requirement to split the database.
 
 ```text
 ┌─────────────────────┐
@@ -699,7 +685,7 @@ A subscription might have rules such as:
 - A billing period cannot overlap an existing billing period.
 - Suspension must not silently convert an expired subscription into an active one.
 
-Instead of permitting arbitrary updates to the subscription's fields, the domain model exposes meaningful operations:
+Instead of permitting arbitrary updates to the subscription's fields, the domain model exposes meaningful operations. Status is one of active, suspended, or cancelled. Suspend is legal only when the status is already active, and the operation then sets it to suspended. There is no setter that writes an arbitrary status string. Callers ask for a business operation. They do not poke columns.
 
 ```typescript
 type SubscriptionStatus =
@@ -781,7 +767,7 @@ For many teams, the best answer remains surprisingly straightforward: **as one a
 
 A modular monolith organizes code into meaningful internal modules while preserving a unified deployment.
 
-For our subscription platform:
+For our subscription platform the source tree has a modules folder. Subscriptions, billing, payments, and identity each contain their own domain, application, and infrastructure, and each publishes an index that other modules are allowed to import. Composition and the server entry sit beside the modules. Another module should import `suspendSubscription` from that public index. It should not import `SubscriptionEntity` from the subscriptions infrastructure folder. The first import lets you change how subscriptions are stored without editing every caller. The second teaches the rest of the application about a persistence type it should not own.
 
 ```text
 src/
@@ -814,11 +800,7 @@ import { SubscriptionEntity }
   from "../subscriptions/infrastructure/entities";
 ```
 
-The difference is not purely cosmetic.
-
-The first form preserves the opportunity to change subscription persistence without modifying every consumer.
-
-The second distributes knowledge of internal implementation details across the application.
+Each module exposes a deliberate public API, and other modules should not import its internals. The two import lines are the whole contrast.
 
 ### How do we enforce boundaries?
 
@@ -826,7 +808,7 @@ TypeScript folder structure alone does not prevent inappropriate imports.
 
 A team can use lint rules, dependency analysis, package boundaries, and architecture tests to establish restrictions.
 
-A simple rule might be:
+A simple rule: billing may import the subscriptions public API. Billing must not import subscriptions infrastructure, and it must not import the subscriptions internal domain. Folder names do not enforce that. Lint rules, package boundaries, and review do.
 
 ```text
 billing/
@@ -877,7 +859,7 @@ A customer successfully activates a subscription. Several other operations shoul
 - Start a customer onboarding workflow.
 - Record an audit entry.
 
-One design uses synchronous calls:
+One design calls the consequences in order, and the caller waits for each of them: send the email, update analytics, start onboarding, write the audit log. A slow analytics provider or a down email service can stall the activation that the customer is waiting on.
 
 ```text
 Activate Subscription
@@ -891,9 +873,9 @@ Start Onboarding
 Write Audit Log
 ```
 
-This creates temporal coupling. A slow analytics provider or unavailable email service might delay the original operation.
+That waiting is temporal coupling. Whether the activation succeeds for the customer now depends on services that did not make the activation decision.
 
-An event-driven design changes the interaction:
+An event-driven design changes the interaction. The subscription module publishes one fact, subscription activated. Email, analytics, and onboarding each subscribe and do their own work. The activation does not wait for them, and it does not know their names.
 
 ```text
                 Subscription Activated
@@ -910,7 +892,7 @@ The subscription module reports that something happened. Interested consumers re
 
 ### Events describe facts, not requests
 
-An event might be:
+An event might be named `SubscriptionActivated`. It carries an event id, a subscription id, a customer id, and when it occurred. It does not name an email template. It reports that activation happened.
 
 ```typescript
 type SubscriptionActivated = {
@@ -923,7 +905,7 @@ type SubscriptionActivated = {
 
 This event describes an occurrence in the domain.
 
-Compare it with a command:
+Compare it with a command named `SendActivationEmail`. That one carries a customer id and a template id. It asks a particular responsibility to send a particular email.
 
 ```typescript
 type SendActivationEmail = {
@@ -996,7 +978,7 @@ Let's design a practical subscription SaaS serving 30,000 customers with six bac
 
 The platform uses Node.js, TypeScript, PostgreSQL, Stripe, Redis, and a background job system. Product management expects new pricing plans, occasional payment-provider changes, and additional billing functionality.
 
-Here is a reasonable starting architecture:
+Here is a reasonable starting architecture. HTTP enters one process: a modular monolith that holds subscriptions, billing, payments, and customers. That process writes to PostgreSQL and enqueues jobs. Workers sit behind the queue. The payments module is the piece that calls the external payment provider. The other patterns in this lecture are rules inside that one process, not extra products you must install.
 
 ```text
                  HTTP API
@@ -1044,7 +1026,7 @@ It needs a small set of understandable design rules.
 
 ### A concrete execution path
 
-A customer requests cancellation:
+A customer requests cancellation. The route is a DELETE on that subscription. A cancellation handler asks the subscription domain whether this cancellation is allowed. One database transaction then updates the subscription status, writes the local records that must agree with it, and writes a durable outbox record. After commit, a background dispatcher handles notifications and analytics.
 
 ```text
 HTTP DELETE /subscriptions/:id
@@ -1101,20 +1083,25 @@ Architecture should respond to evidence.
 
 ## 11. Choosing a Pattern: A Practical Decision Framework
 
-Instead of asking which architectural pattern is best, begin with the dominant source of complexity.
+Instead of asking which architectural pattern is best, begin with the dominant source of complexity. These are starting hypotheses.
 
-| Problem observed | First architectural idea to investigate |
-|---|---|
-| Business logic scattered across HTTP and persistence code | Layer separation and dependency inversion |
-| Each feature requires changes across many unrelated files | Feature ownership and vertical slices |
-| Business rules depend heavily on external SDKs | Ports and adapters |
-| Unclear business terms and conflicting state rules | DDD and bounded contexts |
-| Modules frequently modify one another's internals | Modular boundaries and explicit contracts |
-| Slow secondary operations delay critical requests | Asynchronous processing and events |
-| Different workloads genuinely need independent scaling | Separate processes or services |
-| Multiple teams are blocked by synchronized deployments | Service boundaries and ownership review |
+If business logic is scattered across HTTP handlers and persistence code, look first at layer separation and dependency inversion.
 
-This table provides starting hypotheses, not guaranteed answers.
+If each feature requires edits across many unrelated files, look at feature ownership and vertical slices.
+
+If business rules depend heavily on external SDKs, look at ports and adapters.
+
+If the business terms are unclear and the state rules conflict, look at domain-driven design and bounded contexts.
+
+If modules keep modifying one another's internals, look at modular boundaries and explicit contracts.
+
+If slow secondary work delays the critical request, look at asynchronous processing and events.
+
+If different workloads genuinely need independent scaling, look at separate processes or services.
+
+If several teams are blocked because they must deploy together, review service boundaries and ownership.
+
+None of those is a guaranteed answer.
 
 For example, if reports are slow, separating report generation into a worker may be enough. Introducing an independently deployed reporting microservice is a larger step requiring additional justification.
 
@@ -1143,6 +1130,8 @@ None of these symptoms proves an architecture is defective.
 They identify places where investigation is more valuable than aesthetic judgment.
 
 ---
+
+*The spoken lecture ends here. What follows is a design exercise for the screen, then interview prompts and a glance card. You can stop the voice reader.*
 
 ## 12. Practical Lab — Refactoring a Subscription Backend
 

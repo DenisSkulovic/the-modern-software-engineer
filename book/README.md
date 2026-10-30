@@ -15,18 +15,20 @@ This is not a bootcamp, a degree, or a certification programme. It turns practic
 
 ```
 book/
-├── README.md              ← you are here (philosophy + study order)
-├── STATUS.md              ← manuscript vs learning status model
-├── curriculum.yaml        ← source of truth (edit this to reshuffle)
-├── curriculum.md          ← human-readable course catalogue
-├── technology-atlas.md    ← searchable topic / technology index
-├── interview-lab/         ← mock interviews (protocol, profiles, sessions)
-├── production-cases/      ← diagnostic incident packets (not a course)
-├── students/              ← personal Study Ledgers (per student)
-├── tools/                 ← migrate / validate / render / progress
-├── CS/                    ← Computer Science courses
-├── SE/                    ← Software Engineering courses
-└── AI/                    ← Artificial Intelligence courses
+├── README.md                    ← you are here (philosophy + study order)
+├── STUDY-INTENT.md              ← how this library is used (listen-first, mocks)
+├── engineering-decision-map.md  ← architecture joints across the catalogue
+├── STATUS.md                    ← manuscript vs learning status model
+├── curriculum.yaml              ← source of truth (edit this to reshuffle)
+├── curriculum.md                ← human-readable course catalogue
+├── technology-atlas.md          ← searchable topic / technology index
+├── interview-lab/               ← mock interviews (protocol, profiles, sessions)
+├── production-cases/            ← diagnostic incident packets (not a course)
+├── students/                    ← personal Study Ledgers (per student)
+├── tools/                       ← migrate / validate / render / progress
+├── CS/                          ← Computer Science courses
+├── SE/                          ← Software Engineering courses
+└── AI/                          ← Artificial Intelligence courses
 ```
 
 **3 disciplines · 17 core courses · 91 core lectures** (edition `2.0.0`; most core manuscripts complete, including `CS340`; `SE240-L07` is a planning stub). Active electives add further lecture stubs and manuscripts outside the mandatory core.
@@ -39,6 +41,8 @@ Lecture identity: `CS330-L03`. Frontmatter carries `id`, `manuscript`, `edition`
 2. **Learning** — have *you* studied it? Personal ledger under [`students/`](students/) (`unopened` → … → `fluent`, with `fading` / `encore` for revisits)
 
 **How this library is used for interview prep** (priorities, stages, optional labs): [`STUDY-INTENT.md`](STUDY-INTENT.md) — agents should follow that over assuming a homework-driven degree path.
+
+**Architecture navigation** (how layers and trade-offs connect; links into lectures): [`engineering-decision-map.md`](engineering-decision-map.md). The catalogue is a reference library — not a required completion checklist. Prefer breadth and systems intuition; go deep when mocks or job requirements expose a gap.
 
 Details: [`STATUS.md`](STATUS.md). Topic lookup across the library: [`technology-atlas.md`](technology-atlas.md).
 
@@ -91,7 +95,9 @@ Active electives today include `SE215`, `CS360`, `SE250`, `CS345`, `CS350`, `SE3
 
 **Default for interview refresh:** listen or read the prose (often voice + optional 1.25–1.5×). That counts. Labs and end-of-lecture tasks are **optional reference** — useful inspiration for Interview Lab questions, not mandatory homework. Full priorities and stages: [`STUDY-INTENT.md`](STUDY-INTENT.md).
 
-A serious listen is often **~40–70 minutes @1×** of spoken material (less wall-clock at higher speed). Familiar material can be faster. Screen-follow when the manuscript is code-dense.
+A serious listen is often **~40–70 minutes @1×** of spoken material (less wall-clock at higher speed). Familiar material can be faster.
+
+Code samples stay in the lecture. They are illustrations: a voice reader skips fenced code, so the paragraphs around each sample have to carry why it is there, what to notice, and what follows. Stop the voice reader at *The spoken lecture ends here* — labs and the glance card are for the screen. A lecture whose point still lives only inside the fences is not listenable yet; the fix is to rewrite the prose, not to remove the code.
 
 Lectures are ordinarily **one file, two progressive parts**:
 
