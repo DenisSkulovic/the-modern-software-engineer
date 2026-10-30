@@ -99,6 +99,10 @@ def exam_attempts_path(student: str) -> Path:
     return student_dir(student) / "exam-attempts.yaml"
 
 
+def narrative_listens_path(student: str) -> Path:
+    return student_dir(student) / "narrative-listens.yaml"
+
+
 def load_yaml(path: Path) -> dict:
     if not path.is_file():
         raise SystemExit(f"Missing {path}")
@@ -276,6 +280,57 @@ def write_empty_exam_attempts(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         EXAM_ATTEMPTS_HEADER + "attempts: []\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+
+
+NARRATIVE_LISTENS_HEADER = """\
+# Append-only Narrative Systems Story listens. Separate from lecture activity.yaml.
+# Do not invent lecture listen events from stories. Not graded; optional history only.
+# A later listen of the same story is a new entry; never edit past ones.
+#
+# Fields: at, story (NSNN), optional title, action (listen|skim|partial),
+# optional shelf (Discovery|Focused|Panoramic), optional note.
+"""
+
+
+def load_narrative_listens(student: str) -> list[dict]:
+    """Return story listens newest-first. Missing file yields []."""
+    path = narrative_listens_path(student)
+    if not path.is_file():
+        return []
+    data = load_yaml(path)
+    raw = data.get("listens") or []
+    if not isinstance(raw, list):
+        raise SystemExit(f"{path} listens must be a list")
+    listens: list[dict] = []
+    for i, item in enumerate(raw):
+        if not isinstance(item, dict):
+            raise SystemExit(f"{path} listen {i} must be a mapping")
+        day = parse_day(item.get("at"))
+        story = item.get("story")
+        if day is None or not story:
+            raise SystemExit(f"{path} listen {i} needs at and story")
+        listens.append(
+            {
+                "_i": i,
+                "at": day,
+                "story": str(story),
+                "title": str(item["title"]).strip() if item.get("title") else "",
+                "action": str(item.get("action") or "listen"),
+                "shelf": str(item["shelf"]).strip() if item.get("shelf") else "",
+                "note": " ".join(str(item.get("note") or "").split()),
+            }
+        )
+    listens.sort(key=lambda e: (e["at"], e["_i"]), reverse=True)
+    return listens
+
+
+def write_empty_narrative_listens(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        NARRATIVE_LISTENS_HEADER + "listens: []\n",
         encoding="utf-8",
         newline="\n",
     )

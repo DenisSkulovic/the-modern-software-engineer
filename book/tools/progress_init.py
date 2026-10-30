@@ -18,8 +18,10 @@ from progress_lib import (
     exam_attempts_path,
     ledger_path,
     load_events,
+    narrative_listens_path,
     profile_ledger,
     write_empty_exam_attempts,
+    write_empty_narrative_listens,
     write_events,
 )
 
@@ -32,6 +34,7 @@ def write_templates(manifest: dict | None = None) -> None:
     dump_yaml(template_dir / "ledger.yaml", template)
     write_events(template_dir / "activity.yaml", [])
     write_empty_exam_attempts(template_dir / "exam-attempts.yaml")
+    write_empty_narrative_listens(template_dir / "narrative-listens.yaml")
 
 
 def main() -> None:
@@ -69,15 +72,22 @@ def main() -> None:
     if not exams.exists():
         write_empty_exam_attempts(exams)
 
+    stories = narrative_listens_path(args.student)
+    if not stories.exists():
+        write_empty_narrative_listens(stories)
+
     write_templates(manifest)
 
     print(f"Wrote {dest.relative_to(BOOK_ROOT)}")
     print(f"Wrote {act.relative_to(BOOK_ROOT)}")
     if exams.exists():
         print(f"Wrote {exams.relative_to(BOOK_ROOT)}")
+    if stories.exists():
+        print(f"Wrote {stories.relative_to(BOOK_ROOT)}")
     print(f"Wrote {(STUDENTS / '_template' / 'ledger.yaml').relative_to(BOOK_ROOT)}")
     print(f"Wrote {(STUDENTS / '_template' / 'activity.yaml').relative_to(BOOK_ROOT)}")
     print(f"Wrote {(STUDENTS / '_template' / 'exam-attempts.yaml').relative_to(BOOK_ROOT)}")
+    print(f"Wrote {(STUDENTS / '_template' / 'narrative-listens.yaml').relative_to(BOOK_ROOT)}")
     print(
         "Next: python tools/progress_log.py --student "
         f"{args.student} --lecture <id> --action listen --phase studying"

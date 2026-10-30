@@ -27,6 +27,7 @@ from progress_lib import (
     ledger_path,
     load_events,
     load_exam_attempts,
+    load_narrative_listens,
     load_queue,
     load_yaml,
     md_cell,
@@ -164,7 +165,8 @@ def main() -> None:
     lines.append(
         "Personal learning tracker (not manuscript status). "
         "Lecture history is the append-only [`activity.yaml`](activity.yaml); "
-        "course exams are [`exam-attempts.yaml`](exam-attempts.yaml). "
+        "course exams are [`exam-attempts.yaml`](exam-attempts.yaml); "
+        "stories are [`narrative-listens.yaml`](narrative-listens.yaml). "
         "Design: [`../../STATUS.md`](../../STATUS.md)."
     )
     lines.append("")
@@ -214,6 +216,9 @@ def main() -> None:
 
     exam_attempts = load_exam_attempts(args.student)
     append_exam_attempts(lines, exam_attempts)
+
+    narrative_listens = load_narrative_listens(args.student)
+    append_narrative_listens(lines, narrative_listens)
 
     lines.append("## Course status strip")
     lines.append("")
@@ -267,6 +272,7 @@ def main() -> None:
     lines.append(
         "_Source: [`activity.yaml`](activity.yaml), "
         "[`exam-attempts.yaml`](exam-attempts.yaml), "
+        "[`narrative-listens.yaml`](narrative-listens.yaml), "
         "profile [`ledger.yaml`](ledger.yaml). "
         f"Regenerate: `python tools/progress_render.py --student {args.student}`._"
     )
@@ -300,6 +306,34 @@ def append_exam_attempts(lines: list[str], attempts: list[dict]) -> None:
             f"| {entry['at'].isoformat()} | {exam} | `{entry.get('mode') or '—'}` | "
             f"{md_cell(entry.get('outcome') or '', 72)} | "
             f"{md_cell(entry.get('next') or '', 56)} |"
+        )
+    lines.append("")
+
+
+def append_narrative_listens(lines: list[str], listens: list[dict]) -> None:
+    lines.append("## Recent narrative stories")
+    lines.append("")
+    lines.append(
+        "Optional audio stories — not lecture events. "
+        "Catalogue: [`../../narrative-cases/README.md`](../../narrative-cases/README.md)."
+    )
+    lines.append("")
+    if not listens:
+        lines.append(
+            "_No story listens yet. Append to [`narrative-listens.yaml`](narrative-listens.yaml) when useful._"
+        )
+        lines.append("")
+        return
+    lines.append("| When | Story | Shelf | Note |")
+    lines.append("| --- | --- | --- | --- |")
+    for entry in listens:
+        story = f"`{entry['story']}`"
+        if entry.get("title"):
+            story += f" {md_cell(entry['title'], 40)}"
+        shelf = entry.get("shelf") or "—"
+        lines.append(
+            f"| {entry['at'].isoformat()} | {story} | {shelf} | "
+            f"{md_cell(entry.get('note') or '', 72)} |"
         )
     lines.append("")
 

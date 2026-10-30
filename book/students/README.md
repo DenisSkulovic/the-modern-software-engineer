@@ -7,16 +7,18 @@ Each student (or future clone of yourself-before-an-interview) gets a folder:
 ```
 students/
 ├── _template/
-│   ├── ledger.yaml         ← profile only (no lecture snapshot)
-│   ├── activity.yaml       ← empty lecture log
-│   ├── exam-attempts.yaml  ← empty course-exam log
-│   └── queue.yaml          ← optional curated short-term listen queue
+│   ├── ledger.yaml              ← profile only (no lecture snapshot)
+│   ├── activity.yaml            ← empty lecture log
+│   ├── exam-attempts.yaml       ← empty course-exam log
+│   ├── narrative-listens.yaml   ← empty story-listen log
+│   └── queue.yaml               ← optional curated short-term listen queue
 └── <student-id>/
-    ├── ledger.yaml         ← who you are, status vocabulary, encore intervals
-    ├── activity.yaml       ← append-only lecture history; source of truth for phases
-    ├── exam-attempts.yaml  ← append-only course-exam history (qualitative)
-    ├── queue.yaml          ← curated next listens for the current stretch
-    └── progress.md         ← generated dashboard
+    ├── ledger.yaml              ← who you are, status vocabulary, encore intervals
+    ├── activity.yaml            ← append-only lecture history; source of truth for phases
+    ├── exam-attempts.yaml       ← append-only course-exam history (qualitative)
+    ├── narrative-listens.yaml   ← append-only story listens (optional)
+    ├── queue.yaml               ← curated next listens for the current stretch
+    └── progress.md              ← generated dashboard
 ```
 
 Do not edit past events, and do not keep a per-lecture status map. A later session is a new event. Current phase, confidence, and pass counts are a fold of the lecture log.
@@ -24,6 +26,8 @@ Do not edit past events, and do not keep a per-lecture status map. A later sessi
 `queue.yaml` is the short-term study plan: a shuffled shortlist of lectures with preferred mode (`audio` / `screen` / `either`) and a one-line why. It is not a calendar and not Duolingo. Edit it when your stretch goal changes. A logged pass marks the matching queue item done on the next render.
 
 `exam-attempts.yaml` records optional course-examination sessions (complete or partial). It never invents lecture listens and never stores grades. Protocol: [`../EXAMINATIONS.md`](../EXAMINATIONS.md).
+
+`narrative-listens.yaml` records optional Narrative Systems Story listens. It never invents lecture listens. Catalogue: [`../narrative-cases/README.md`](../narrative-cases/README.md).
 
 ## Quick start
 
@@ -43,6 +47,7 @@ Open `progress.md` for:
 - **Listen queue** — curated next listens from `queue.yaml` (falls back to catalogue study order if missing)
 - **Encore due** (spaced refresh, derived from the log)
 - **Recent course examinations** — qualitative exam attempts (if any)
+- **Recent narrative stories** — optional story listens (if any)
 - **Course status strip** — where each lecture stands now
 - **Activity calendar** and **course by week** — when the work happened
 - **Recent events** — the lecture log itself, newest day first
@@ -62,3 +67,4 @@ In the current interview-refresh use of this library, a listen logged as `studyi
 - Multiple ledgers are fine (`dskul`, `interview-2027`, …).
 - Mock interviews belong in [`../interview-lab/`](../interview-lab/) (protocol + session reports). Do not treat a good mock answer as automatic lecture mastery; optionally log a `note` event if you want interview-practice days on the calendar.
 - Course exams belong under each course’s `exams/` folder; attempts go in `exam-attempts.yaml`, never as fake lecture activity.
+- Story listens go in `narrative-listens.yaml`, never as fake lecture activity.

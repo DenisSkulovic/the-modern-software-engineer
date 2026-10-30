@@ -1,8 +1,8 @@
 # Study Ledger — dskul
 
-**Student:** `dskul` · **Curriculum:** v2.0 · **Updated:** 2026-10-30 · **Rendered:** 2026-10-30
+**Student:** `dskul` · **Curriculum:** v2.0 · **Updated:** 2026-10-30 · **Rendered:** 2026-10-31
 
-Personal learning tracker (not manuscript status). Lecture history is the append-only [`activity.yaml`](activity.yaml); course exams are [`exam-attempts.yaml`](exam-attempts.yaml). Design: [`../../STATUS.md`](../../STATUS.md).
+Personal learning tracker (not manuscript status). Lecture history is the append-only [`activity.yaml`](activity.yaml); course exams are [`exam-attempts.yaml`](exam-attempts.yaml); stories are [`narrative-listens.yaml`](narrative-listens.yaml). Design: [`../../STATUS.md`](../../STATUS.md).
 
 ## At a glance
 
@@ -77,6 +77,14 @@ Qualitative history only — not grades. Does not change lecture phases. Protoco
 | When | Exam | Mode | Outcome | Next |
 | --- | --- | --- | --- | --- |
 | 2026-10-30 | `CS230-EX01` Follow the Boundaries | `guided` | Productive formative learning session. Coherent architectural understan… | Keep breadth-first listening across other courses. When… |
+
+## Recent narrative stories
+
+Optional audio stories — not lecture events. Catalogue: [`../../narrative-cases/README.md`](../../narrative-cases/README.md).
+
+| When | Story | Shelf | Note |
+| --- | --- | --- | --- |
+| 2026-10-30 | `NS01` The Friday Checkout | Panoramic | Full voice listen just before midnight; logged on the calendar day of t… |
 
 ## Course status strip
 
@@ -264,4 +272,4 @@ Folded snapshot. Passes count listen, read, skim, lab, oral, and review events. 
 
 ---
 
-_Source: [`activity.yaml`](activity.yaml), [`exam-attempts.yaml`](exam-attempts.yaml), profile [`ledger.yaml`](ledger.yaml). Regenerate: `python tools/progress_render.py --student dskul`._
+_Source: [`activity.yaml`](activity.yaml), [`exam-attempts.yaml`](exam-attempts.yaml), [`narrative-listens.yaml`](narrative-listens.yaml), profile [`ledger.yaml`](ledger.yaml). Regenerate: `python tools/progress_render.py --student dskul`._

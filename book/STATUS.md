@@ -113,6 +113,12 @@ Course-wide practice papers live under each course’s `exams/` folder (protocol
 
 Record optional qualitative history in `students/<you>/exam-attempts.yaml`. The dashboard’s **Recent course examinations** section folds that file. Incomplete attempts are valid. Do not invent listen/read events, scores, or fluency from an exam.
 
+### Narrative story listens (separate log)
+
+Optional audio stories live in [`narrative-cases/`](narrative-cases/README.md). Listens are **not** lecture events.
+
+Record optional history in `students/<you>/narrative-listens.yaml`. The dashboard’s **Recent narrative stories** section folds that file. Do not invent lecture listen/read events or change phases from a story.
+
 ### Suggested encore intervals (defaults; applied when rendering)
 
 | After reaching | First encore | Then |
@@ -141,16 +147,18 @@ book/
 ├── students/
 │   ├── README.md             ← how to use ledgers
 │   ├── _template/
-│   │   ├── ledger.yaml         ← profile only
-│   │   ├── activity.yaml       ← empty lecture log
-│   │   ├── exam-attempts.yaml  ← empty course-exam log
-│   │   └── queue.yaml          ← optional curated short-term listen queue
-│   └── dskul/                  ← example / primary student
-│       ├── ledger.yaml         ← profile (not a snapshot of lectures)
-│       ├── activity.yaml       ← append-only lecture history
-│       ├── exam-attempts.yaml  ← append-only course-exam history
-│       ├── queue.yaml          ← curated next listens (mood/mode, not calendar)
-│       └── progress.md         ← rendered dashboard (optional commit)
+│   │   ├── ledger.yaml              ← profile only
+│   │   ├── activity.yaml            ← empty lecture log
+│   │   ├── exam-attempts.yaml       ← empty course-exam log
+│   │   ├── narrative-listens.yaml   ← empty story-listen log
+│   │   └── queue.yaml               ← optional curated short-term listen queue
+│   └── dskul/                       ← example / primary student
+│       ├── ledger.yaml              ← profile (not a snapshot of lectures)
+│       ├── activity.yaml            ← append-only lecture history
+│       ├── exam-attempts.yaml       ← append-only course-exam history
+│       ├── narrative-listens.yaml   ← append-only story listens
+│       ├── queue.yaml               ← curated next listens (mood/mode, not calendar)
+│       └── progress.md              ← rendered dashboard (optional commit)
 └── tools/
     ├── sync_manuscript_meta.py
     ├── progress_lib.py

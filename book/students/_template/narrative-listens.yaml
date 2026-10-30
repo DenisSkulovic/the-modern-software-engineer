@@ -1,0 +1,7 @@
+# Append-only Narrative Systems Story listens. Separate from lecture activity.yaml.
+# Do not invent lecture listen events from stories. Not graded; optional history only.
+# A later listen of the same story is a new entry; never edit past ones.
+#
+# Fields: at, story (NSNN), optional title, action (listen|skim|partial),
+# optional shelf (Discovery|Focused|Panoramic), optional note.
+listens: []
