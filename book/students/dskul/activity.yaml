@@ -38,8 +38,8 @@ events:
   action: listen
   phase: wandering
   confidence: 1
-  note: Voice listen-through once — dense overview pass; diversified away from CS110-L05. Prefer
-    deepening via later CS230 lectures rather than expanding L01.
+  note: Voice listen-through once — dense overview pass; diversified away from CS110-L05. Prefer deepening
+    via later CS230 lectures rather than expanding L01.
   source: backfill
 - at: '2026-10-27'
   lecture: CS230-L02
@@ -145,3 +145,22 @@ events:
   phase: studying
   confidence: 2
   note: Walk listen @~1.5x; prose done; labs not started.
+- at: '2026-10-30'
+  lecture: SE215-L11
+  action: skim
+  phase: wandering
+  confidence: 3
+  note: Partial voice pass (~quarter); recognized prior production release/versioning pipeline. Deferring
+    full listen — higher-priority queue items first.
+- at: '2026-10-30'
+  lecture: CS320-L01
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through; one session. Prose done; labs not started.
+- at: '2026-10-30'
+  lecture: SE240-L03
+  action: listen
+  phase: studying
+  confidence: 2
+  note: Full voice listen-through; one session. Prose done; labs not started.

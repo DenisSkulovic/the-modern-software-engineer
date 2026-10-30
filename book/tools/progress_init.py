@@ -15,9 +15,11 @@ from progress_lib import (
     activity_path,
     dump_yaml,
     empty_activity,
+    exam_attempts_path,
     ledger_path,
     load_events,
     profile_ledger,
+    write_empty_exam_attempts,
     write_events,
 )
 
@@ -29,6 +31,7 @@ def write_templates(manifest: dict | None = None) -> None:
     template = profile_ledger("YOUR_ID", display_name="Your Name", manifest=manifest)
     dump_yaml(template_dir / "ledger.yaml", template)
     write_events(template_dir / "activity.yaml", [])
+    write_empty_exam_attempts(template_dir / "exam-attempts.yaml")
 
 
 def main() -> None:
@@ -62,12 +65,19 @@ def main() -> None:
     if not act.exists() or args.force:
         write_events(act, empty_activity()["events"])
 
+    exams = exam_attempts_path(args.student)
+    if not exams.exists():
+        write_empty_exam_attempts(exams)
+
     write_templates(manifest)
 
     print(f"Wrote {dest.relative_to(BOOK_ROOT)}")
     print(f"Wrote {act.relative_to(BOOK_ROOT)}")
+    if exams.exists():
+        print(f"Wrote {exams.relative_to(BOOK_ROOT)}")
     print(f"Wrote {(STUDENTS / '_template' / 'ledger.yaml').relative_to(BOOK_ROOT)}")
     print(f"Wrote {(STUDENTS / '_template' / 'activity.yaml').relative_to(BOOK_ROOT)}")
+    print(f"Wrote {(STUDENTS / '_template' / 'exam-attempts.yaml').relative_to(BOOK_ROOT)}")
     print(
         "Next: python tools/progress_log.py --student "
         f"{args.student} --lecture <id> --action listen --phase studying"

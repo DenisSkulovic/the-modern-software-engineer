@@ -1,0 +1,8 @@
+# Append-only course examination attempts. Separate from lecture activity.yaml.
+# Do not invent lecture listen events from exams. No scores, grades, or pass marks.
+# Incomplete papers are fine to log. A later attempt is a new entry; never edit past ones.
+#
+# Fields: at, course, exam, optional title, mode, coverage, outcome,
+# optional strengths[], gaps[], suggested_lectures[], next.
+# mode examples: independent | guided | open-book | mixed
+attempts: []

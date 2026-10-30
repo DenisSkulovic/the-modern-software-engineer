@@ -50,10 +50,11 @@ Applications can start **before** the listening queue is empty. Recruitment lag 
 - A first-pass confidence around **2/5** is a normal refresh signal, not incomplete work.
 - Logging a listen with phase `studying` means “serious pass of the prose,” not “mastered.”
 
-### Secondary: demonstrate under pressure
+### Secondary: retrieve and demonstrate
 
-- **Interview Lab** (simulated HR, technical, architecture, debugging conversations) is the main *active* practice.
-- That is how “exposed” becomes “interview-ready” — not by clearing lecture exercise checklists.
+- **Course examinations** (static papers under each course’s `exams/`) — optional subject-wide oral practice: recall, connect, and learn from model answers. Attempt before, during, or after listening a course. Protocol: [`EXAMINATIONS.md`](EXAMINATIONS.md). No grades, no compulsory completion. Optional qualitative history: `students/<id>/exam-attempts.yaml` (never fake lecture events).
+- **Interview Lab** (simulated HR, technical, architecture, debugging conversations) is the main *interactive* practice under hiring pressure.
+- That is how “exposed” becomes “interview-ready” — not by clearing lecture exercise checklists or exam papers.
 - Optional: short verbal recall (“explain X without notes”) when useful; not a mandatory spaced-repetition product.
 
 ### Optional / later: hands-on
@@ -63,9 +64,9 @@ Applications can start **before** the listening queue is empty. Recruitment lag 
 
 ---
 
-## Lecture exercises, labs, and oral prompts
+## Lecture exercises, labs, oral prompts, and course exams
 
-Manuscripts include exercises, labs, oral-exam style prompts, and cheatsheets **on purpose**.
+Manuscripts include exercises, labs, oral-exam style prompts, and cheatsheets **on purpose**. Course-wide examination papers are a separate, optional library.
 
 | They are for | They are *not* for |
 | --- | --- |
@@ -73,10 +74,11 @@ Manuscripts include exercises, labs, oral-exam style prompts, and cheatsheets **
 | Inspiration for Interview Lab questions and drills | A mandatory completion checklist |
 | Optional deepening when curiosity or a JD demands it | Proof that listening “didn’t count” |
 | Cheatsheet / mental-model revisit before a mock | Blocking progress until `labbing` → `settled` |
+| Course exams: subject retrieval + self-study via answers | Replacing Interview Lab; grades; or lecture-ledger pollution |
 
-**Agent rule:** Do not require labs after every listen. Suggest hands-on work only when the user asks or a mock shows a concrete topic worth revisiting.
+**Agent rule:** Do not require labs or course exams after every listen. Suggest them only when the user asks or a mock shows a concrete topic worth revisiting.
 
-When running Interview Lab, agents **may** mine lecture oral prompts / challenges as question inspiration — that is a primary use of those sections.
+When running Interview Lab, agents **may** mine lecture oral prompts, challenges, and course-exam questions as inspiration — that is a primary use of those sections. Static exams and live mocks stay separate (see [`EXAMINATIONS.md`](EXAMINATIONS.md)).
 
 ---
 
@@ -128,6 +130,7 @@ Encore automation is secondary to revisits driven by mocks and real interview fe
 | [`engineering-decision-map.md`](engineering-decision-map.md) | Cross-discipline architecture navigation |
 | [`students/<id>/queue.yaml`](students/dskul/queue.yaml) | Short-term listen shortlist |
 | [`students/<id>/activity.yaml`](students/dskul/activity.yaml) | What was actually studied |
+| [`EXAMINATIONS.md`](EXAMINATIONS.md) | Course-wide practice papers (optional) |
 | [`interview-lab/PROTOCOL.md`](interview-lab/PROTOCOL.md) | How to run mocks |
 | [`STATUS.md`](STATUS.md) | Manuscript vs learning status mechanics |
 | [`README.md`](README.md) | Library overview and catalogue philosophy |
@@ -136,4 +139,4 @@ Encore automation is secondary to revisits driven by mocks and real interview fe
 
 ## One-line reminder for agents
 
-**Listen to systematize experience → mock to retrieve under pressure → apply in parallel → sharpen when invited. Labs are reference material, not the programme.**
+**Listen to systematize experience → examine (optional) to retrieve and connect → mock to defend under pressure → apply in parallel → sharpen when invited. Labs and exam papers are reference material, not the programme.**

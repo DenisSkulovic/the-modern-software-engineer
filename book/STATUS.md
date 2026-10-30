@@ -107,6 +107,12 @@ python tools/progress_log.py --student dskul \
 
 The **course status strip** is that current phase, one glyph per lecture. The **activity calendar** and **course by week** table count the events over time. **Recent events** lists the log, newest day first, notes included.
 
+### Course examination attempts (separate log)
+
+Course-wide practice papers live under each course’s `exams/` folder (protocol: [`EXAMINATIONS.md`](EXAMINATIONS.md)). Attempts are **not** lecture events.
+
+Record optional qualitative history in `students/<you>/exam-attempts.yaml`. The dashboard’s **Recent course examinations** section folds that file. Incomplete attempts are valid. Do not invent listen/read events, scores, or fluency from an exam.
+
 ### Suggested encore intervals (defaults; applied when rendering)
 
 | After reaching | First encore | Then |
@@ -135,14 +141,16 @@ book/
 ├── students/
 │   ├── README.md             ← how to use ledgers
 │   ├── _template/
-│   │   ├── ledger.yaml       ← profile only
-│   │   ├── activity.yaml     ← empty log
-│   │   └── queue.yaml        ← optional curated short-term listen queue
-│   └── dskul/                ← example / primary student
-│       ├── ledger.yaml       ← profile (not a snapshot of lectures)
-│       ├── activity.yaml     ← append-only learning history
-│       ├── queue.yaml        ← curated next listens (mood/mode, not calendar)
-│       └── progress.md       ← rendered dashboard (optional commit)
+│   │   ├── ledger.yaml         ← profile only
+│   │   ├── activity.yaml       ← empty lecture log
+│   │   ├── exam-attempts.yaml  ← empty course-exam log
+│   │   └── queue.yaml          ← optional curated short-term listen queue
+│   └── dskul/                  ← example / primary student
+│       ├── ledger.yaml         ← profile (not a snapshot of lectures)
+│       ├── activity.yaml       ← append-only lecture history
+│       ├── exam-attempts.yaml  ← append-only course-exam history
+│       ├── queue.yaml          ← curated next listens (mood/mode, not calendar)
+│       └── progress.md         ← rendered dashboard (optional commit)
 └── tools/
     ├── sync_manuscript_meta.py
     ├── progress_lib.py
@@ -175,6 +183,10 @@ Listening / reading is enough for an interview refresh pass. Labs (`labbing`) ar
 **Interview practice**
 
 Mock interviews are **not** a curriculum course and do not share manuscript/learning statuses. See [`interview-lab/`](interview-lab/README.md). Session reports are optional archives; they do not mark lectures fluent.
+
+**Course examinations**
+
+After a useful attempt (complete or partial), append to `students/<id>/exam-attempts.yaml` and re-render. See [`EXAMINATIONS.md`](EXAMINATIONS.md). Never log exams as lecture activity.
 
 **Production cases**
 

@@ -26,6 +26,7 @@ from progress_lib import (
     lecture_index,
     ledger_path,
     load_events,
+    load_exam_attempts,
     load_queue,
     load_yaml,
     md_cell,
@@ -162,8 +163,9 @@ def main() -> None:
     lines.append("")
     lines.append(
         "Personal learning tracker (not manuscript status). "
-        "History is the append-only [`activity.yaml`](activity.yaml); "
-        "this page folds it. Design: [`../../STATUS.md`](../../STATUS.md)."
+        "Lecture history is the append-only [`activity.yaml`](activity.yaml); "
+        "course exams are [`exam-attempts.yaml`](exam-attempts.yaml). "
+        "Design: [`../../STATUS.md`](../../STATUS.md)."
     )
     lines.append("")
     lines.append("## At a glance")
@@ -210,6 +212,8 @@ def main() -> None:
             )
     lines.append("")
 
+    exam_attempts = load_exam_attempts(args.student)
+    append_exam_attempts(lines, exam_attempts)
 
     lines.append("## Course status strip")
     lines.append("")
@@ -261,13 +265,43 @@ def main() -> None:
     lines.append("---")
     lines.append("")
     lines.append(
-        "_Source: [`activity.yaml`](activity.yaml), profile [`ledger.yaml`](ledger.yaml). "
+        "_Source: [`activity.yaml`](activity.yaml), "
+        "[`exam-attempts.yaml`](exam-attempts.yaml), "
+        "profile [`ledger.yaml`](ledger.yaml). "
         f"Regenerate: `python tools/progress_render.py --student {args.student}`._"
     )
 
     out = STUDENTS / args.student / "progress.md"
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"Wrote {out.relative_to(BOOK_ROOT)}")
+
+
+def append_exam_attempts(lines: list[str], attempts: list[dict]) -> None:
+    lines.append("## Recent course examinations")
+    lines.append("")
+    lines.append(
+        "Qualitative history only — not grades. "
+        "Does not change lecture phases. Protocol: [`../../EXAMINATIONS.md`](../../EXAMINATIONS.md)."
+    )
+    lines.append("")
+    if not attempts:
+        lines.append(
+            "_No exam attempts yet. Append to [`exam-attempts.yaml`](exam-attempts.yaml) when useful._"
+        )
+        lines.append("")
+        return
+    lines.append("| When | Exam | Mode | Outcome | Next |")
+    lines.append("| --- | --- | --- | --- | --- |")
+    for entry in attempts:
+        exam = f"`{entry['exam']}`"
+        if entry.get("title"):
+            exam += f" {md_cell(entry['title'], 36)}"
+        lines.append(
+            f"| {entry['at'].isoformat()} | {exam} | `{entry.get('mode') or '—'}` | "
+            f"{md_cell(entry.get('outcome') or '', 72)} | "
+            f"{md_cell(entry.get('next') or '', 56)} |"
+        )
+    lines.append("")
 
 
 def append_listen_queue(

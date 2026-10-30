@@ -8,9 +8,11 @@ Courses teach. This lab checks whether you can retrieve, explain, apply, and def
 **Not the default:** Israeli/Tel Aviv market conventions, FAANG-style LeetCode rituals, theatrical pressure, or corporate slogan drills.
 
 Full rules: [`PROTOCOL.md`](PROTOCOL.md).  
-Programme priorities (listen-first refresh; labs optional; mocks as active practice): [`../STUDY-INTENT.md`](../STUDY-INTENT.md).
+Programme priorities (listen-first refresh; labs optional; mocks as interactive practice): [`../STUDY-INTENT.md`](../STUDY-INTENT.md).
 
-Lecture oral prompts, challenges, and labs are fair **question inspiration** for sessions here — not homework the candidate must have completed first.
+Static course-wide practice papers (questions + model answers, not live sims) live under each course’s `exams/` folder — protocol: [`../EXAMINATIONS.md`](../EXAMINATIONS.md). Do not confuse those with Interview Lab sessions.
+
+Lecture oral prompts, challenges, labs, and course-exam questions are fair **question inspiration** for sessions here — not homework the candidate must have completed first.
 
 ---
 

@@ -1,0 +1,50 @@
+# Append-only course examination attempts. Separate from lecture activity.yaml.
+# Do not invent lecture listen events from exams. No scores, grades, or pass marks.
+# Incomplete papers are fine to log. A later attempt is a new entry; never edit past ones.
+#
+# Fields: at, course, exam, optional title, mode, coverage, outcome,
+# optional strengths[], gaps[], suggested_lectures[], next.
+# mode examples: independent | guided | open-book | mixed
+attempts:
+- at: '2026-10-30'
+  course: CS230
+  exam: CS230-EX01
+  title: Follow the Boundaries
+  mode: guided
+  coverage: >
+    Q01–Q08 and Q11–Q18 discussed; Q09 and Q10 intentionally skipped.
+    Some model answers consulted before responding. Not a strict timed attempt.
+  outcome: >
+    Productive formative learning session. Coherent architectural understanding and
+    practical engineering intuition where networking meets everyday development;
+    several infrastructure mechanisms needed explanation, especially where matching
+    lectures had not yet been studied.
+  strengths:
+  - End-to-end webpage request and rendering boundaries
+  - Latency vs bandwidth; sequential API RTT → server-side orchestration (Q02)
+  - DNS caching / TTL; TCP byte stream and framing after short refresher
+  - Idempotency and uncertain outcomes after timeouts
+  - Connection-lifecycle intuition; CORS / browser security boundary
+  - Willing to admit uncertainty and reason from known concepts
+  gaps:
+  - CIDR, prefix lengths, longest-prefix match, next-hop vs L2 resolution
+  - Cloud NAT: private app IP vs NAT gateway public egress identity
+  - TLS chains, intermediates, Node vs browser trust stores
+  - Proxies/CDNs: buffering, TLS termination, forwarded-header trust
+  - Connection pooling mechanics (stale-connection intuition present)
+  - 504 diagnosis via discriminating evidence across proxy vs app
+  - MTU / VPN encapsulation; IPv6 dual-stack paths; K8s egress investigation
+  skill_focus: >
+    Move from one plausible explanation to observation → competing hypotheses →
+    discriminating evidence → diagnosis (transferable beyond networking).
+  suggested_lectures:
+  - CS230-L09
+  - CS230-L10
+  - CS230-L05
+  - CS230-L06
+  - CS230-L11
+  next: >
+    Keep breadth-first listening across other courses. When returning to networking,
+    prefer L09/L10, then L05/L06 for foundations; L11 selective for forensics.
+    Later try another independent CS230 exam. Do not treat this session as mastery
+    or promote unlistened lectures.

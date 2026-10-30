@@ -1,0 +1,17 @@
+---
+description: Course examinations — static subject-wide practice papers under exams/
+alwaysApply: false
+---
+
+# Course examinations
+
+When the user asks for a course exam, examination paper, `EX01`/`EX02` variant, oral practice paper for a whole course, or similar:
+
+1. Read and follow `book/EXAMINATIONS.md` (authoritative).
+2. Place files at `book/<discipline>/<course-dir>/exams/<COURSE>-EX<NN>.md`. Do **not** add them to `curriculum.yaml`. Do **not** log attempts as lecture events in `activity.yaml`.
+3. Before authoring: inspect the course’s catalogue entry and **all existing lecture manuscripts**; review prior `*-EX*.md` variants so the new paper is substantively independent.
+4. Format: Part I questions (Q01…) then a stop line, then Part II model answers (A01…). Typical 16–20 questions; escalating difficulty; ~10–20% marked **Extension** for adjacent real-world topics. Do not spoil answers inside the question stem.
+5. Exam the **discipline**, not the lecture index. Prefer practical European product full-stack/backend interview relevance. No grades, pass marks, or tracking bureaucracy.
+6. Create only the variant requested. Never overwrite an existing exam unless explicitly asked.
+7. After a useful attempt (complete or partial), append a qualitative entry to `book/students/<id>/exam-attempts.yaml` and re-render `progress.md`. Incomplete is fine.
+8. If the user asks to be examined live (“examine me on CS230”), prefer Interview Lab rules (`book/interview-lab/PROTOCOL.md`) for interactive sessions; use static exams as inspiration, not a script.

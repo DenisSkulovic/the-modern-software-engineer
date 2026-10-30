@@ -95,6 +95,10 @@ def queue_path(student: str) -> Path:
     return student_dir(student) / "queue.yaml"
 
 
+def exam_attempts_path(student: str) -> Path:
+    return student_dir(student) / "exam-attempts.yaml"
+
+
 def load_yaml(path: Path) -> dict:
     if not path.is_file():
         raise SystemExit(f"Missing {path}")
@@ -218,6 +222,63 @@ def write_events(path: Path, events: list[dict]) -> None:
 
 def empty_activity() -> dict:
     return {"events": []}
+
+
+EXAM_ATTEMPTS_HEADER = """\
+# Append-only course examination attempts. Separate from lecture activity.yaml.
+# Do not invent lecture listen events from exams. No scores, grades, or pass marks.
+# Incomplete papers are fine to log. A later attempt is a new entry; never edit past ones.
+#
+# Fields: at, course, exam, optional title, mode, coverage, outcome,
+# optional strengths[], gaps[], suggested_lectures[], next.
+# mode examples: independent | guided | open-book | mixed
+"""
+
+
+def load_exam_attempts(student: str) -> list[dict]:
+    """Return exam attempts newest-first. Missing file yields []."""
+    path = exam_attempts_path(student)
+    if not path.is_file():
+        return []
+    data = load_yaml(path)
+    raw = data.get("attempts") or []
+    if not isinstance(raw, list):
+        raise SystemExit(f"{path} attempts must be a list")
+    attempts: list[dict] = []
+    for i, item in enumerate(raw):
+        if not isinstance(item, dict):
+            raise SystemExit(f"{path} attempt {i} must be a mapping")
+        day = parse_day(item.get("at"))
+        course = item.get("course")
+        exam = item.get("exam")
+        if day is None or not course or not exam:
+            raise SystemExit(f"{path} attempt {i} needs at, course, and exam")
+        entry = {
+            "_i": i,
+            "at": day,
+            "course": str(course),
+            "exam": str(exam),
+            "title": str(item["title"]).strip() if item.get("title") else "",
+            "mode": str(item.get("mode") or "—"),
+            "coverage": " ".join(str(item.get("coverage") or "").split()),
+            "outcome": " ".join(str(item.get("outcome") or "").split()),
+            "next": " ".join(str(item.get("next") or "").split()),
+            "suggested_lectures": [
+                str(x) for x in (item.get("suggested_lectures") or []) if x
+            ],
+        }
+        attempts.append(entry)
+    attempts.sort(key=lambda e: (e["at"], e["_i"]), reverse=True)
+    return attempts
+
+
+def write_empty_exam_attempts(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        EXAM_ATTEMPTS_HEADER + "attempts: []\n",
+        encoding="utf-8",
+        newline="\n",
+    )
 
 
 def profile_ledger(student: str, *, display_name: str | None = None, manifest: dict | None = None) -> dict:

@@ -17,6 +17,7 @@ This is not a bootcamp, a degree, or a certification programme. It turns practic
 book/
 ├── README.md                    ← you are here (philosophy + study order)
 ├── STUDY-INTENT.md              ← how this library is used (listen-first, mocks)
+├── EXAMINATIONS.md              ← course-wide practice papers (optional)
 ├── engineering-decision-map.md  ← architecture joints across the catalogue
 ├── STATUS.md                    ← manuscript vs learning status model
 ├── curriculum.yaml              ← source of truth (edit this to reshuffle)
@@ -26,7 +27,7 @@ book/
 ├── production-cases/            ← diagnostic incident packets (not a course)
 ├── students/                    ← personal Study Ledgers (per student)
 ├── tools/                       ← migrate / validate / render / progress
-├── CS/                          ← Computer Science courses
+├── CS/                          ← Computer Science courses (+ exams/ when present)
 ├── SE/                          ← Software Engineering courses
 └── AI/                          ← Artificial Intelligence courses
 ```
@@ -109,22 +110,23 @@ If Part II starts to blur, return to Part I’s opening picture and narrate one 
 **Teaching principles (unchanged from v1):** teach like an excellent lecturer; assume professional experience; open with a real problem; build mental models; explain trade-offs; stay concrete; no padding.
 
 **Manuscript rhythm (authoring):** intuition → deep dive → exploration/lab → challenges → mental model → further reading.  
-**Learner rhythm (this programme):** intuition → deep dive (listen/read) → optional cheatsheet glance → **Interview Lab** when ready. Skip labs freely.
+**Learner rhythm (this programme):** intuition → deep dive (listen/read) → optional cheatsheet glance → optional [course exam](EXAMINATIONS.md) → **Interview Lab** when ready. Skip labs and exams freely.
 
 ---
 
 ## Interview preparation (alongside the catalogue)
 
-Knowledge lives in the courses. **Retrieval under hiring pressure** lives in the [Interview Lab](interview-lab/README.md) — the main *active* practice for this programme (profiles, modes, evidence hierarchy). Lecture exercises may feed mock questions; clearing exercise lists does not.
+Knowledge lives in the courses. **Subject retrieval** can use optional [course examinations](EXAMINATIONS.md) (static papers under `<course>/exams/`). **Retrieval under hiring pressure** lives in the [Interview Lab](interview-lab/README.md) — the main *interactive* practice for this programme (profiles, modes, evidence hierarchy). Lecture exercises and exam questions may feed mocks; clearing those lists does not.
 
 - **Intent / stages:** [`STUDY-INTENT.md`](STUDY-INTENT.md)
+- **Course exams:** [`EXAMINATIONS.md`](EXAMINATIONS.md) — voluntary; answers in Part II; no ledger automation
 - **Protocol:** [`interview-lab/PROTOCOL.md`](interview-lab/PROTOCOL.md)
 - **Defaults:** practical European product-company full-stack (P1: Germany / Netherlands / Sweden and similar); algorithm-heavy (P5) only when evidence or you opt in
 - **Apply in parallel** with listening once the foundation feels less cold — do not wait for curriculum completion
 - **Company-specific** prep when a real invitation/date exists; short DSA bursts only if that process needs them
 - **Mocks:** HR and technical simulations; save reports under `interview-lab/sessions/` only if useful
 
-Interview practice does **not** automatically update Study Ledger fluency.
+Interview practice and course exams do **not** automatically update Study Ledger fluency.
 
 ---
 

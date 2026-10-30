@@ -1,16 +1,16 @@
 # Study Ledger — dskul
 
-**Student:** `dskul` · **Curriculum:** v2.0 · **Updated:** 2026-10-29 · **Rendered:** 2026-10-30
+**Student:** `dskul` · **Curriculum:** v2.0 · **Updated:** 2026-10-30 · **Rendered:** 2026-10-30
 
-Personal learning tracker (not manuscript status). History is the append-only [`activity.yaml`](activity.yaml); this page folds it. Design: [`../../STATUS.md`](../../STATUS.md).
+Personal learning tracker (not manuscript status). Lecture history is the append-only [`activity.yaml`](activity.yaml); course exams are [`exam-attempts.yaml`](exam-attempts.yaml). Design: [`../../STATUS.md`](../../STATUS.md).
 
 ## At a glance
 
 | Status | Count |
 | --- | ---: |
-| `unopened` · | 76 |
+| `unopened` · | 74 |
 | `wandering` ~ | 1 |
-| `studying` > | 14 |
+| `studying` > | 16 |
 | `labbing` * | 0 |
 | `settled` ✓ | 0 |
 | `fluent` ★ | 0 |
@@ -18,7 +18,7 @@ Personal learning tracker (not manuscript status). History is the append-only [`
 | `encore` ↻ | 0 |
 | **Total** | **91** |
 
-Exposed (any pass logged): **15/91**. Settled+fluent: **0/91** (0%) — optional for a listen-first refresh.
+Exposed (any pass logged): **17/91**. Settled+fluent: **0/91** (0%) — optional for a listen-first refresh.
 
 Counts cover every core lecture currently in the catalogue. A lecture with no events is `unopened`. Electives appear in the queue and activity log.
 
@@ -35,7 +35,7 @@ _Queue updated 2026-10-29. Not a calendar — pick by mood/mode._
 | 1 | ○ `open` | `audio` | `CS330-L01` Relational Database Design | ~33m@1.5× — Relational modeling — core data decisions; prose-led |
 | 2 | ○ `open` | `audio` | `CS340-L07` The Data Architecture Workshop | ~39m@1.5× — Data architecture workshop — joins CS330/CS340 judgment wit… |
 | 3 | ○ `open` | `audio` | `CS320-L06` Concurrency, Event Loops, and Cancellation | ~37m@1.5× — Concurrency / event loops / cancellation — few fences; ties… |
-| 4 | ○ `open` | `either` | `SE215-L11` Release Management, Versioning, and Chang… | ~41m@1.5× — Release/versioning ownership — change management joint with… |
+| 4 | ● `done` | `either` | `SE215-L11` Release Management, Versioning, and Chang… | ~41m@1.5× — Release/versioning ownership — change management joint with… |
 
 ### Priority listens
 
@@ -59,16 +59,24 @@ _Queue updated 2026-10-29. Not a calendar — pick by mood/mode._
 | 1 | ○ `open` | `audio` | `CS120-L04` Experiments, Evidence, and Causality | Experiments and causality — evidence literacy for product/arch debates |
 | 2 | ○ `open` | `screen` | `SE320-L03` Queues, Workers, and Asynchronous Workflo… | Queues and workers — async joint with retries/idempotency |
 | 3 | ○ `open` | `audio` | `CS320-L06` Concurrency, Event Loops, and Cancellation | Also in walk pack — keep if you prefer screen-free concurrency first |
-| 4 | ○ `open` | `either` | `SE215-L11` Release Management, Versioning, and Chang… | Also in walk pack — release ownership spare slot |
+| 4 | ● `done` | `either` | `SE215-L11` Release Management, Versioning, and Chang… | Also in walk pack — release ownership spare slot |
 | 5 | ○ `open` | `audio` | `CS340-L07` The Data Architecture Workshop | Also in walk pack — data architecture spare |
 
-0 done · 19 open · 19 listed. Glyphs: `○` open, `●` done (logged pass or `status: done`), `—` skipped.
+2 done · 17 open · 19 listed. Glyphs: `○` open, `●` done (logged pass or `status: done`), `—` skipped.
 
 Edit [`queue.yaml`](queue.yaml) to reshuffle. Logging a listen/read/skim marks the matching item done on next render.
 
 ## Encore due
 
 _Nothing overdue. Nice._
+
+## Recent course examinations
+
+Qualitative history only — not grades. Does not change lecture phases. Protocol: [`../../EXAMINATIONS.md`](../../EXAMINATIONS.md).
+
+| When | Exam | Mode | Outcome | Next |
+| --- | --- | --- | --- | --- |
+| 2026-10-30 | `CS230-EX01` Follow the Boundaries | `guided` | Productive formative learning session. Coherent architectural understan… | Keep breadth-first listening across other courses. When… |
 
 ## Course status strip
 
@@ -80,8 +88,8 @@ Current phase of each lecture, in catalogue order. This is not a timeline — th
 | `CS120` | `unopened` | `·····` |
 | `CS220` | `underway` | `>······>` |
 | `CS230` | `underway` | `~>>>··>>···` |
-| `CS320` | `unopened` | `········` |
-| `SE240` | `underway` | `·>·····` |
+| `CS320` | `underway` | `>·······` |
+| `SE240` | `underway` | `·>>····` |
 | `SE310` | `unopened` | `···` |
 | `SE320` | `unopened` | `···` |
 | `CS330` | `unopened` | `···` |
@@ -102,11 +110,11 @@ Each cell is how many events fell on that day. The glyph is intensity; the digit
 
 | Week of | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2026-10-26 | █5 | █5 | ▓3 | █8 | · | · | · |
+| 2026-10-26 | █5 | █5 | ▓3 | █8 | ▓3 | · | · |
 
 Intensity: `·` 0, `░` 1, `▒` 2, `▓` 3–4, `█` 5+.
 
-21 events across 4 days, from 2026-10-26.
+24 events across 5 days, from 2026-10-26.
 
 ## Course by week
 
@@ -117,10 +125,11 @@ Session counts per course (listen, read, skim, lab, oral, review). `note` events
 | `CS110` | 4 |
 | `CS220` | 2 |
 | `CS230` | 6 |
-| `SE240` | 1 |
+| `CS320` | 1 |
+| `SE240` | 2 |
 | `CS340` | 1 |
 | `SE330` | 1 |
-| `SE215` | 6 |
+| `SE215` | 7 |
 
 Week labels are ISO weeks. 2026-W44 starts 2026-10-26.
 
@@ -130,6 +139,9 @@ Newest day first. A later session does not replace an earlier one.
 
 | When | Lecture | Action | Phase | Conf | Note |
 | --- | --- | --- | --- | ---: | --- |
+| 2026-10-30 | `SE240-L03` State Management and Reactive Applications | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
+| 2026-10-30 | `CS320-L01` The Kernel, Processes, and Containers | `listen` | studying | 2 | Full voice listen-through; one session. Prose done; labs not started. |
+| 2026-10-30 | `SE215-L11` Release Management, Versioning, and Change Ownership | `skim` | wandering | 3 | Partial voice pass (~quarter); recognized prior production release/versioning pipeline. Deferring full listen — higher-priority queue items first. |
 | 2026-10-29 | `SE330-L01` The Art of Software Architecture | `listen` | studying | 2 | Walk listen @~1.5x; prose done; labs not started. |
 | 2026-10-29 | `CS220-L08` Runtime Performance and Language Choice Workshop | `listen` | studying | 2 | Walk listen @~1.5x; prose done; labs not started. |
 | 2026-10-29 | `SE215-L06` DevOps, Platform Engineering, and Operational Ownership | `listen` | studying | 2 | Walk listen @~1.5x; prose done; labs not started. |
@@ -198,7 +210,7 @@ Folded snapshot. Passes count listen, read, skim, lab, oral, and review events. 
 | `CS230-L09` | `unopened` | 0 | 0 | — | — |  |
 | `CS230-L10` | `unopened` | 0 | 0 | — | — |  |
 | `CS230-L11` | `unopened` | 0 | 0 | — | — |  |
-| `CS320-L01` | `unopened` | 0 | 0 | — | — |  |
+| `CS320-L01` | `studying` | 2 | 1 | 2026-10-30 | — | Full voice listen-through; one session.… |
 | `CS320-L02` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L03` | `unopened` | 0 | 0 | — | — |  |
 | `CS320-L04` | `unopened` | 0 | 0 | — | — |  |
@@ -223,7 +235,7 @@ Folded snapshot. Passes count listen, read, skim, lab, oral, and review events. 
 | `CS430-L05` | `unopened` | 0 | 0 | — | — |  |
 | `SE240-L01` | `unopened` | 0 | 0 | — | — |  |
 | `SE240-L02` | `studying` | 2 | 1 | 2026-10-29 | — | Full voice listen-through; one session.… |
-| `SE240-L03` | `unopened` | 0 | 0 | — | — |  |
+| `SE240-L03` | `studying` | 2 | 1 | 2026-10-30 | — | Full voice listen-through; one session.… |
 | `SE240-L04` | `unopened` | 0 | 0 | — | — |  |
 | `SE240-L05` | `unopened` | 0 | 0 | — | — |  |
 | `SE240-L06` | `unopened` | 0 | 0 | — | — |  |
@@ -252,4 +264,4 @@ Folded snapshot. Passes count listen, read, skim, lab, oral, and review events. 
 
 ---
 
-_Source: [`activity.yaml`](activity.yaml), profile [`ledger.yaml`](ledger.yaml). Regenerate: `python tools/progress_render.py --student dskul`._
+_Source: [`activity.yaml`](activity.yaml), [`exam-attempts.yaml`](exam-attempts.yaml), profile [`ledger.yaml`](ledger.yaml). Regenerate: `python tools/progress_render.py --student dskul`._
