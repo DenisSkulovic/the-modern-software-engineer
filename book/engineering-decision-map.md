@@ -142,4 +142,4 @@ Use the map to choose a lecture — then listen/read. Do not treat this list as 
 | AI tools & agents | [`AI410-L01`](AI/AI410-agentic-ai-systems/AI410-L01-tool-calling-and-connecting-ai-to-software.md) · [`AI410-L02`](AI/AI410-agentic-ai-systems/AI410-L02-agents-from-model-calls-to-autonomous-workflows.md) |
 | System design studio | [`SE490-L03`](SE/SE490-architecture-studio/SE490-L03-system-design-workshop-build-for-100x-traffic.md) |
 
-Topic index: [`technology-atlas.md`](technology-atlas.md). Study priorities: [`STUDY-INTENT.md`](STUDY-INTENT.md). Practice: [`interview-lab/`](interview-lab/).
+Topic index: [`technology-atlas.md`](technology-atlas.md). Study priorities: [`STUDY-INTENT.md`](STUDY-INTENT.md). Practice: [`interview-lab/`](interview-lab/). Cross-course audio stories: [`narrative-cases/`](narrative-cases/README.md).

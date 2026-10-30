@@ -39,6 +39,7 @@ Ordinary lectures explain mechanisms. These cases hand you a symptom and evidenc
 - **CS345 / CS350 / SE335 / SE360** — diagnostic-first electives that own the labs.
 - **SE325 / SE460** — adjacent (bulk ops / cross-layer performance); do not duplicate their syllabi here.
 - **Interview Lab** — may draw cases as live investigation prompts.
+- **Narrative Systems Stories** — [`../narrative-cases/`](../narrative-cases/README.md): fully narrated cross-course stories for relaxed listening; distinct from these evidence-first mystery packets.
 
 ## Status
 

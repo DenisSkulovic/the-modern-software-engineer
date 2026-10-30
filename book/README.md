@@ -25,6 +25,7 @@ book/
 ├── technology-atlas.md          ← searchable topic / technology index
 ├── interview-lab/               ← mock interviews (protocol, profiles, sessions)
 ├── production-cases/            ← diagnostic incident packets (not a course)
+├── narrative-cases/             ← cross-course audio stories (not a course)
 ├── students/                    ← personal Study Ledgers (per student)
 ├── tools/                       ← migrate / validate / render / progress
 ├── CS/                          ← Computer Science courses (+ exams/ when present)
@@ -85,6 +86,7 @@ Three shapes appear in the catalogue:
 - **Specialist electives** — deeper optional courses (for example `CS360`, `SE250`, `CS345`, `CS350`, `SE325`, `SE335`, `SE360`, `SE450`, `SE460`).
 - **Short orientation electives** — survey lectures for professional fluency without another full semester (`SE215`; ordinarily ~18–25 minutes spoken per lecture).
 - **Production Case Library** — [`production-cases/`](production-cases/README.md): symptom-first incident packets (Mongo, Postgres, Redis, queues, CI/CD) used by studios and Interview Lab — not a numbered course.
+- **Narrative Systems Stories** — [`narrative-cases/`](narrative-cases/README.md): optional ~30-minute audio-first stories (Discovery / Focused / Panoramic shelves) — not lectures, exams, or diagnostic packets.
 
 Active electives today include `SE215`, `CS360`, `SE250`, `CS345`, `CS350`, `SE325`, `SE335`, `SE360`, `SE450`, and `SE460`. Others (for example `CS370`, `SE350`) remain planned.
 
@@ -110,7 +112,7 @@ If Part II starts to blur, return to Part I’s opening picture and narrate one 
 **Teaching principles (unchanged from v1):** teach like an excellent lecturer; assume professional experience; open with a real problem; build mental models; explain trade-offs; stay concrete; no padding.
 
 **Manuscript rhythm (authoring):** intuition → deep dive → exploration/lab → challenges → mental model → further reading.  
-**Learner rhythm (this programme):** intuition → deep dive (listen/read) → optional cheatsheet glance → optional [course exam](EXAMINATIONS.md) → **Interview Lab** when ready. Skip labs and exams freely.
+**Learner rhythm (this programme):** intuition → deep dive (listen/read) → optional [narrative story](narrative-cases/README.md) or cheatsheet glance → optional [course exam](EXAMINATIONS.md) → **Interview Lab** when ready. Skip labs, stories, and exams freely.
 
 ---
 

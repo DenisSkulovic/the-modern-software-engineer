@@ -49,6 +49,7 @@ Applications can start **before** the listening queue is empty. Recruitment lag 
 - Prefer a curated **listen queue** over rigid catalogue `study_order` when preparing for interviews.
 - A first-pass confidence around **2/5** is a normal refresh signal, not incomplete work.
 - Logging a listen with phase `studying` means “serious pass of the prose,” not “mastered.”
+- Optional **Narrative Systems Stories** ([`narrative-cases/`](narrative-cases/README.md)): ~30-minute audio-first stories — Discovery (learn a subject from zero), Focused (one discipline), or Panoramic (cross-system). Low-pressure listening; not lecture events and not diagnostic homework.
 
 ### Secondary: retrieve and demonstrate
 
@@ -128,6 +129,7 @@ Encore automation is secondary to revisits driven by mocks and real interview fe
 | --- | --- |
 | This file | Priorities and stages |
 | [`engineering-decision-map.md`](engineering-decision-map.md) | Cross-discipline architecture navigation |
+| [`narrative-cases/`](narrative-cases/README.md) | Cross-course audio stories (optional) |
 | [`students/<id>/queue.yaml`](students/dskul/queue.yaml) | Short-term listen shortlist |
 | [`students/<id>/activity.yaml`](students/dskul/activity.yaml) | What was actually studied |
 | [`EXAMINATIONS.md`](EXAMINATIONS.md) | Course-wide practice papers (optional) |
@@ -139,4 +141,4 @@ Encore automation is secondary to revisits driven by mocks and real interview fe
 
 ## One-line reminder for agents
 
-**Listen to systematize experience → examine (optional) to retrieve and connect → mock to defend under pressure → apply in parallel → sharpen when invited. Labs and exam papers are reference material, not the programme.**
+**Listen to systematize experience → optional stories to hear the orchestra → examine to retrieve and connect → mock to defend under pressure → apply in parallel → sharpen when invited. Labs, exams, and stories are reference material, not the programme.**
