@@ -1,89 +1,110 @@
-# Short-term listen queue — curated picks, not a calendar and not auto-generated.
-# Order is preference among open items; skip or reshuffle freely.
-# Diversify subjects across sessions (university-style), don't binge one course.
+# Short-term listen queue — curated priorities, not a rigid timetable.
+# Grounded in the technical patterns across an initial batch of EU senior
+# full-stack / backend-leaning product-engineering job descriptions.
+# This public study queue deliberately contains no private application details.
 #
 # mode: audio | screen | either
-#   audio  — prose carries without staring at fences (headphones / walking OK)
-#   screen — code/diagrams matter; listen while looking, or read
-#   either — fine either way
 # status: optional override — open | done | skipped
-#   Otherwise a listen/read/skim/lab/oral/review event marks the item done.
+# Otherwise a listen/read/skim/lab/oral/review event marks an item done.
+# Source of truth for learning progress: activity.yaml. Do not infer fluency from listening.
 #
-# Orientation: book/engineering-decision-map.md (architecture joints across the catalogue).
-# Labs optional. Interview Lab tests understanding. Activity log is source of truth for done.
+# Stage 2 is ACTIVE: applications + Interview Lab in parallel with selective listening.
+# Listen to warm up; rehearse to prove competence. Labs remain optional.
+# Diversify subjects, skip known material, and pivot when an actual interview arrives.
+# Do not postpone mocks until this queue is complete.
 
 goal: >
-  Architecture-first refresh: maximize domain breadth this week (data, backend,
-  distributed failure, auth, patterns, React, observability, transactions, AI agents,
-  concurrency). Avoid another networking/DevOps binge. Then weight Interview Lab + applications.
-  Decision map first if concepts feel disconnected.
+  Market-aligned interview refresh (Nov 2026): prioritize React/Next.js,
+  practical SQL/PostgreSQL, TypeScript/Node runtime depth, backend reliability,
+  API contracts, and senior design judgment. Use the existing manuscripts;
+  do not create more courses by default. Keep cloud/DevOps, algorithms,
+  niche vendor tooling and extra AI theory off the critical path.
 
-updated: '2026-10-29'
+updated: '2026-11-02'
 
-# Audio-leaning pack for walks (~2h @1.5× across several). Fence-light from the priority set.
+# Audio-friendly alternates for walks, not an additional required workload.
 walk_pack:
 - lecture: CS330-L01
   mode: audio
   approx_min_at_1_5x: 33
-  why: Relational modeling — core data decisions; prose-led
-- lecture: CS340-L07
-  mode: audio
-  approx_min_at_1_5x: 39
-  why: Data architecture workshop — joins CS330/CS340 judgment without code density
-- lecture: CS320-L06
-  mode: audio
-  approx_min_at_1_5x: 37
-  why: Concurrency / event loops / cancellation — few fences; ties to async backends
-- lecture: SE215-L11
-  mode: either
-  approx_min_at_1_5x: 41
-  why: Release/versioning ownership — change management joint with architecture
-
-items:
-- lecture: CS330-L01
-  mode: audio
-  why: Relational modeling — foundation for data trade-offs
+  why: Relational modeling primer before SQL fluency if useful
 - lecture: SE320-L01
   mode: either
-  why: Backend service anatomy — spoken path now carries the examples; lab stays on screen
+  why: Backend service boundaries and ownership, matched to product-company interviews
 - lecture: CS430-L01
   mode: either
-  why: Partial failure — spoken path carries timeouts, retries, idempotency; lab stays on screen
-- lecture: SE310-L02
-  mode: screen
-  why: Authentication and browser security — common fullstack grill
+  why: Partial failure, retries and idempotency — repeated backend interview themes
 - lecture: SE330-L02
   mode: audio
-  why: Architecture patterns — spoken path carries the examples; lab stays on screen
+  why: Architecture patterns and their costs; good spoken design rehearsal
+
+# Priority order is a preference, not a completion contract.
+# Large manuscripts can be listened to selectively (intuition + needed sections).
+items:
 - lecture: SE250-L01
   mode: screen
-  why: React mental model refresh (Vue-heavier path)
-- lecture: SE440-L01
+  why: React mental model; most descriptions expect React competence
+- lecture: CS350-L01
   mode: screen
-  why: Observability — how you see the system you designed
+  why: Practical SQL fluency: joins, grouping, CTEs, window functions, correctness
+- lecture: CS220-L02
+  mode: either
+  why: JS semantics and TypeScript runtime reality; core stack across applications
+- lecture: SE250-L02
+  mode: screen
+  why: Effects, stale closures, dependency behavior and lifecycle bugs
+- lecture: SE320-L01
+  mode: either
+  why: Production Node backend anatomy, domain boundaries and service behavior
+- lecture: CS330-L02
+  mode: either
+  why: SQL indexes, query performance and database cost models
+- lecture: CS430-L01
+  mode: either
+  why: Distributed failure, timeouts, retries and idempotency
+- lecture: SE250-L05
+  mode: screen
+  why: Next.js App Router, Server Components, SSR, caching and hydration
+- lecture: SE310-L01
+  mode: either
+  why: REST vs GraphQL, API contracts, compatibility, pagination, validation
+- lecture: SE250-L03
+  mode: screen
+  why: React state, data fetching, real application boundaries and trade-offs
+
+# Pull from here after initial refresh or when a JD/interview/mock warrants it.
+overflow:
+- lecture: CS330-L01
+  mode: audio
+  why: Relational modeling foundation; also in walk pack
+- lecture: CS350-L02
+  mode: screen
+  why: PostgreSQL EXPLAIN and plan forensics; high priority for data-heavy roles
 - lecture: CS330-L03
   mode: either
-  why: Transactions and isolation — correctness under concurrency
-- lecture: AI410-L01
-  mode: screen
-  why: Tool calling — AI integrated as software, not magic
-- lecture: AI410-L02
+  why: Transactions, isolation and concurrent correctness
+- lecture: SE440-L01
   mode: either
-  why: Agents and autonomous workflows — when nondeterminism enters the architecture
+  why: Monitoring, metrics and incident diagnosis
+- lecture: SE440-L03
+  mode: either
+  why: Testing strategy and reliability under production constraints
+- lecture: SE250-L06
+  mode: screen
+  why: React debugging interview studio; pair with live Interview Lab
+- lecture: CS430-L05
+  mode: either
+  why: Durable business workflows, replay, and integration failure handling
+- lecture: SE490-L04
+  mode: either
+  why: Senior engineer architecture review; use as mock discussion material
+- lecture: AI410-L06
+  mode: either
+  why: Evaluating nondeterministic software for AI-specific interviews
+- lecture: SE330-L02
+  mode: audio
+  why: Architecture patterns; also in walk pack
 
-overflow:
-- lecture: CS120-L04
-  mode: audio
-  why: Experiments and causality — evidence literacy for product/arch debates
-- lecture: SE320-L03
-  mode: screen
-  why: Queues and workers — async joint with retries/idempotency
-- lecture: CS320-L06
-  mode: audio
-  why: Also in walk pack — keep if you prefer screen-free concurrency first
-- lecture: SE215-L11
-  mode: either
-  why: Also in walk pack — release ownership spare slot
-- lecture: CS340-L07
-  mode: audio
-  why: Also in walk pack — data architecture spare
+# Adjacent gap to address by short focused oral drill, not an extra full course:
+# GraphQL practical questions: schema/resolvers, N+1/DataLoader, federation,
+# authorization, pagination and query limits. SE310-L01 is a solid conceptual entry.
