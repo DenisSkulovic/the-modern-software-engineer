@@ -10,6 +10,9 @@
 #
 # Stage 2 is ACTIVE: applications + Interview Lab in parallel with selective listening.
 # Listen to warm up; rehearse to prove competence. Labs remain optional.
+# React exception: listening alone is insufficient for an independently operated
+# framework. Pair SE250 study with small manual implementation/debugging drills.
+# The goal is confident explanation and modification without AI completing every step.
 # Diversify subjects, skip known material, and pivot when an actual interview arrives.
 # Do not postpone mocks until this queue is complete.
 
@@ -19,6 +22,7 @@ goal: >
   API contracts, and senior design judgment. Use the existing manuscripts;
   do not create more courses by default. Keep cloud/DevOps, algorithms,
   niche vendor tooling and extra AI theory off the critical path.
+  React requires independent hands-on implementation/debugging alongside audio learning.
 
 updated: '2026-11-02'
 
@@ -40,6 +44,12 @@ walk_pack:
 
 # Priority order is a preference, not a completion contract.
 # Large manuscripts can be listened to selectively (intuition + needed sections).
+# React micro-practice after SE250-L01/L02/L03:
+# - Independently implement a small searchable/list + editor with controlled inputs.
+# - Fix a stale closure, effect cleanup or race in unfamiliar React code.
+# - Explain each useState/useEffect choice and verify loading/error/empty behavior.
+# No need to ban AI entirely: first reason and attempt yourself, then review with AI.
+# This is a targeted diagnostic exception, not a blanket requirement to do all labs.
 items:
 - lecture: SE250-L01
   mode: screen
