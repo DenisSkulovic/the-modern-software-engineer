@@ -43,8 +43,8 @@ declare function searchOrders(input: {
 1. Search term is controlled and visible; filter choices all/open/fulfilled are available.
 2. Results match the **latest** query and filter, regardless of network completion order.
 3. Loading, error, empty and populated states are distinguishable.
-4. Each order row uses a stable ID key, is accessible as an interactive control, and calls \`onSelect(order.id)\`.
-5. Currency output uses the provided \`formatCents\` helper; never do raw concatenation that loses cents.
+4. Each order row uses a stable ID key, is accessible as an interactive control, and calls `onSelect(order.id)`.
+5. Currency output uses the provided `formatCents` helper; never do raw concatenation that loses cents.
 6. A quick first pass is acceptable; explain trade-offs before adding abstractions.
 7. Write at least one test or narrate a deterministic test of request race/error handling.
 
