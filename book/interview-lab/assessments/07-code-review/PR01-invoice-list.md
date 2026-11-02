@@ -23,7 +23,7 @@ The PR author claims: "Fast query, handles partial payments, straightforward pag
 
 ~~~ts
 // Server query (workspace authorization happens in middleware).
-const sql = \`
+const sql = `
   SELECT i.id, i.created_at, i.total_cents,
          SUM(p.amount_cents) AS paid_cents
   FROM invoices i
@@ -33,7 +33,7 @@ const sql = \`
   GROUP BY i.id
   ORDER BY i.created_at DESC
   LIMIT 25 OFFSET $2
-\`;
+`;
 const rows = await pool.query(sql, [workspaceId, page * 25]);
 return rows;
 ~~~
@@ -128,7 +128,7 @@ This sketch is for query correctness, **not** a claim that it is optimal for lar
 ## Other issues
 
 - **Nondeterministic pagination:** created_at ties, and ORDER BY lacks a unique tiebreaker. Add ID. Offset pagination is functional for small shallow pages with stable dataset but degrades with deep offsets and can skip/duplicate records across concurrent inserts. Keyset cursor based on (created_at, id) is a reasonable alternative, not a universal requirement.
-- **React identity:** index keys can attach expanded local state to the wrong invoice after reorder/insert/page change. Use stable \`row.id\`.
+- **React identity:** index keys can attach expanded local state to the wrong invoice after reorder/insert/page change. Use stable `row.id`.
 - **Money representation:** raw division and string concatenation lose localization and may yield awkward decimal rendering. Use a deliberate currency formatter and contract, with integer cents as source where applicable.
 - **NULL semantics:** API must choose and document whether no payment means paid=0. COALESCE to zero is usually appropriate for total captured payments; do not treat unknown/missing *data availability* the same as confirmed zero when business semantics differ.
 - **Contract and security:** workspace authorization is stated to exist in middleware, so do **not** invent an absent auth check. Verify all related detail endpoints enforce same boundary; invoices/exports can contain sensitive information. Return page/cursor metadata and stable sort behavior.
