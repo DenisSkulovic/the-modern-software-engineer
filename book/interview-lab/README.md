@@ -12,6 +12,8 @@ Programme priorities (listen-first refresh; labs optional; mocks as interactive 
 
 Static course-wide practice papers (questions + model answers, not live sims) live under each course’s `exams/` folder — protocol: [`../EXAMINATIONS.md`](../EXAMINATIONS.md). Do not confuse those with Interview Lab sessions.
 
+**New: [Cross-disciplinary interview assessment runbooks](assessments/README.md)** — multiple realistic hiring philosophies (peer discussion, no-code product cases, React/Node debugging, system design, AI-assisted patch review, practical coding, PR review), with candidate prompts and separate interviewer keys. These are preparation simulations, not employer question leaks.
+
 Lecture oral prompts, challenges, labs, and course-exam questions are fair **question inspiration** for sessions here — not homework the candidate must have completed first.
 
 ---
