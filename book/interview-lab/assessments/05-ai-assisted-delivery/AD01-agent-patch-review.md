@@ -130,11 +130,11 @@ The candidate should distinguish requirements and risks, not condemn all sync re
 
 ## P0 and P1 issues in the supplied patch
 
-- **Cross-workspace access risk:** \`workspaceId\` is user-controlled, never checked against the fetched document's owner, and there is no explicit workspace-level authorization. Login is not authorization. The server must load document by workspace/resource and enforce action permission.
+- **Cross-workspace access risk:** `workspaceId` is user-controlled, never checked against the fetched document's owner, and there is no explicit workspace-level authorization. Login is not authorization. The server must load document by workspace/resource and enforce action permission.
 - **Unapproved disclosure:** raw sensitive document content is transmitted to an external LLM without a defined provider/data contract, redaction policy, approval, retention rule or customer governance. Access controls and storage/security reviews are required.
-- **Incorrect business truth:** a model's \`approved\` field directly overwrites authoritative compliance status; untrusted output becomes a decision that may carry audit consequences. Summary is advisory; human or deterministic workflow owns actual approval.
-- **Broken input handling:** \`pdf.toString("utf8")\` is not PDF extraction; PDF binary content isn't plain text. Parsing, size limits, document type checks and malicious-content boundaries are necessary.
-- **Reliability and cost:** long HTTP request, no timeout bounds, quota, idempotency key, admission control, queue durability, retry budget, or per-request cost accounting. UI button disable cannot protect across retries/tabs/network failures. Errors leave \`busy\` stuck and \`payload.result\` can be absent. Blind \`JSON.parse\` trusts arbitrary model output.
+- **Incorrect business truth:** a model's `approved` field directly overwrites authoritative compliance status; untrusted output becomes a decision that may carry audit consequences. Summary is advisory; human or deterministic workflow owns actual approval.
+- **Broken input handling:** `pdf.toString("utf8")` is not PDF extraction; PDF binary content isn't plain text. Parsing, size limits, document type checks and malicious-content boundaries are necessary.
+- **Reliability and cost:** long HTTP request, no timeout bounds, quota, idempotency key, admission control, queue durability, retry budget, or per-request cost accounting. UI button disable cannot protect across retries/tabs/network failures. Errors leave `busy` stuck and `payload.result` can be absent. Blind `JSON.parse` trusts arbitrary model output.
 - **Operational insight:** no trace/audit linkage, job status, progress/error state, or distinction between "failed", "timed out after provider accepted" and "already running".
 
 ## Better minimum contract
