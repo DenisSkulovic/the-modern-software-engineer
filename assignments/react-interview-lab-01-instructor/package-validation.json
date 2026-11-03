@@ -1,0 +1,8 @@
+{
+  "candidateFiles": 24,
+  "zipBytes": 60037,
+  "sha256": "2fb110803439866cb3eecc3df69d1a5ddf15b653d9c4365e017150fd4a3920d4",
+  "spoilerAudit": "passed",
+  "exclusions": "dependencies, dist, Git, instructor, scratch",
+  "root": "react-interview-lab-01/"
+}

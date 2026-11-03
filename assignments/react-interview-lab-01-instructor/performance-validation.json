@@ -1,0 +1,9 @@
+{
+  "scenario": "12000 deterministic records",
+  "initialMs": 26311.8853,
+  "queryMs": 11926.186800000003,
+  "initialDomRows": 12000,
+  "filteredDomRows": 1500,
+  "productionSmoke": "passed",
+  "errors": []
+}

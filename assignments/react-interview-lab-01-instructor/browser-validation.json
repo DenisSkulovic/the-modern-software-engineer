@@ -1,0 +1,8 @@
+[
+  "A: search retains invalid page; API reports one matching record, UI has no record.",
+  "B: team switch reuses platform page; refresh loads billing.",
+  "C: unrelated status confirmation overwrites unsaved note. Ordinary note save succeeded.",
+  "D: confirmed status reverted in UI by late refresh; backend retains mutation.",
+  "Normal search and pagination verified.",
+  "Desktop, tablet, mobile rendered; no page exceptions or viewport overflow."
+]
